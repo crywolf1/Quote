@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import "../styles/globals.css";
+import BokehScriptLoader from "../components/BokehScriptLoader"; // ✅ Import the script loader
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,6 +23,7 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <BokehScriptLoader /> {/* ✅ Load the script separately */}
         {children}
       </body>
     </html>
