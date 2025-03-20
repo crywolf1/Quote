@@ -18,7 +18,8 @@ export async function POST(req) {
 
     return Response.json({
       "fc:frame": "vNext",
-      "fc:frame:image": "/assets/phone.png", // Replace with your hosted image
+      "fc:frame:image":
+        "https://quote-production-679a.up.railway.app/assets/phone.png", // Replace with your hosted image
       "fc:frame:post_url":
         "https://quote-production-679a.up.railway.app/api/frame-action",
       "fc:frame:button:1": "Get Another Quote",
