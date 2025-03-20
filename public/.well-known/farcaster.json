@@ -7,11 +7,11 @@
   "frame": {
     "version": "1",
     "name": "Quote",
-    "iconUrl": "https://quote-production-679a.up.railway.app/icon.png",
+    "iconUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
     "homeUrl": "https://quote-production-679a.up.railway.app",
-    "imageUrl": "https://quote-production-679a.up.railway.app/image.png",
+    "imageUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
     "buttonTitle": "Quote",
-    "splashImageUrl": "https://quote-production-679a.up.railway.app/splash.png",
+    "splashImageUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
     "splashBackgroundColor": "#131313"
   }
 }

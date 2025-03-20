@@ -13,7 +13,8 @@ export async function POST(req) {
       responseText =
         "Here's a random quote: 'Success is not final, failure is not fatal.'";
     } else if (buttonIndex === 2) {
-      responseText = "Submit your quote at: https://your-site.com/add-quote";
+      responseText =
+        "Submit your quote at: https://quote-production-679a.up.railway.app";
     }
 
     return Response.json({
