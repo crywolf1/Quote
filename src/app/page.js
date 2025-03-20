@@ -1,30 +1,27 @@
+import Head from "next/head";
 import Card from "@/components/Card";
 import CanvasBackground from "../components/CanvasBackground";
 
-export const metadata = {
-  title: "Quote App",
-  description: "Create, edit, and share your favorite quotes!",
-  openGraph: {
-    title: "Quote App",
-    description: "Create, edit, and share your favorite quotes!",
-    images: ["https://your-site.com/frame-image.png"], // Replace with a real URL
-  },
-  other: {
-    "fc:frame": "vNext",
-    "fc:frame:image": "https://your-site.com/frame-image.png", // Static or dynamic image
-    "fc:frame:post_url": "quote-production-679a.up.railway.app",
-    "fc:frame:button:1": "Get a Quote",
-    "fc:frame:button:2": "Submit Your Quote",
-  },
-};
-
 export default function Home() {
   return (
-    <div className="relative w-full h-screen flex items-center justify-center">
-      <CanvasBackground />
-      <div className="relative z-10">
-        <Card />
+    <>
+      <Head>
+        <meta property="og:title" content="My Farcaster Frame" />
+        <meta property="og:description" content="A cool Farcaster Frame V2" />
+        <meta property="og:image" content="/assets/phone.png" />
+        <meta property="fc:frame" content="vNext" />
+        <meta
+          property="fc:frame:post_url"
+          content="https://quote-production-679a.up.railway.app/"
+        />
+      </Head>
+
+      <div className="relative w-full h-screen flex items-center justify-center">
+        <CanvasBackground />
+        <div className="relative z-10">
+          <Card />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
