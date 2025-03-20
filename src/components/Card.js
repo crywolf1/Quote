@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FrameSDK } from "@farcaster/frame-sdk"; // Ensure correct import
 import "../styles/style.css";
 import {
   FaEdit,
@@ -11,9 +10,8 @@ import {
   FaPlus,
 } from "react-icons/fa";
 
-const Card = ({ imageUrl, name }) => {
+const Card = () => {
   const [activeSection, setActiveSection] = useState("#about");
-  const [userData, setUserData] = useState(null); // State to hold user data
   const [quote, setQuote] = useState("");
   const [message, setMessage] = useState("");
   const [quotes, setQuotes] = useState([]);
@@ -21,24 +19,7 @@ const Card = ({ imageUrl, name }) => {
   const [editedText, setEditedText] = useState("");
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-
-  // Fetch user data from Farcaster
-  useEffect(() => {
-    // Initialize Farcaster SDK (make sure it's used correctly)
-    const frame = FrameSDK; // No need for new, just call it as a method
-
-    const fetchUserData = async () => {
-      try {
-        const user = await frame.getUserProfile(); // Fetch user profile
-        setUserData(user); // Store user data
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-      }
-    };
-
-    fetchUserData(); // Fetch user data on mount
-    fetchQuotes(); // Fetch quotes as you did previously
-  }, []);
+  const [userData, setUserData] = useState(null);
 
   // Fetch all quotes
   const fetchQuotes = async () => {
@@ -153,26 +134,35 @@ const Card = ({ imageUrl, name }) => {
     setActiveSection(section);
   };
 
+  useEffect(() => {
+    fetchQuotes(); // Fetch quotes when the component mounts
+  }, []);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const res = await fetch("/api/frame-action");
+        const data = await res.json();
+        setUserData(data);
+      } catch (error) {
+        console.error("Failed to fetch user data:", error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">
-        <div
-          className="card-cover"
-          style={{ backgroundImage: `url(${imageUrl})` }} // Use imageUrl from props
-        ></div>
-        {/* Display user data */}
-        {userData ? (
-          <>
-            <img
-              src={userData.imageUrl || "default-avatar.jpg"}
-              alt="Avatar"
-              className="card-avatar"
-            />
-            <h1 className="card-fullname">{userData.name || "Unknown User"}</h1>
-          </>
-        ) : (
-          <div>Loading user data...</div>
-        )}
+        <img
+          src={userData?.image || "/default-avatar.jpg"}
+          alt="Avatar"
+          className="card-avatar"
+        />
+        <h1 className="card-fullname">
+          {userData ? `Welcome, ${userData.text}` : "Guest"}
+        </h1>
       </div>
 
       <div className="card-main">
@@ -260,6 +250,7 @@ const Card = ({ imageUrl, name }) => {
                   value={quote}
                   onChange={(e) => setQuote(e.target.value)}
                 />
+                {/* Display the number of characters remaining */}
               </div>
               <button className="contact-me" onClick={sendQuote}>
                 Send Quote
@@ -267,8 +258,8 @@ const Card = ({ imageUrl, name }) => {
             </div>
           </div>
         </div>
-
         <div className="card-container2">
+          {/* Only show .card-buttons1 when activeSection is "#about" (Quote section) */}
           {activeSection === "#about" && (
             <div className="card-buttons1">
               <button className="nav-btn left" onClick={handleLeftClick}>
@@ -283,6 +274,7 @@ const Card = ({ imageUrl, name }) => {
             </div>
           )}
 
+          {/* The section buttons */}
           <div className="card-buttons">
             <button
               className={activeSection === "#about" ? "is-active" : ""}
@@ -300,7 +292,7 @@ const Card = ({ imageUrl, name }) => {
               className={activeSection === "#contact" ? "is-active" : ""}
               onClick={() => handleSectionChange("#contact")}
             >
-              Add Quote
+              Add
             </button>
           </div>
         </div>

@@ -1,0 +1,17 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjM0NDIwMywidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDUyMjAyODE2QUNGMWY2RGVjMTZGMzkxZDkxY2NhYUQ2QTI2MkY1NUQifQ",
+    "payload": "eyJkb21haW4iOiJxdW90ZS1wcm9kdWN0aW9uLTY3OWEudXAucmFpbHdheS5hcHAifQ",
+    "signature": "MHhmY2VmNzVhMjNkYTg3NTk3YWZhODJiMjVmMGRiZmQxNzQ4NTMyMDk1YjczYzM0NWE2NGJhNWRlOGE2YzVhZjhkMjk0NGVmNWIyMjdmZmFhMThhNmI5OWI5OTc2NzhjMzA4NTQ4NzRiMmQ4MzBjMmVmZmYzMjZjYzUzMTMxNThiNTFj"
+  },
+  "frame": {
+    "version": "1",
+    "name": "Quote",
+    "iconUrl": "https://quote-production-679a.up.railway.app/icon.png",
+    "homeUrl": "https://quote-production-679a.up.railway.app",
+    "imageUrl": "https://quote-production-679a.up.railway.app/image.png",
+    "buttonTitle": "Quote",
+    "splashImageUrl": "https://quote-production-679a.up.railway.app/splash.png",
+    "splashBackgroundColor": "#131313"
+  }
+}
