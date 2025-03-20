@@ -258,6 +258,7 @@ const Card = () => {
             </div>
           </div>
         </div>
+
         <div className="card-container2">
           {/* Only show .card-buttons1 when activeSection is "#about" (Quote section) */}
           {activeSection === "#about" && (

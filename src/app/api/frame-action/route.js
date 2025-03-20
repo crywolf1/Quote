@@ -1,34 +1,48 @@
-export async function POST(req) {
+import { NextResponse } from "next/server";
+import dbConnect from "../../../lib/db"; // Assuming your db.js is inside utils
+import User from "../../../lib/models/User"; // Assuming you have a User model set up in Mongoose
+
+// Mock function to fetch user data from Farcaster
+const fetchUserFromFarcaster = async (userId) => {
   try {
-    const body = await req.json(); // Parse incoming request body
+    // Replace with actual Farcaster API request to get user data
+    const res = await fetch(`https://api.farcaster.xyz/users/${userId}`);
+    const data = await res.json();
 
-    console.log("Farcaster Frame Payload:", body);
-
-    // Extract user data from Farcaster request
-    const { fid, buttonIndex } = body;
-
-    // Mocked response based on button clicked
-    let responseText = "Welcome to the Quote App!";
-    if (buttonIndex === 1) {
-      responseText =
-        "Here's a random quote: 'Success is not final, failure is not fatal.'";
-    } else if (buttonIndex === 2) {
-      responseText =
-        "Submit your quote at: https://quote-production-679a.up.railway.app";
+    if (!res.ok) {
+      throw new Error("Failed to fetch data from Farcaster");
     }
 
-    return Response.json({
-      "fc:frame": "vNext",
-      "fc:frame:image":
-        "https://quote-production-679a.up.railway.app/assets/phone.png", // Replace with your hosted image
-      "fc:frame:post_url":
-        "https://quote-production-679a.up.railway.app/api/frame-action",
-      "fc:frame:button:1": "Get Another Quote",
-      "fc:frame:button:2": "Add Your Own",
-      "fc:frame:text": responseText,
-    });
+    return data;
   } catch (error) {
-    console.error("Error processing Farcaster request:", error);
-    return new Response("Error", { status: 500 });
+    console.error("Error fetching data from Farcaster:", error);
+    throw new Error("Error fetching data from Farcaster");
+  }
+};
+
+export async function GET(req) {
+  try {
+    // Connect to MongoDB
+    await dbConnect();
+
+    // Get the user ID from the request (you might want to adjust this based on how you identify users)
+    const { userId } = req.query; // Assuming you send userId in the query params
+
+    // Fetch user data from Farcaster
+    const farcasterUserData = await fetchUserFromFarcaster(userId);
+
+    // Optional: Fetch user data from your MongoDB if you store anything additional
+    const dbUser = await User.findOne({ userId });
+
+    // Combine MongoDB data with Farcaster data (if needed)
+    const userData = {
+      ...farcasterUserData,
+      ...dbUser.toObject(), // Merge MongoDB user data (if applicable)
+    };
+
+    return NextResponse.json(userData);
+  } catch (error) {
+    console.error("Error fetching user data:", error);
+    return NextResponse.error(); // Return error if something goes wrong
   }
 }
