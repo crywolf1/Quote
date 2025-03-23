@@ -2,26 +2,21 @@
 
 import { useState, useEffect } from "react";
 import "../styles/style.css";
-import {
-  FaEdit,
-  FaTrashAlt,
-  FaArrowLeft,
-  FaArrowRight,
-  FaPlus,
-} from "react-icons/fa";
+import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
-const Card = () => {
+export default function Card() {
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
   const [message, setMessage] = useState("");
   const [quotes, setQuotes] = useState([]);
   const [editIndex, setEditIndex] = useState(null);
   const [editedText, setEditedText] = useState("");
-  const [currentQuoteIndex, setCurrentQuoteIndex] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [userData, setUserData] = useState(null);
+  const [userData, setUserData] = useState({
+    username: "Guest",
+    pfpUrl: "/default-avatar.jpg",
+  });
 
-  // Fetch all quotes
   const fetchQuotes = async () => {
     try {
       const res = await fetch("/api/quote");
@@ -29,13 +24,17 @@ const Card = () => {
       if (res.ok) {
         setQuotes(data.quotes);
         if (data.quotes.length > 0) {
-          setCurrentQuoteIndex(Math.floor(Math.random() * data.quotes.length)); // Show random quote initially
+          setCurrentIndex(Math.floor(Math.random() * data.quotes.length));
         }
       }
     } catch (error) {
       setMessage("Failed to fetch quotes.");
     }
   };
+
+  useEffect(() => {
+    fetchQuotes();
+  }, []);
 
   const handleLeftClick = () => {
     setCurrentIndex(
@@ -47,28 +46,22 @@ const Card = () => {
     setCurrentIndex((prevIndex) => (prevIndex + 1) % quotes.length);
   };
 
-  const handleAddQuote = () => {
-    console.log("Add New Quote");
-  };
-
   const sendQuote = async () => {
     if (!quote.trim()) {
       setMessage("Quote cannot be empty!");
       return;
     }
-
     try {
       const res = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: quote }),
       });
-
       const data = await res.json();
       if (res.ok) {
         setMessage("Quote saved successfully!");
-        setQuote(""); // Clear textarea
-        fetchQuotes(); // Re-fetch quotes after adding a new one
+        setQuote("");
+        fetchQuotes();
       } else {
         setMessage(data.error || "Failed to save quote.");
       }
@@ -79,7 +72,7 @@ const Card = () => {
 
   const handleEdit = (index) => {
     setEditIndex(index);
-    setEditedText(quotes[index].text); // Set the quote text for editing
+    setEditedText(quotes[index].text);
   };
 
   const handleUpdateQuote = async () => {
@@ -87,19 +80,17 @@ const Card = () => {
       setMessage("Quote cannot be empty!");
       return;
     }
-
     try {
       const res = await fetch(`/api/quote/${quotes[editIndex]._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: editedText }),
       });
-
       const data = await res.json();
       if (res.ok) {
         setMessage("Quote updated successfully!");
         setEditIndex(null);
-        fetchQuotes(); // Re-fetch quotes after editing
+        fetchQuotes();
       } else {
         setMessage(data.error || "Failed to update quote.");
       }
@@ -113,11 +104,10 @@ const Card = () => {
       const res = await fetch(`/api/quote/${quotes[index]._id}`, {
         method: "DELETE",
       });
-
       const data = await res.json();
       if (res.ok) {
         setMessage("Quote deleted successfully!");
-        fetchQuotes(); // Re-fetch quotes after deleting
+        fetchQuotes();
       } else {
         setMessage(data.error || "Failed to delete quote.");
       }
@@ -126,29 +116,18 @@ const Card = () => {
     }
   };
 
-  // Close the editing text area if user clicks outside the editing section
   const handleSectionChange = (section) => {
     if (editIndex !== null) {
-      setEditIndex(null); // Close editing if changing section
+      setEditIndex(null);
     }
     setActiveSection(section);
   };
 
-  useEffect(() => {
-    fetchQuotes(); // Fetch quotes when the component mounts
-  }, []);
-
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">
-        <img
-          src={userData?.image || "/default-avatar.jpg"}
-          alt="Avatar"
-          className="card-avatar"
-        />
-        <h1 className="card-fullname">
-          {userData ? `Welcome, ${userData.text}` : "Guest"}
-        </h1>
+        <img src={userData.pfpUrl} alt="Avatar" className="card-avatar" />
+        <h1 className="card-fullname">Welcome, {userData.username}!</h1>
       </div>
 
       <div className="card-main">
@@ -160,7 +139,9 @@ const Card = () => {
         >
           <div className="card-content">
             <div className="card-subtitle">Quote</div>
-            <p className="card-desc">{quotes[currentIndex]?.text}</p>
+            <p className="card-desc">
+              {quotes[currentIndex]?.text || "No quotes yet."}
+            </p>
           </div>
         </div>
 
@@ -175,7 +156,7 @@ const Card = () => {
             <div className="quotes-list">
               {quotes.length > 0 ? (
                 quotes.map((quote, index) => (
-                  <div key={index} className="quote-item">
+                  <div key={quote._id} className="quote-item">
                     {editIndex === index ? (
                       <div>
                         <textarea
@@ -186,7 +167,7 @@ const Card = () => {
                               setEditedText(e.target.value);
                             }
                           }}
-                          maxLength={240} // Limits input to 240 characters
+                          maxLength={240}
                         />
                         <button onClick={handleUpdateQuote}>Save</button>
                       </div>
@@ -236,7 +217,6 @@ const Card = () => {
                   value={quote}
                   onChange={(e) => setQuote(e.target.value)}
                 />
-                {/* Display the number of characters remaining */}
               </div>
               <button className="contact-me" onClick={sendQuote}>
                 Send Quote
@@ -246,22 +226,16 @@ const Card = () => {
         </div>
 
         <div className="card-container2">
-          {/* Only show .card-buttons1 when activeSection is "#about" (Quote section) */}
           {activeSection === "#about" && (
             <div className="card-buttons1">
               <button className="nav-btn left" onClick={handleLeftClick}>
                 <FaArrowLeft size={30} />
-              </button>
-              <button className="add-quote-btn" onClick={handleAddQuote}>
-                <FaPlus size={30} />
               </button>
               <button className="nav-btn right" onClick={handleRightClick}>
                 <FaArrowRight size={30} />
               </button>
             </div>
           )}
-
-          {/* The section buttons */}
           <div className="card-buttons">
             <button
               className={activeSection === "#about" ? "is-active" : ""}
@@ -286,6 +260,4 @@ const Card = () => {
       </div>
     </div>
   );
-};
-
-export default Card;
+}
