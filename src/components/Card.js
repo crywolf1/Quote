@@ -17,36 +17,31 @@ export default function Card() {
     pfpUrl: "/default-avatar.jpg",
   });
 
-  // Fetch user data from /api/frame
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        console.log("Fetching user data from /api/frame...");
-        const response = await fetch("/api/frame", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}), // Empty body for now; Warpcast adds untrustedData
+  const loadProfile = async () => {
+    try {
+      console.log("Fetching user data from /api/frame...");
+      const response = await fetch("/api/frame", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}), // Warpcast fills in untrustedData
+      });
+      console.log("API response status:", response.status);
+      const data = await response.json();
+      console.log("API response data:", JSON.stringify(data));
+
+      if (response.ok) {
+        setUserData({
+          username: data.username || "Guest",
+          pfpUrl: data.pfpUrl || "/default-avatar.jpg",
         });
-        console.log("API response status:", response.status);
-        const data = await response.json();
-        console.log("API response data:", JSON.stringify(data));
-
-        if (response.ok) {
-          setUserData({
-            username: data.username || "Guest",
-            pfpUrl: data.pfpUrl || "/default-avatar.jpg",
-          });
-          console.log("User data set:", data.username, data.pfpUrl);
-        } else {
-          console.error("Failed to fetch user data:", data);
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error.message, error.stack);
+        console.log("User data set:", data.username, data.pfpUrl);
+      } else {
+        console.error("Failed to fetch user data:", data);
       }
-    };
-
-    fetchUserData();
-  }, []);
+    } catch (error) {
+      console.error("Error fetching user data:", error.message, error.stack);
+    }
+  };
 
   // Fetch quotes
   const fetchQuotes = async () => {
@@ -160,6 +155,8 @@ export default function Card() {
       <div className="card-header">
         <img src={userData.pfpUrl} alt="Avatar" className="card-avatar" />
         <h1 className="card-fullname">Welcome, {userData.username}!</h1>
+        <button onClick={loadProfile}>Load Profile</button>{" "}
+        {/* Client-side trigger */}
       </div>
 
       <div className="card-main">
