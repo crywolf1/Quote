@@ -18,14 +18,17 @@ export default function Card() {
     pfpUrl: "/default-avatar.jpg",
   });
 
-  // Fetch Farcaster user data when the component mounts
+  // Fetch Farcaster user data
   useEffect(() => {
     const fetchUserData = async () => {
       try {
+        console.log("Fetching frame context...");
         const context = await FrameSDK.context;
+        console.log("Full context:", JSON.stringify(context));
+
         if (context?.client?.clientFid) {
           const fid = context.client.clientFid;
-          console.log("Farcaster FID:", fid);
+          console.log("Farcaster FID detected:", fid);
 
           // Fetch user data from Neynar API
           const neynarResponse = await fetch(
@@ -37,20 +40,27 @@ export default function Card() {
               },
             }
           );
+          console.log("Neynar API status:", neynarResponse.status);
           if (!neynarResponse.ok) {
             console.error("Neynar API error:", await neynarResponse.text());
             return;
           }
           const neynarData = await neynarResponse.json();
+          console.log("Neynar API response:", JSON.stringify(neynarData));
           const user = neynarData.users?.[0];
           if (user) {
             setUserData({
               username: user.username || "Guest",
               pfpUrl: user.pfp_url || "/default-avatar.jpg",
             });
+            console.log("User data set:", user.username, user.pfp_url);
+          } else {
+            console.warn("No users in Neynar response:", neynarData);
           }
         } else {
-          console.log("Not running in a Farcaster frame or no FID available.");
+          console.log(
+            "No FID available. Not in a Farcaster frame or context missing."
+          );
         }
       } catch (error) {
         console.error("Error fetching Farcaster user data:", error.message);
