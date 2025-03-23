@@ -34,8 +34,17 @@ export default function Card() {
           return;
         }
 
-        const fid = 344203; // Hardcoded for now
-        console.log("Using hardcoded FID:", fid);
+        console.log("Fetching frame context...");
+        const context = await FrameSDK.context;
+        console.log("Full context:", JSON.stringify(context));
+
+        const fid = context?.client?.clientFid;
+        console.log("FID from context:", fid);
+        if (!fid) {
+          console.log("No FID from context, falling back to Guest...");
+          return; // Stay as Guest if no FID
+        }
+        console.log("Using FID:", fid);
 
         const neynarResponse = await fetch(
           `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
