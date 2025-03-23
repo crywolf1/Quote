@@ -18,7 +18,6 @@ export default function Card() {
     pfpUrl: "/default-avatar.jpg",
   });
 
-  // Fetch Farcaster user data
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -42,7 +41,7 @@ export default function Card() {
         console.log("FID from context:", fid);
         if (!fid) {
           console.log("No FID from context, falling back to Guest...");
-          return; // Stay as Guest if no FID
+          return;
         }
         console.log("Using FID:", fid);
 
@@ -92,6 +91,9 @@ export default function Card() {
       }
     };
 
+    // Signal SDK readiness explicitly
+    FrameSDK.actions.ready();
+    console.log("Frame SDK ready signaled");
     fetchUserData();
   }, []);
 
@@ -180,7 +182,7 @@ export default function Card() {
 
   const handleDelete = async (index) => {
     try {
-      const res = await fetch(`/api/quote/${quotes[index]._id}`, {
+      const res = await fetch(`/api/quote/${quotes[editIndex]._id}`, {
         method: "DELETE",
       });
       const data = await res.json();
