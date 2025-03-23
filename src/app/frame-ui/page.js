@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import "../../styles/style.css"; // Adjust path if needed
+import "../../styles/style.css";
 import {
   FaEdit,
   FaTrashAlt,
@@ -10,7 +10,7 @@ import {
   FaPlus,
 } from "react-icons/fa";
 import { useSearchParams } from "next/navigation";
-import CanvasBackground from "../../components/CanvasBackground"; // Adjusted path
+import CanvasBackground from "../../components/CanvasBackground";
 
 const Card = () => {
   const [activeSection, setActiveSection] = useState("#about");

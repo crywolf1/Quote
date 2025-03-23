@@ -138,20 +138,6 @@ const Card = () => {
     fetchQuotes(); // Fetch quotes when the component mounts
   }, []);
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const res = await fetch("/api/frame-action");
-        const data = await res.json();
-        setUserData(data);
-      } catch (error) {
-        console.error("Failed to fetch user data:", error);
-      }
-    };
-
-    fetchUserData();
-  }, []);
-
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">

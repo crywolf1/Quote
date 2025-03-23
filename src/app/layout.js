@@ -13,6 +13,27 @@ const geistMono = Geist_Mono({
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <meta property="og:title" content="Quote Card" />
+        <meta
+          property="og:description"
+          content="Share and manage your favorite quotes!"
+        />
+        <meta
+          property="og:image"
+          content="quote-production-679a.up.railway.app/assets/phone.png"
+        />
+        <meta property="fc:frame" content="v2" />
+        <meta
+          property="fc:frame:image"
+          content="quote-production-679a.up.railway.app/assets/phone.png"
+        />
+        <meta property="fc:frame:button:1" content="Start" />
+        <meta
+          property="fc:frame:post_url"
+          content="quote-production-679a.up.railway.app/api/frame"
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
