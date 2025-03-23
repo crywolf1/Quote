@@ -155,8 +155,7 @@ export default function Card() {
       <div className="card-header">
         <img src={userData.pfpUrl} alt="Avatar" className="card-avatar" />
         <h1 className="card-fullname">Welcome, {userData.username}!</h1>
-        <button onClick={loadProfile}>Load Profile</button>{" "}
-        {/* Client-side trigger */}
+        <button onClick={loadProfile}>Load Profile</button>
       </div>
 
       <div className="card-main">
