@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
+import FrameSDK from "@farcaster/frame-sdk";
 
 export default function Card() {
   const [activeSection, setActiveSection] = useState("#about");
@@ -17,6 +18,49 @@ export default function Card() {
     pfpUrl: "/default-avatar.jpg",
   });
 
+  // Fetch Farcaster user data when the component mounts
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const context = await FrameSDK.context;
+        if (context?.client?.clientFid) {
+          const fid = context.client.clientFid;
+          console.log("Farcaster FID:", fid);
+
+          // Fetch user data from Neynar API
+          const neynarResponse = await fetch(
+            `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
+            {
+              headers: {
+                accept: "application/json",
+                api_key: process.env.NEXT_PUBLIC_NEYNAR_API_KEY || "",
+              },
+            }
+          );
+          if (!neynarResponse.ok) {
+            console.error("Neynar API error:", await neynarResponse.text());
+            return;
+          }
+          const neynarData = await neynarResponse.json();
+          const user = neynarData.users?.[0];
+          if (user) {
+            setUserData({
+              username: user.username || "Guest",
+              pfpUrl: user.pfp_url || "/default-avatar.jpg",
+            });
+          }
+        } else {
+          console.log("Not running in a Farcaster frame or no FID available.");
+        }
+      } catch (error) {
+        console.error("Error fetching Farcaster user data:", error.message);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  // Fetch quotes (unchanged)
   const fetchQuotes = async () => {
     try {
       const res = await fetch("/api/quote");
