@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
+import FrameSDK from "@farcaster/frame-sdk";
 
 export default function Card() {
   const [activeSection, setActiveSection] = useState("#about");
@@ -17,33 +18,82 @@ export default function Card() {
     pfpUrl: "/default-avatar.jpg",
   });
 
-  const loadProfile = async () => {
-    try {
-      console.log("Fetching user data from /api/frame...");
-      const response = await fetch("/api/frame", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}), // Warpcast fills in untrustedData
-      });
-      console.log("API response status:", response.status);
-      const data = await response.json();
-      console.log("API response data:", JSON.stringify(data));
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        console.log("Starting user data fetch...");
+        const apiKey = process.env.NEXT_PUBLIC_NEYNAR_API_KEY || "";
+        console.log("API Key present:", !!apiKey);
+        if (!apiKey) {
+          console.error("NEXT_PUBLIC_NEYNAR_API_KEY is not set!");
+          setUserData({
+            username: "No API Key",
+            pfpUrl: "/default-avatar.jpg",
+          });
+          return;
+        }
 
-      if (response.ok) {
-        setUserData({
-          username: data.username || "Guest",
-          pfpUrl: data.pfpUrl || "/default-avatar.jpg",
-        });
-        console.log("User data set:", data.username, data.pfpUrl);
-      } else {
-        console.error("Failed to fetch user data:", data);
+        console.log("Fetching frame context...");
+        const context = await FrameSDK.context;
+        console.log("Full context:", JSON.stringify(context));
+
+        const fid = context?.client?.clientFid;
+        console.log("FID from context:", fid);
+        if (!fid) {
+          console.log("No FID from context, falling back to Guest...");
+          return;
+        }
+        console.log("Using FID:", fid);
+
+        const neynarResponse = await fetch(
+          `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
+          {
+            headers: {
+              accept: "application/json",
+              api_key: apiKey,
+            },
+          }
+        );
+        console.log("Neynar API status:", neynarResponse.status);
+        const neynarText = await neynarResponse.text();
+        console.log("Neynar API raw response:", neynarText);
+
+        if (!neynarResponse.ok) {
+          console.error("Neynar API error:", neynarText);
+          setUserData({ username: "API Error", pfpUrl: "/default-avatar.jpg" });
+          return;
+        }
+
+        const neynarData = JSON.parse(neynarText);
+        console.log("Neynar API parsed response:", JSON.stringify(neynarData));
+        const user = neynarData.users?.[0];
+        if (user) {
+          const newUserData = {
+            username: user.username || "Guest",
+            pfpUrl: user.pfp_url || "/default-avatar.jpg",
+          };
+          setUserData(newUserData);
+          console.log(
+            "User data set:",
+            newUserData.username,
+            newUserData.pfpUrl
+          );
+        } else {
+          console.warn("No users in Neynar response:", neynarData);
+          setUserData({
+            username: "No User Data",
+            pfpUrl: "/default-avatar.jpg",
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error.message, error.stack);
+        setUserData({ username: "Fetch Error", pfpUrl: "/default-avatar.jpg" });
       }
-    } catch (error) {
-      console.error("Error fetching user data:", error.message, error.stack);
-    }
-  };
+    };
 
-  // Fetch quotes
+    fetchUserData();
+  }, []);
+
   const fetchQuotes = async () => {
     try {
       const res = await fetch("/api/quote");
@@ -155,7 +205,6 @@ export default function Card() {
       <div className="card-header">
         <img src={userData.pfpUrl} alt="Avatar" className="card-avatar" />
         <h1 className="card-fullname">Welcome, {userData.username}!</h1>
-        <button onClick={loadProfile}>Load Profile</button>
       </div>
 
       <div className="card-main">
