@@ -123,7 +123,7 @@ export async function POST(req) {
   } catch (error) {
     console.error("POST /api/frame error:", error.message, error.stack);
     return new NextResponse(
-      `<!DOCTYPE html><html><head><meta property="og:title" content="Error" /><meta property="og:description" content="Something went wrong. Try again." /><meta property="og:image" content="https://via.placeholder.com/1200x630" /><meta property="fc:frame" content="v2" /><meta property="fc:frame:image" content="https://via.placeholder.com/1200x630" /><meta property="fc:frame:button:1" content="Retry" /><meta property="fc:frame:post_url" content="https://${req.headers.get(
+      `<!DOCTYPE html><html><head><meta property="og:title" content="Error" /><meta property="og:description" content="Something went wrong. Try again." /><meta property="og:image" content="https://quote-production-679a.up.railway.app/assets/phone.png" /><meta property="fc:frame" content="v2" /><meta property="fc:frame:image" content="https://quote-production-679a.up.railway.app/assets/phone.png" /><meta property="fc:frame:button:1" content="Retry" /><meta property="fc:frame:post_url" content="https://${req.headers.get(
         "host"
       )}/api/frame" /></head><body></body></html>`,
       { status: 500, headers: { "Content-Type": "text/html" } }
