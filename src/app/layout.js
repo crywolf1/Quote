@@ -1,56 +1,23 @@
-"use client";
-
-import { Geist, Geist_Mono } from "next/font/google";
-import "../styles/globals.css";
-import BokehScriptLoader from "../components/BokehScriptLoader";
 import FarcasterFrameProvider from "./FarcasterFrameProvider";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+export const metadata = {
+  title: "Quote Card",
+  description: "A simple quote card app",
+};
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        <meta property="og:title" content="Quote Card" />
-        <meta
-          property="og:description"
-          content="Share and manage your favorite quotes!"
-        />
-        <meta
-          property="og:image"
-          content="https://quote-production-679a.up.railway.app/assets/phone.png"
-        />
+        <meta charSet="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta
           name="fc:frame"
-          content={JSON.stringify({
-            version: "next",
-            imageUrl:
-              "https://quote-production-679a.up.railway.app/assets/phone.png",
-            button: {
-              title: "Open Quote Card",
-              action: {
-                type: "launch_frame",
-                name: "Quote Card",
-                url: "https://quote-production-679a.up.railway.app/",
-                splashImageUrl:
-                  "https://quote-production-679a.up.railway.app/assets/phone.png",
-                splashBackgroundColor: "#ffffff",
-              },
-            },
-          })}
+          content='{"version":"next","imageUrl":"https://quote-production-679a.up.railway.app/assets/phone.png","button":{"title":"Load Profile","action":{"type":"post","url":"https://quote-production-679a.up.railway.app/api/frame"}}}'
         />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <FarcasterFrameProvider>
-          <BokehScriptLoader />
-          {children}
-        </FarcasterFrameProvider>
+      <body>
+        <FarcasterFrameProvider>{children}</FarcasterFrameProvider>
       </body>
     </html>
   );
