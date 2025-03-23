@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
 
 export async function GET(req) {
+  const host = req.headers.get("host");
   return new NextResponse(
     `<!DOCTYPE html>
      <html>
        <head>
          <meta property="og:title" content="Quote Card" />
          <meta property="og:description" content="Interact to see and add quotes!" />
-         <meta property="og:image" content="quote-production-679a.up.railway.app/assets/phone.png" />
+         <meta property="og:image" content="https://quote-production-679a.up.railway.app/assets/phone.png" />
          <meta property="fc:frame" content="v2" />
-         <meta property="fc:frame:image" content="quote-production-679a.up.railway.app/assets/phone.png" />
+         <meta property="fc:frame:image" content="https://quote-production-679a.up.railway.app/assets/phone.png" />
          <meta property="fc:frame:button:1" content="Start" />
-         <meta property="fc:frame:post_url" content="${req.url}" />
+         <meta property="fc:frame:post_url" content="https://${host}/api/frame" />
        </head>
        <body></body>
      </html>`,
@@ -23,6 +24,7 @@ export async function POST(req) {
   const body = await req.json();
   const { untrustedData } = body;
   const { fid, buttonIndex, inputText } = untrustedData || {};
+  const host = req.headers.get("host");
 
   const neynarResponse = await fetch(
     `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
@@ -37,12 +39,12 @@ export async function POST(req) {
   const user = neynarData.users[0] || {};
   const username = user.username || "Guest";
   const pfpUrl =
-    user.pfp_url || "quote-production-679a.up.railway.app/assets/phone.png";
+    user.pfp_url ||
+    "https://quote-production-679a.up.railway.app/assets/phone.png";
 
-  const quotesResponse = await fetch(
-    `http://${req.headers.get("host")}/api/quote`,
-    { method: "GET" }
-  );
+  const quotesResponse = await fetch(`https://${host}/api/quote`, {
+    method: "GET",
+  });
   const { quotes } = await quotesResponse.json();
 
   let currentIndex = untrustedData?.state?.currentIndex || 0;
@@ -52,15 +54,14 @@ export async function POST(req) {
   else if (buttonIndex === 2) currentIndex = (currentIndex + 1) % quotes.length;
 
   if (buttonIndex === 3 && inputText) {
-    await fetch(`http://${req.headers.get("host")}/api/quote`, {
+    await fetch(`https://${host}/api/quote`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: inputText }),
     });
-    const updatedQuotesResponse = await fetch(
-      `http://${req.headers.get("host")}/api/quote`,
-      { method: "GET" }
-    );
+    const updatedQuotesResponse = await fetch(`https://${host}/api/quote`, {
+      method: "GET",
+    });
     const updatedQuotes = await updatedQuotesResponse.json();
     return new NextResponse(
       `<!DOCTYPE html>
@@ -76,7 +77,7 @@ export async function POST(req) {
            <meta property="fc:frame:button:3" content="Add Quote" />
            <meta property="fc:frame:button:4" content="Manage Quotes" />
            <meta property="fc:frame:input:text" content="Enter your quote" />
-           <meta property="fc:frame:post_url" content="${req.url}" />
+           <meta property="fc:frame:post_url" content="https://${host}/api/frame" />
            <meta property="fc:frame:state" content="${JSON.stringify({
              currentIndex: updatedQuotes.quotes.length - 1,
              fid,
@@ -102,10 +103,8 @@ export async function POST(req) {
          <meta property="fc:frame:button:3" content="Add Quote" />
          <meta property="fc:frame:button:4" content="Manage Quotes" />
          <meta property="fc:frame:input:text" content="Enter your quote" />
-         <meta property="fc:frame:post_url" content="${req.url}" />
-         <meta property="fc:frame:post_url:4" content="https://${req.headers.get(
-           "host"
-         )}/frame-ui?fid=${fid}" />
+         <meta property="fc:frame:post_url" content="https://${host}/api/frame" />
+         <meta property="fc:frame:post_url:4" content="https://${host}/frame-ui?fid=${fid}" />
          <meta property="fc:frame:state" content="${JSON.stringify({
            currentIndex,
            fid,
