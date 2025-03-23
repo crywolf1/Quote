@@ -1,19 +1,118 @@
 import { NextResponse } from "next/server";
-import { Frame, FrameButton } from "@farcaster/frame-sdk";
 
-export async function GET() {
-  // Create a Frame object
-  const frame = new Frame({
-    image: "/assets/phone.png", // Replace with your actual image URL
-    postUrl: "https://quote-production-679a.up.railway.app/", // Action URL for the frame button
-    buttons: [
-      new FrameButton({
-        label: "Get Started", // Text for the button
-        actionUrl: "https://quote-production-679a.up.railway.app/", // Redirect URL when the button is clicked
-      }),
-    ],
-  });
+export async function GET(req) {
+  // Initial frame load (before user interaction)
+  return new NextResponse(
+    `<!DOCTYPE html>
+     <html>
+       <head>
+         <meta property="og:title" content="Quote Card" />
+         <meta property="og:description" content="Interact to see your quotes!" />
+         <meta property="og:image" content="https://your-default-image.com" />
+         <meta property="fc:frame" content="v2" />
+         <meta property="fc:frame:image" content="https://your-default-image.com" />
+         <meta property="fc:frame:button:1" content="Start" />
+         <meta property="fc:frame:post_url" content="${req.url}" />
+       </head>
+       <body></body>
+     </html>`,
+    { status: 200, headers: { "Content-Type": "text/html" } }
+  );
+}
 
-  // Return the frame as a JSON response
-  return NextResponse.json(frame);
+export async function POST(req) {
+  const body = await req.json();
+  const { untrustedData } = body;
+  const { fid, buttonIndex, inputText } = untrustedData || {};
+
+  // Fetch user data from Neynar
+  const neynarResponse = await fetch(
+    `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
+    {
+      headers: {
+        accept: "application/json",
+        api_key: process.env.NEYNAR_API_KEY || "",
+      },
+    }
+  );
+  const neynarData = await neynarResponse.json();
+  const user = neynarData.users[0] || {};
+  const username = user.username || "Guest";
+  const pfpUrl = user.pfp_url || "https://your-default-image.com";
+
+  // Fetch quotes from your existing API
+  const quotesResponse = await fetch(
+    `http://${req.headers.get("host")}/api/quote`,
+    { method: "GET" }
+  );
+  const { quotes } = await quotesResponse.json();
+
+  // Manage current quote index
+  let currentIndex = untrustedData?.state?.currentIndex || 0;
+  if (!quotes.length) currentIndex = 0;
+  else if (buttonIndex === 1)
+    currentIndex =
+      (currentIndex - 1 + quotes.length) % quotes.length; // Previous
+  else if (buttonIndex === 2) currentIndex = (currentIndex + 1) % quotes.length; // Next
+
+  // Handle "Add Quote" (button 3)
+  if (buttonIndex === 3 && inputText) {
+    await fetch(`http://${req.headers.get("host")}/api/quote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: inputText }),
+    });
+    // Re-fetch quotes after adding
+    const updatedQuotesResponse = await fetch(
+      `http://${req.headers.get("host")}/api/quote`,
+      { method: "GET" }
+    );
+    const updatedQuotes = await updatedQuotesResponse.json();
+    return new NextResponse(
+      `<!DOCTYPE html>
+       <html>
+         <head>
+           <meta property="og:title" content="Hey, ${username}!" />
+           <meta property="og:description" content="Quote added: ${inputText}" />
+           <meta property="og:image" content="${pfpUrl}" />
+           <meta property="fc:frame" content="v2" />
+           <meta property="fc:frame:image" content="${pfpUrl}" />
+           <meta property="fc:frame:button:1" content="⬅️ Previous" />
+           <meta property="fc:frame:button:2" content="Next ➡️" />
+           <meta property="fc:frame:button:3" content="Add Quote" />
+           <meta property="fc:frame:input:text" content="Enter your quote" />
+           <meta property="fc:frame:post_url" content="${req.url}" />
+           <meta property="fc:frame:state" content="${JSON.stringify({
+             currentIndex: updatedQuotes.quotes.length - 1,
+           })}" />
+         </head>
+       </html>`,
+      { status: 200, headers: { "Content-Type": "text/html" } }
+    );
+  }
+
+  // Default frame response
+  const currentQuote = quotes[currentIndex]?.text || "No quotes yet.";
+  return new NextResponse(
+    `<!DOCTYPE html>
+     <html>
+       <head>
+         <meta property="og:title" content="Hey, ${username}!" />
+         <meta property="og:description" content="${currentQuote}" />
+         <meta property="og:image" content="${pfpUrl}" />
+         <meta property="fc:frame" content="v2" />
+         <meta property="fc:frame:image" content="${pfpUrl}" />
+         <meta property="fc:frame:button:1" content="⬅️ Previous" />
+         <meta property="fc:frame:button:2" content="Next ➡️" />
+         <meta property="fc:frame:button:3" content="Add Quote" />
+         <meta property="fc:frame:input:text" content="Enter your quote" />
+         <meta property="fc:frame:post_url" content="${req.url}" />
+         <meta property="fc:frame:state" content="${JSON.stringify({
+           currentIndex,
+         })}" />
+       </head>
+       <body></body>
+     </html>`,
+    { status: 200, headers: { "Content-Type": "text/html" } }
+  );
 }
