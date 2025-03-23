@@ -26,51 +26,68 @@ export default function Card() {
         const context = await FrameSDK.context;
         console.log("Full context:", JSON.stringify(context));
 
-        if (context?.client?.clientFid) {
-          const fid = context.client.clientFid;
-          console.log("Farcaster FID detected:", fid);
+        let fid = context?.client?.clientFid;
+        console.log("FID from context:", fid);
+        if (!fid) {
+          console.log("No FID from context, using hardcoded test FID...");
+          fid = 344203; // Your FID
+        }
+        console.log("Using FID:", fid);
 
-          // Fetch user data from Neynar API
-          const neynarResponse = await fetch(
-            `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
-            {
-              headers: {
-                accept: "application/json",
-                api_key: process.env.NEXT_PUBLIC_NEYNAR_API_KEY || "",
-              },
-            }
-          );
-          console.log("Neynar API status:", neynarResponse.status);
-          if (!neynarResponse.ok) {
-            console.error("Neynar API error:", await neynarResponse.text());
-            return;
+        // Fetch user data from Neynar API
+        const apiKey = process.env.NEXT_PUBLIC_NEYNAR_API_KEY || "";
+        if (!apiKey) {
+          console.error("NEXT_PUBLIC_NEYNAR_API_KEY is not set!");
+          return;
+        }
+        const neynarResponse = await fetch(
+          `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
+          {
+            headers: {
+              accept: "application/json",
+              api_key: apiKey,
+            },
           }
-          const neynarData = await neynarResponse.json();
-          console.log("Neynar API response:", JSON.stringify(neynarData));
-          const user = neynarData.users?.[0];
-          if (user) {
-            setUserData({
-              username: user.username || "Guest",
-              pfpUrl: user.pfp_url || "/default-avatar.jpg",
-            });
-            console.log("User data set:", user.username, user.pfp_url);
-          } else {
-            console.warn("No users in Neynar response:", neynarData);
-          }
-        } else {
+        );
+        console.log("Neynar API status:", neynarResponse.status);
+        const neynarText = await neynarResponse.text();
+        console.log("Neynar API raw response:", neynarText);
+
+        if (!neynarResponse.ok) {
+          console.error("Neynar API error:", neynarText);
+          return;
+        }
+
+        const neynarData = JSON.parse(neynarText);
+        console.log("Neynar API parsed response:", JSON.stringify(neynarData));
+        const user = neynarData.users?.[0];
+        if (user) {
+          const newUserData = {
+            username: user.username || "Guest",
+            pfpUrl: user.pfp_url || "/default-avatar.jpg",
+          };
+          setUserData(newUserData);
           console.log(
-            "No FID available. Not in a Farcaster frame or context missing."
+            "User data set:",
+            newUserData.username,
+            newUserData.pfpUrl
           );
+        } else {
+          console.warn("No users in Neynar response:", neynarData);
         }
       } catch (error) {
-        console.error("Error fetching Farcaster user data:", error.message);
+        console.error(
+          "Error fetching Farcaster user data:",
+          error.message,
+          error.stack
+        );
       }
     };
 
     fetchUserData();
   }, []);
 
-  // Fetch quotes (unchanged)
+  // Fetch quotes
   const fetchQuotes = async () => {
     try {
       const res = await fetch("/api/quote");
