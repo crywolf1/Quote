@@ -3,9 +3,8 @@
 import { useState, useEffect } from "react";
 import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
-import FrameSDK from "@farcaster/frame-sdk";
 
-export default function Card() {
+export default function Card({ searchParams }) {
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
   const [message, setMessage] = useState("");
@@ -14,61 +13,9 @@ export default function Card() {
   const [editedText, setEditedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userData, setUserData] = useState({
-    username: "Guest",
-    pfpUrl: "/default-avatar.jpg",
+    username: searchParams?.username || "Guest",
+    pfpUrl: searchParams?.pfpUrl || "/default-avatar.jpg",
   });
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const apiKey = process.env.NEXT_PUBLIC_NEYNAR_API_KEY || "";
-        if (!apiKey) {
-          console.error("NEXT_PUBLIC_NEYNAR_API_KEY is not set!");
-          setUserData({
-            username: "No API Key",
-            pfpUrl: "/default-avatar.jpg",
-          });
-          return;
-        }
-
-        const context = await FrameSDK.context;
-        const fid = context?.client?.clientFid;
-        if (!fid) {
-          console.log("No FID from context, falling back to Guest...");
-          return;
-        }
-
-        const neynarResponse = await fetch(
-          `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
-          {
-            headers: {
-              accept: "application/json",
-              api_key: apiKey,
-            },
-          }
-        );
-        if (!neynarResponse.ok) {
-          console.error("Neynar API error:", await neynarResponse.text());
-          setUserData({ username: "API Error", pfpUrl: "/default-avatar.jpg" });
-          return;
-        }
-
-        const neynarData = await neynarResponse.json();
-        const user = neynarData.users?.[0];
-        if (user) {
-          setUserData({
-            username: user.username || "Guest",
-            pfpUrl: user.pfp_url || "/default-avatar.jpg",
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error.message);
-        setUserData({ username: "Fetch Error", pfpUrl: "/default-avatar.jpg" });
-      }
-    };
-
-    fetchUserData();
-  }, []);
 
   const fetchQuotes = async () => {
     try {
@@ -177,143 +124,162 @@ export default function Card() {
   };
 
   return (
-    <div>
-      <div className="bokeh"></div>
-      <div className="card" data-state={activeSection}>
-        <div className="card-header">
-          <img src={userData.pfpUrl} alt="Avatar" className="card-avatar" />
-          <h1 className="card-fullname">Welcome, {userData.username}!</h1>
+    <div className="card" data-state={activeSection}>
+      <div className="card-header">
+        <img src={userData.pfpUrl} alt="Avatar" className="card-avatar" />
+        <h1 className="card-fullname">Welcome, {userData.username}!</h1>
+        <button
+          onClick={() => window.location.assign("/api/frame")}
+          style={{
+            marginLeft: "10px",
+            padding: "5px 10px",
+            background: "#007bff",
+            color: "#fff",
+            border: "none",
+            borderRadius: "5px",
+          }}
+        >
+          Load Profile
+        </button>
+      </div>
+
+      <div className="card-main">
+        <div
+          className={`card-section ${
+            activeSection === "#about" ? "is-active" : ""
+          }`}
+          id="about"
+        >
+          <div className="card-content">
+            <div className="card-subtitle">Quote</div>
+            <p className="card-desc">
+              {quotes[currentIndex]?.text || "No quotes yet."}
+            </p>
+          </div>
         </div>
 
-        <div className="card-main">
-          <div
-            className={`card-section ${
-              activeSection === "#about" ? "is-active" : ""
-            }`}
-            id="about"
-          >
-            <div className="card-content">
-              <div className="card-subtitle">Quote</div>
-              <p className="card-desc">
-                {quotes[currentIndex]?.text || "No quotes yet."}
-              </p>
-            </div>
-          </div>
-
-          <div
-            className={`card-section ${
-              activeSection === "#experience" ? "is-active" : ""
-            }`}
-            id="experience"
-          >
-            <div className="card-content">
-              <div className="card-subtitle">All Quotes</div>
-              <div className="quotes-list">
-                {quotes.length > 0 ? (
-                  quotes.map((quote, index) => (
-                    <div key={quote._id} className="quote-item">
-                      {editIndex === index ? (
-                        <div>
-                          <textarea
-                            value={editedText}
-                            className="text-area1"
-                            onChange={(e) => {
-                              if (e.target.value.length <= 240) {
-                                setEditedText(e.target.value);
-                              }
-                            }}
-                            maxLength={240}
-                          />
-                          <button onClick={handleUpdateQuote}>Save</button>
-                        </div>
-                      ) : (
-                        <p>{quote.text}</p>
-                      )}
-                      <div className="quote-actions">
-                        <button
-                          className="edit-btn"
-                          onClick={() => handleEdit(index)}
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          className="delete-btn"
-                          onClick={() => handleDelete(index)}
-                        >
-                          <FaTrashAlt />
-                        </button>
+        <div
+          className={`card-section ${
+            activeSection === "#experience" ? "is-active" : ""
+          }`}
+          id="experience"
+        >
+          <div className="card-content">
+            <div className="card-subtitle">All Quotes</div>
+            <div className="quotes-list">
+              {quotes.length > 0 ? (
+                quotes.map((quote, index) => (
+                  <div key={quote._id} className="quote-item">
+                    {editIndex === index ? (
+                      <div>
+                        <textarea
+                          value={editedText}
+                          className="text-area1"
+                          onChange={(e) => {
+                            if (e.target.value.length <= 240) {
+                              setEditedText(e.target.value);
+                            }
+                          }}
+                          maxLength={240}
+                        />
+                        <button onClick={handleUpdateQuote}>Save</button>
                       </div>
+                    ) : (
+                      <p>{quote.text}</p>
+                    )}
+                    <div className="quote-actions">
+                      <button
+                        className="edit-btn"
+                        onClick={() => handleEdit(index)}
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        className="delete-btn"
+                        onClick={() => handleDelete(index)}
+                      >
+                        <FaTrashAlt />
+                      </button>
                     </div>
-                  ))
-                ) : (
-                  <p>No quotes available.</p>
-                )}
-              </div>
+                  </div>
+                ))
+              ) : (
+                <p>No quotes available.</p>
+              )}
             </div>
           </div>
+        </div>
 
-          <div
-            className={`card-section ${
-              activeSection === "#contact" ? "is-active" : ""
-            }`}
-            id="contact"
-          >
-            <div className="card-content">
-              <div className="card-subtitle">Write Your Quote</div>
-              <p className="char-count">
-                {240 - quote.length} characters remaining
-              </p>
-              <div className="card-contact-wrapper">
-                <div className="card-contact">
-                  <textarea
-                    placeholder="Write your quote here..."
-                    className="text-area"
-                    maxLength={240}
-                    value={quote}
-                    onChange={(e) => setQuote(e.target.value)}
-                  />
-                </div>
-                <button className="contact-me" onClick={sendQuote}>
-                  Send Quote
-                </button>
+        <div
+          className={`card-section ${
+            activeSection === "#contact" ? "is-active" : ""
+          }`}
+          id="contact"
+        >
+          <div className="card-content">
+            <div className="card-subtitle">Write Your Quote</div>
+            <p className="char-count">
+              {240 - quote.length} characters remaining
+            </p>
+            <div className="card-contact-wrapper">
+              <div className="card-contact">
+                <textarea
+                  placeholder="Write your quote here..."
+                  className="text-area"
+                  maxLength={240}
+                  value={quote}
+                  onChange={(e) => setQuote(e.target.value)}
+                />
               </div>
+              <button className="contact-me" onClick={sendQuote}>
+                Send Quote
+              </button>
             </div>
           </div>
+        </div>
 
-          <div className="card-container2">
-            {activeSection === "#about" && (
-              <div className="card-buttons1">
-                <button className="nav-btn left" onClick={handleLeftClick}>
-                  <FaArrowLeft size={30} />
-                </button>
-                <button className="nav-btn right" onClick={handleRightClick}>
-                  <FaArrowRight size={30} />
-                </button>
-              </div>
-            )}
-            <div className="card-buttons">
-              <button
-                className={activeSection === "#about" ? "is-active" : ""}
-                onClick={() => handleSectionChange("#about")}
-              >
-                Quote
+        <div className="card-container2">
+          {activeSection === "#about" && (
+            <div className="card-buttons1">
+              <button className="nav-btn left" onClick={handleLeftClick}>
+                <FaArrowLeft size={30} />
               </button>
-              <button
-                className={activeSection === "#experience" ? "is-active" : ""}
-                onClick={() => handleSectionChange("#experience")}
-              >
-                All Quotes
-              </button>
-              <button
-                className={activeSection === "#contact" ? "is-active" : ""}
-                onClick={() => handleSectionChange("#contact")}
-              >
-                Add
+              <button className="nav-btn right" onClick={handleRightClick}>
+                <FaArrowRight size={30} />
               </button>
             </div>
+          )}
+          <div className="card-buttons">
+            <button
+              className={activeSection === "#about" ? "is-active" : ""}
+              onClick={() => handleSectionChange("#about")}
+            >
+              Quote
+            </button>
+            <button
+              className={activeSection === "#experience" ? "is-active" : ""}
+              onClick={() => handleSectionChange("#experience")}
+            >
+              All Quotes
+            </button>
+            <button
+              className={activeSection === "#contact" ? "is-active" : ""}
+              onClick={() => handleSectionChange("#contact")}
+            >
+              Add
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+export async function getServerSideProps(context) {
+  const { query } = context;
+  return {
+    props: {
+      searchParams: query,
+    },
+  };
 }

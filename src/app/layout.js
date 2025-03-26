@@ -20,7 +20,7 @@ export default function RootLayout({ children }) {
         "title": "quote",
         "action": {
           "type": "launch_frame",
-          "name": "Uniframe",
+          "name": "quote",
           "url": "https://quote-production-679a.up.railway.app/",
           "splashImageUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
           "splashBackgroundColor": "#131313"
