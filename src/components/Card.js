@@ -1,10 +1,15 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
-export default function Card({ searchParams }) {
+export default function Card() {
+  const searchParams = useSearchParams();
+  const username = searchParams.get("username") || "Guest";
+  const pfpUrl = searchParams.get("pfpUrl") || "/default-avatar.jpg";
+
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
   const [message, setMessage] = useState("");
@@ -12,10 +17,6 @@ export default function Card({ searchParams }) {
   const [editIndex, setEditIndex] = useState(null);
   const [editedText, setEditedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [userData, setUserData] = useState({
-    username: searchParams?.username || "Guest",
-    pfpUrl: searchParams?.pfpUrl || "/default-avatar.jpg",
-  });
 
   const fetchQuotes = async () => {
     try {
@@ -126,21 +127,8 @@ export default function Card({ searchParams }) {
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">
-        <img src={userData.pfpUrl} alt="Avatar" className="card-avatar" />
-        <h1 className="card-fullname">Welcome, {userData.username}!</h1>
-        <button
-          onClick={() => window.location.assign("/api/frame")}
-          style={{
-            marginLeft: "10px",
-            padding: "5px 10px",
-            background: "#007bff",
-            color: "#fff",
-            border: "none",
-            borderRadius: "5px",
-          }}
-        >
-          Load Profile
-        </button>
+        <img src={pfpUrl} alt="Avatar" className="card-avatar" />
+        <h1 className="card-fullname">Welcome, {username}!</h1>
       </div>
 
       <div className="card-main">
@@ -273,13 +261,4 @@ export default function Card({ searchParams }) {
       </div>
     </div>
   );
-}
-
-export async function getServerSideProps(context) {
-  const { query } = context;
-  return {
-    props: {
-      searchParams: query,
-    },
-  };
 }

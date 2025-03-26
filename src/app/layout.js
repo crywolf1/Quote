@@ -14,19 +14,18 @@ export default function RootLayout({ children }) {
         <meta
           name="fc:frame"
           content='{
-      "version": "next",
-      "imageUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
-      "button":{
-        "title": "quote",
-        "action": {
-          "type": "launch_frame",
-          "name": "quote",
-          "url": "https://quote-production-679a.up.railway.app/",
-          "splashImageUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
-          "splashBackgroundColor": "#131313"
-        }
-      }
-    }'
+            "version": "next",
+            "imageUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
+            "buttons": [
+              {
+                "title": "Load Profile",
+                "action": {
+                  "type": "post",
+                  "target": "https://quote-production-679a.up.railway.app/api/frame"
+                }
+              }
+            ]
+          }'
           data-rh="true"
         />
       </head>
