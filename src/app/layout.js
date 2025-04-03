@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import FarcasterFrameProvider from "./FarcasterFrameProvider";
 
 export const metadata = {
@@ -6,7 +7,7 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
-  const railwayUrl = "https://yourapp.up.railway.app"; // Replace with your Railway URL
+  const railwayUrl = "https://quote-production-679a.up.railway.app/api/frame"; // Replace with your Railway URL
 
   return (
     <html lang="en">
@@ -24,7 +25,9 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <FarcasterFrameProvider>{children}</FarcasterFrameProvider>
+        <FarcasterFrameProvider>
+          <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
+        </FarcasterFrameProvider>
       </body>
     </html>
   );
