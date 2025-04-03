@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import FarcasterFrameProvider from "./FarcasterFrameProvider";
 
 export const metadata = {
@@ -7,27 +6,32 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
-  const railwayUrl = "https://quote-production-679a.up.railway.app/api/frame"; // Replace with your Railway URL
-
   return (
     <html lang="en">
       <head>
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        {/* Farcaster Frame Metadata */}
-        <meta property="fc:frame" content="vNext" />
-        <meta property="fc:frame:image" content={`${railwayUrl}/preview.png`} />
-        <meta property="fc:frame:button:1" content="Open Quote Card" />
-        <meta property="fc:frame:button:1:action" content="post" />
         <meta
-          property="fc:frame:button:1:target"
-          content={`${railwayUrl}/api/frame`}
+          name="fc:frame"
+          content='{
+      "version": "next",
+      "imageUrl": "https://uniframe.org/images/1200x630_Rich_Link_Preview_Image.png",
+      "button":{
+        "title": "quote",
+        "action": {
+          "type": "post",
+          "name": "Uniframe",
+          "url": "https://uniframe.org/swap",
+          "splashImageUrl": "https://uniframe.org/favicon.png",
+          "splashBackgroundColor": "#131313"
+        }
+      }
+    }'
+          data-rh="true"
         />
       </head>
       <body>
-        <FarcasterFrameProvider>
-          <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
-        </FarcasterFrameProvider>
+        <FarcasterFrameProvider>{children}</FarcasterFrameProvider>
       </body>
     </html>
   );
