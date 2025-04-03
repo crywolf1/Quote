@@ -6,28 +6,21 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  const railwayUrl = "https://yourapp.up.railway.app"; // Replace with your Railway URL
+
   return (
     <html lang="en">
       <head>
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        {/* Farcaster Frame Metadata */}
+        <meta property="fc:frame" content="vNext" />
+        <meta property="fc:frame:image" content={`${railwayUrl}/preview.png`} />
+        <meta property="fc:frame:button:1" content="Open Quote Card" />
+        <meta property="fc:frame:button:1:action" content="post" />
         <meta
-          name="fc:frame"
-          content='{
-      "version": "next",
-      "imageUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
-      "button":{
-        "title": "quote",
-        "action": {
-          "type": "post",
-          "name": "quote",
-          "url": "https://quote-production-679a.up.railway.app/api/frame",
-          "splashImageUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
-          "splashBackgroundColor": "#131313"
-        }
-      }
-    }'
-          data-rh="true"
+          property="fc:frame:button:1:target"
+          content={`${railwayUrl}/api/frame`}
         />
       </head>
       <body>

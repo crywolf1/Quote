@@ -1,68 +1,34 @@
 import { NextResponse } from "next/server";
 
-export async function POST(req) {
-  try {
-    const body = await req.json().catch(() => ({}));
-    const { untrustedData } = body || {};
-    const { fid } = untrustedData || {};
+export async function GET() {
+  const railwayUrl = "quote-production-679a.up.railway.app"; // Replace with your Railway URL
 
-    if (!fid) {
-      console.log("No FID provided in request body:", body);
-      return NextResponse.redirect(
-        "https://quote-production-679a.up.railway.app/?username=Guest&pfpUrl=/default-avatar.jpg",
-        302
-      );
+  return new NextResponse(
+    `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta property="fc:frame" content="vNext" />
+          <meta property="fc:frame:image" content="${railwayUrl}/assets/phone.png" />
+          <meta property="fc:frame:button:1" content="Open Quote Card" />
+          <meta property="fc:frame:button:1:action" content="post" />
+          <meta property="fc:frame:button:1:target" content="${railwayUrl}/api/frame" />
+        </head>
+        <body>Farcaster Mini App</body>
+      </html>
+    `,
+    {
+      headers: { "Content-Type": "text/html" },
     }
+  );
+}
 
-    const apiKey = process.env.NEXT_PUBLIC_NEYNAR_API_KEY || "";
-    if (!apiKey) {
-      console.error("NEXT_PUBLIC_NEYNAR_API_KEY is not set!");
-      return NextResponse.redirect(
-        "https://quote-production-679a.up.railway.app/?username=No-API-Key&pfpUrl=/default-avatar.jpg",
-        302
-      );
-    }
+export async function POST(request) {
+  const railwayUrl = "quote-production-679a.up.railway.app"; // Replace with your Railway URL
+  const body = await request.json();
+  const { untrustedData } = body;
+  const fid = untrustedData?.fid || "Guest";
 
-    const neynarResponse = await fetch(
-      `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
-      {
-        headers: {
-          accept: "application/json",
-          api_key: apiKey,
-        },
-      }
-    );
-
-    if (!neynarResponse.ok) {
-      console.error("Neynar API error:", await neynarResponse.text());
-      return NextResponse.redirect(
-        "https://quote-production-679a.up.railway.app/?username=API-Error&pfpUrl=/default-avatar.jpg",
-        302
-      );
-    }
-
-    const neynarData = await neynarResponse.json();
-    const user = neynarData.users?.[0];
-    if (user) {
-      console.log("User data fetched:", user.username, user.pfp_url);
-      return NextResponse.redirect(
-        `https://quote-production-679a.up.railway.app/?username=${encodeURIComponent(
-          user.username
-        )}&pfpUrl=${encodeURIComponent(user.pfp_url)}`,
-        302
-      );
-    }
-
-    console.log("No user data in Neynar response:", neynarData);
-    return NextResponse.redirect(
-      "https://quote-production-679a.up.railway.app/?username=No-User-Data&pfpUrl=/default-avatar.jpg",
-      302
-    );
-  } catch (error) {
-    console.error("Error in /api/frame:", error.message, error.stack);
-    return NextResponse.redirect(
-      "https://quote-production-679a.up.railway.app/?username=Server-Error&pfpUrl=/default-avatar.jpg",
-      302
-    );
-  }
+  // Redirect to the main page with FID
+  return NextResponse.redirect(`${railwayUrl}/?fid=${fid}`, 307);
 }

@@ -1,15 +1,10 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
-export default function Card() {
-  const searchParams = useSearchParams();
-  const username = searchParams.get("username") || "Guest";
-  const pfpUrl = searchParams.get("pfpUrl") || "/default-avatar.jpg";
-
+export default function Card({ fid = "Guest" }) {
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
   const [message, setMessage] = useState("");
@@ -17,6 +12,7 @@ export default function Card() {
   const [editIndex, setEditIndex] = useState(null);
   const [editedText, setEditedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [username, setUsername] = useState("Guest");
 
   const fetchQuotes = async () => {
     try {
@@ -35,7 +31,13 @@ export default function Card() {
 
   useEffect(() => {
     fetchQuotes();
-  }, []);
+    if (fid !== "Guest") {
+      fetch(`https://hub.farcaster.standard.tech/v1/user?fid=${fid}`)
+        .then((res) => res.json())
+        .then((data) => setUsername(data.username || `FID: ${fid}`))
+        .catch(() => setUsername(`FID: ${fid}`));
+    }
+  }, [fid]);
 
   const handleLeftClick = () => {
     setCurrentIndex(
@@ -56,7 +58,7 @@ export default function Card() {
       const res = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: quote }),
+        body: JSON.stringify({ text: quote, fid }), // Include FID
       });
       const data = await res.json();
       if (res.ok) {
@@ -127,7 +129,7 @@ export default function Card() {
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">
-        <img src={pfpUrl} alt="Avatar" className="card-avatar" />
+        <img src="/default-avatar.jpg" alt="Avatar" className="card-avatar" />
         <h1 className="card-fullname">Welcome, {username}!</h1>
       </div>
 
