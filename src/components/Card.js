@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
-import { useFarcaster } from "../app/FarcasterFrameProvider";
+import { useFarcaster } from "../app/FarcasterMiniAppProvider";
 
 export default function Card() {
-  const { username, displayName, pfpUrl } = useFarcaster();
+  const { displayName, username, pfpUrl, isConnected } = useFarcaster();
 
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
@@ -15,6 +15,22 @@ export default function Card() {
   const [editIndex, setEditIndex] = useState(null);
   const [editedText, setEditedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Determine what name to show to the user
+  const userDisplayName = displayName || username || "Guest";
+
+  useEffect(() => {
+    // Check if there's a section parameter in the URL
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const section = urlParams.get("section");
+      if (section === "contact") {
+        setActiveSection("#contact");
+      }
+    }
+
+    fetchQuotes();
+  }, []);
 
   const fetchQuotes = async () => {
     try {
@@ -30,10 +46,6 @@ export default function Card() {
       setMessage("Failed to fetch quotes.");
     }
   };
-
-  useEffect(() => {
-    fetchQuotes();
-  }, []);
 
   const handleLeftClick = () => {
     setCurrentIndex(
@@ -54,7 +66,11 @@ export default function Card() {
       const res = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: quote }),
+        body: JSON.stringify({
+          text: quote,
+          // Optional: Include user info if you want to associate quotes with users
+          fid: useFarcaster().fid,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -126,7 +142,8 @@ export default function Card() {
     <div className="card" data-state={activeSection}>
       <div className="card-header">
         <img src={pfpUrl} alt="Avatar" className="card-avatar" />
-        <h1 className="card-fullname">Welcome, {displayName || username}!</h1>
+        <h1 className="card-fullname">Welcome, {userDisplayName}!</h1>
+        {message && <div className="message-notification">{message}</div>}
       </div>
 
       <div className="card-main">
@@ -155,7 +172,7 @@ export default function Card() {
             <div className="quotes-list">
               {quotes.length > 0 ? (
                 quotes.map((quote, index) => (
-                  <div key={quote._id} className="quote-item">
+                  <div key={quote._id || index} className="quote-item">
                     {editIndex === index ? (
                       <div>
                         <textarea
