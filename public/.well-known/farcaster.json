@@ -6,12 +6,13 @@
   },
   "frame": {
     "version": "1",
-    "name": "Quote",
+    "name": "Example Frame",
     "iconUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
     "homeUrl": "https://quote-production-679a.up.railway.app",
     "imageUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
-    "buttonTitle": "Quote",
+    "buttonTitle": "Check this out",
     "splashImageUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
-    "splashBackgroundColor": "#131313"
+    "splashBackgroundColor": "#eeccff",
+    "webhookUrl": "https://quote-production-679a.up.railway.app/api/webhook"
   }
 }
