@@ -1,3 +1,4 @@
+// src/components/FarcasterFrameProvider.js
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
@@ -11,25 +12,27 @@ export function FarcasterFrameProvider({ children }) {
   useEffect(() => {
     const initializeSDK = async () => {
       try {
+        // Step 1: Signal readiness
         await sdk.actions.ready();
         console.log("SDK is ready");
 
-        // Explicitly sign in
-        await sdk.signin();
-        console.log("User signed in");
+        // Step 2: Attempt sign-in
+        console.log("Attempting sign-in...");
+        const signInResult = await sdk.signin();
+        console.log("Sign-in result:", signInResult);
 
-        // Access authenticated user data
+        // Step 3: Get user data
         const user = sdk.user;
-        console.log("Current user:", user);
+        console.log("User object after sign-in:", user);
 
-        if (user) {
+        if (user && user.username) {
           setUserData({
             username: user.username,
             pfpUrl: user.pfpUrl || "/default-avatar.jpg",
           });
           console.log("User data set:", user);
         } else {
-          console.warn("No user data found after sign-in");
+          console.warn("No valid user data found after sign-in");
           setUserData({
             username: "Guest",
             pfpUrl: "/default-avatar.jpg",
