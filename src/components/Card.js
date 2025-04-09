@@ -1,14 +1,12 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
+import { useFarcaster } from "../app/FarcasterFrameProvider";
 
 export default function Card() {
-  const searchParams = useSearchParams();
-  const username = searchParams.get("username") || "Guest";
-  const pfpUrl = searchParams.get("pfpUrl") || "/default-avatar.jpg";
+  const { username, displayName, pfpUrl } = useFarcaster();
 
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
@@ -128,7 +126,7 @@ export default function Card() {
     <div className="card" data-state={activeSection}>
       <div className="card-header">
         <img src={pfpUrl} alt="Avatar" className="card-avatar" />
-        <h1 className="card-fullname">Welcome, {username}!</h1>
+        <h1 className="card-fullname">Welcome, {displayName || username}!</h1>
       </div>
 
       <div className="card-main">

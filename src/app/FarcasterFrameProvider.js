@@ -1,20 +1,55 @@
 "use client";
 
-import { useEffect } from "react";
-import FrameSDK from "@farcaster/frame-sdk";
+import { createContext, useContext, useEffect, useState } from "react";
+
+const FarcasterContext = createContext({
+  fid: null,
+  username: null,
+  displayName: null,
+  pfpUrl: null,
+  isFrameLoaded: false,
+});
+
+export const useFarcaster = () => useContext(FarcasterContext);
 
 export default function FarcasterFrameProvider({ children }) {
+  const [frameData, setFrameData] = useState({
+    fid: null,
+    username: null,
+    displayName: null,
+    pfpUrl: null,
+    isFrameLoaded: false,
+  });
+
   useEffect(() => {
-    const init = async () => {
-      const context = await FrameSDK.context;
-      console.log("Provider context:", JSON.stringify(context));
-      setTimeout(() => {
-        FrameSDK.actions.ready();
-        console.log("Frame SDK ready signaled");
-      }, 500);
+    // Function to parse the frame data from URL
+    const parseFrameData = () => {
+      // Check if we're in a frame context
+      if (typeof window !== "undefined") {
+        const searchParams = new URLSearchParams(window.location.search);
+
+        // Extract Farcaster user data from URL params
+        const fid = searchParams.get("fid");
+        const username = searchParams.get("username") || "Guest";
+        const displayName = searchParams.get("displayName") || username;
+        const pfpUrl = searchParams.get("pfpUrl") || "/default-avatar.jpg";
+
+        setFrameData({
+          fid,
+          username,
+          displayName,
+          pfpUrl,
+          isFrameLoaded: true,
+        });
+      }
     };
-    init();
+
+    parseFrameData();
   }, []);
 
-  return <>{children}</>;
+  return (
+    <FarcasterContext.Provider value={frameData}>
+      {children}
+    </FarcasterContext.Provider>
+  );
 }

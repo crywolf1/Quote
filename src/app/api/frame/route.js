@@ -1,68 +1,58 @@
 import { NextResponse } from "next/server";
 
-export async function POST(req) {
+export async function POST(request) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const { untrustedData } = body || {};
-    const { fid } = untrustedData || {};
+    // Parse the incoming frame action
+    const body = await request.json();
 
-    if (!fid) {
-      console.log("No FID provided in request body:", body);
-      return NextResponse.redirect(
-        "https://quote-production-679a.up.railway.app/?username=Guest&pfpUrl=/default-avatar.jpg",
-        302
-      );
+    // Extract Frame Message data
+    const { trustedData } = body;
+    const { messageBytes } = trustedData;
+
+    // You'll need to validate the message using Farcaster's Frame verification
+    // This is a simplified version - in production you'd use the Farcaster SDK
+
+    let userData = {};
+
+    // In a real implementation, you would:
+    // 1. Decode and verify the messageBytes
+    // 2. Extract user data from the validated message
+    // For now, we'll simulate this process
+
+    if (body.untrustedData) {
+      const { fid, username, displayName, pfp } = body.untrustedData;
+      userData = {
+        fid,
+        username,
+        displayName,
+        pfpUrl: pfp?.url || "/default-avatar.jpg",
+      };
     }
 
-    const apiKey = process.env.NEXT_PUBLIC_NEYNAR_API_KEY || "";
-    if (!apiKey) {
-      console.error("NEXT_PUBLIC_NEYNAR_API_KEY is not set!");
-      return NextResponse.redirect(
-        "https://quote-production-679a.up.railway.app/?username=No-API-Key&pfpUrl=/default-avatar.jpg",
-        302
-      );
-    }
+    // Generate a redirect URL with user data
+    const redirectUrl = new URL("https://quote-production-679a.up.railway.app");
+    if (userData.fid) redirectUrl.searchParams.set("fid", userData.fid);
+    if (userData.username)
+      redirectUrl.searchParams.set("username", userData.username);
+    if (userData.displayName)
+      redirectUrl.searchParams.set("displayName", userData.displayName);
+    if (userData.pfpUrl)
+      redirectUrl.searchParams.set("pfpUrl", userData.pfpUrl);
 
-    const neynarResponse = await fetch(
-      `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
-      {
-        headers: {
-          accept: "application/json",
-          api_key: apiKey,
-        },
-      }
-    );
-
-    if (!neynarResponse.ok) {
-      console.error("Neynar API error:", await neynarResponse.text());
-      return NextResponse.redirect(
-        "https://quote-production-679a.up.railway.app/?username=API-Error&pfpUrl=/default-avatar.jpg",
-        302
-      );
-    }
-
-    const neynarData = await neynarResponse.json();
-    const user = neynarData.users?.[0];
-    if (user) {
-      console.log("User data fetched:", user.username, user.pfp_url);
-      return NextResponse.redirect(
-        `https://quote-production-679a.up.railway.app/?username=${encodeURIComponent(
-          user.username
-        )}&pfpUrl=${encodeURIComponent(user.pfp_url)}`,
-        302
-      );
-    }
-
-    console.log("No user data in Neynar response:", neynarData);
-    return NextResponse.redirect(
-      "https://quote-production-679a.up.railway.app/?username=No-User-Data&pfpUrl=/default-avatar.jpg",
-      302
-    );
+    // Return the frame response
+    return NextResponse.json({
+      frames: {
+        version: "vNext",
+        image:
+          "https://quote-production-679a.up.railway.app/assets/quote-card.png",
+        redirect: redirectUrl.toString(),
+      },
+    });
   } catch (error) {
-    console.error("Error in /api/frame:", error.message, error.stack);
-    return NextResponse.redirect(
-      "https://quote-production-679a.up.railway.app/?username=Server-Error&pfpUrl=/default-avatar.jpg",
-      302
+    console.error("Frame error:", error);
+    return NextResponse.json(
+      { error: "Failed to process frame action" },
+      { status: 500 }
     );
   }
 }
