@@ -13,23 +13,30 @@ export function FarcasterFrameProvider({ children }) {
       try {
         await sdk.actions.ready();
         console.log("SDK is ready");
-        const context = sdk.context;
-        console.log("Full SDK Context:", context);
-        if (context?.user) {
+
+        // Explicitly sign in
+        await sdk.signin();
+        console.log("User signed in");
+
+        // Access authenticated user data
+        const user = sdk.user;
+        console.log("Current user:", user);
+
+        if (user) {
           setUserData({
-            username: context.user.username,
-            pfpUrl: context.user.pfpUrl || "/default-avatar.jpg",
+            username: user.username,
+            pfpUrl: user.pfpUrl || "/default-avatar.jpg",
           });
-          console.log("User data set:", context.user);
+          console.log("User data set:", user);
         } else {
-          console.warn("No user data found in sdk.context");
+          console.warn("No user data found after sign-in");
           setUserData({
             username: "Guest",
             pfpUrl: "/default-avatar.jpg",
           });
         }
       } catch (error) {
-        console.error("SDK initialization failed:", error);
+        console.error("SDK initialization or sign-in failed:", error);
         setUserData({
           username: "Guest",
           pfpUrl: "/default-avatar.jpg",
