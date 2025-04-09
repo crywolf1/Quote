@@ -1,4 +1,5 @@
-import ClientLayout from "../components/ClientLayout";
+import { FarcasterFrameProvider } from "../components/FarcasterFrameProvider";
+import WagmiProviderWrapper from "../components/WagmiProviderWrapper";
 
 export const metadata = {
   title: "Quote Card",
@@ -31,7 +32,9 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <ClientLayout>{children}</ClientLayout>
+        <WagmiProviderWrapper>
+          <FarcasterFrameProvider>{children}</FarcasterFrameProvider>
+        </WagmiProviderWrapper>
       </body>
     </html>
   );

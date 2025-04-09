@@ -1,8 +1,7 @@
-// ./src/components/FarcasterFrameProvider.js
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { sdk } from "@farcaster/frame-sdk"; // Ensure this is installed
+import { sdk } from "@farcaster/frame-sdk";
 
 const FarcasterContext = createContext();
 
@@ -12,22 +11,25 @@ export function FarcasterFrameProvider({ children }) {
   useEffect(() => {
     const initializeSDK = async () => {
       try {
-        // Initialize the SDK
         await sdk.actions.ready();
         console.log("SDK is ready");
-
-        // Authenticate the user
-        const user = await sdk.signin();
-        console.log("User signed in:", user); // Debug log
-
-        // Set user data from the authenticated user
-        setUserData({
-          username: user.username || "Guest",
-          pfpUrl: user.pfpUrl || "/default-avatar.jpg",
-        });
+        const context = sdk.context;
+        console.log("Full SDK Context:", context);
+        if (context?.user) {
+          setUserData({
+            username: context.user.username,
+            pfpUrl: context.user.pfpUrl || "/default-avatar.jpg",
+          });
+          console.log("User data set:", context.user);
+        } else {
+          console.warn("No user data found in sdk.context");
+          setUserData({
+            username: "Guest",
+            pfpUrl: "/default-avatar.jpg",
+          });
+        }
       } catch (error) {
-        console.error("SDK initialization or sign-in failed:", error);
-        // Fallback to Guest if authentication fails
+        console.error("SDK initialization failed:", error);
         setUserData({
           username: "Guest",
           pfpUrl: "/default-avatar.jpg",
