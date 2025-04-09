@@ -1,4 +1,6 @@
-// FarcasterFrameProvider.js
+// ./src/components/FarcasterFrameProvider.js
+"use client"; // Mark as client component
+
 import { createContext, useContext } from "react";
 
 const FarcasterContext = createContext();

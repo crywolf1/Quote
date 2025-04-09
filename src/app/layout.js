@@ -1,40 +1,9 @@
-import FarcasterFrameProvider from "./FarcasterFrameProvider";
-import { sdk } from "@farcaster/frame-sdk"; // Import the SDK
-import { useEffect, useState } from "react";
+import ClientLayout from "../components/ClientLayout";
 
 export const metadata = {
   title: "Quote Card",
   description: "A simple quote card app",
 };
-
-// Custom provider to manage auth state
-function AuthenticatedFrameProvider({ children }) {
-  const [userData, setUserData] = useState(null);
-
-  useEffect(() => {
-    // Initialize SDK and attempt sign-in on mount
-    const initializeAuth = async () => {
-      try {
-        await sdk.init(); // Initialize the SDK
-        const user = await sdk.signin(); // Attempt sign-in
-        setUserData({
-          username: user.username || "Guest",
-          pfpUrl: user.pfpUrl || "/default-avatar.jpg",
-        });
-      } catch (error) {
-        console.error("Sign-in failed:", error);
-        setUserData({ username: "Guest", pfpUrl: "/default-avatar.jpg" }); // Fallback
-      }
-    };
-    initializeAuth();
-  }, []);
-
-  return (
-    <FarcasterFrameProvider userData={userData}>
-      {children}
-    </FarcasterFrameProvider>
-  );
-}
 
 export default function RootLayout({ children }) {
   return (
@@ -62,7 +31,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <AuthenticatedFrameProvider>{children}</AuthenticatedFrameProvider>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );
