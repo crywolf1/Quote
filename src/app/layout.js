@@ -1,9 +1,40 @@
-import FarcasterMiniAppProvider from "./FarcasterMiniAppProvider";
+import FarcasterFrameProvider from "./FarcasterFrameProvider";
+import { sdk } from "@farcaster/frame-sdk"; // Import the SDK
+import { useEffect, useState } from "react";
 
 export const metadata = {
   title: "Quote Card",
-  description: "A simple quote card app for Farcaster",
+  description: "A simple quote card app",
 };
+
+// Custom provider to manage auth state
+function AuthenticatedFrameProvider({ children }) {
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    // Initialize SDK and attempt sign-in on mount
+    const initializeAuth = async () => {
+      try {
+        await sdk.init(); // Initialize the SDK
+        const user = await sdk.signin(); // Attempt sign-in
+        setUserData({
+          username: user.username || "Guest",
+          pfpUrl: user.pfpUrl || "/default-avatar.jpg",
+        });
+      } catch (error) {
+        console.error("Sign-in failed:", error);
+        setUserData({ username: "Guest", pfpUrl: "/default-avatar.jpg" }); // Fallback
+      }
+    };
+    initializeAuth();
+  }, []);
+
+  return (
+    <FarcasterFrameProvider userData={userData}>
+      {children}
+    </FarcasterFrameProvider>
+  );
+}
 
 export default function RootLayout({ children }) {
   return (
@@ -11,36 +42,27 @@ export default function RootLayout({ children }) {
       <head>
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-        {/* Farcaster Mini App metadata */}
-        <meta property="og:title" content="Quote Card" />
         <meta
-          property="og:description"
-          content="A simple quote card app for Farcaster"
+          name="fc:frame"
+          content='{
+            "version": "next",
+            "imageUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
+            "button": {
+              "title": "quote",
+              "action": {
+                "type": "post",
+                "name": "Quote",
+                "url": "https://quote-production-679a.up.railway.app/",
+                "splashImageUrl": "https://quote-production-679a.up.railway.app/phone.png",
+                "splashBackgroundColor": "#131313"
+              }
+            }
+          }'
+          data-rh="true"
         />
-        <meta
-          property="og:image"
-          content="https://quote-production-679a.up.railway.app/assets/phone.png"
-        />
-
-        {/* Farcaster Mini App / Frame specific tags */}
-        <meta property="fc:frame" content="vNext" />
-        <meta
-          property="fc:frame:image"
-          content="https://quote-production-679a.up.railway.app/assets/phone.png"
-        />
-        <meta property="fc:frame:button:1" content="Open Quote App" />
-        <meta
-          property="fc:frame:post_url"
-          content="https://quote-production-679a.up.railway.app/api/frame"
-        />
-
-        {/* Additional mini app metadata */}
-        <meta property="fc:frame:state" content="" />
-        <meta property="fc:frame:image:aspect_ratio" content="1.91:1" />
       </head>
       <body>
-        <FarcasterMiniAppProvider>{children}</FarcasterMiniAppProvider>
+        <AuthenticatedFrameProvider>{children}</AuthenticatedFrameProvider>
       </body>
     </html>
   );
