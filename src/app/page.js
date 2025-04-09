@@ -10,7 +10,6 @@ export default function Home() {
       <div className="relative z-10">
         <Suspense fallback={<div>Loading...</div>}>
           <Card />
-          <WalletConnector />
         </Suspense>
       </div>
     </div>
