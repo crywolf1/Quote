@@ -19,7 +19,7 @@ export default function RootLayout({ children }) {
             "button": {
               "title": "quote",
               "action": {
-                "type": "post",
+                "type": "launch_frame",
                 "name": "Quote",
                 "url": "https://quote-production-679a.up.railway.app/",
                 "splashImageUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
