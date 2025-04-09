@@ -1,18 +1,14 @@
 "use client";
 
-import { useFarcaster } from "./FarcasterFrameProvider";
+import { useFarcaster } from "./FarcasterFrameProvider"; // Import the hook
 import { useState, useEffect } from "react";
-import { useAccount } from "wagmi";
-import { createCoin } from "@zoralabs/coins-sdk";
-import WalletConnector from "./WalletConnector";
 import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
 export default function Card() {
-  const { userData, handleSignIn } = useFarcaster();
-  const { address } = useAccount();
-  const username = userData?.username || "Guest";
-  const pfpUrl = userData?.pfpUrl || "/default-avatar.jpg";
+  const { userData } = useFarcaster(); // Get user data from context
+  const username = userData?.username || "Guest"; // Fallback to "Guest"
+  const pfpUrl = userData?.pfpUrl || "/default-avatar.jpg"; // Fallback to default avatar
 
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
@@ -75,34 +71,6 @@ export default function Card() {
     }
   };
 
-  const mintQuote = async () => {
-    if (!address) {
-      setMessage("Please connect your wallet first.");
-      return;
-    }
-    if (!quote.trim()) {
-      setMessage("Quote cannot be empty!");
-      return;
-    }
-    try {
-      const coin = await createCoin({
-        metadata: {
-          name: `Quote by ${username}`,
-          description: quote,
-          image: pfpUrl,
-        },
-        owner: address,
-      });
-      console.log("Coin minted:", coin);
-      setMessage("Quote minted as a Zora Coin!");
-      setQuote("");
-      await sendQuote();
-    } catch (error) {
-      console.error("Failed to mint Coin:", error);
-      setMessage("Failed to mint quote: " + error.message);
-    }
-  };
-
   const handleEdit = (index) => {
     setEditIndex(index);
     setEditedText(quotes[index].text);
@@ -161,14 +129,7 @@ export default function Card() {
       <div className="card-header">
         <img src={pfpUrl} alt="Avatar" className="card-avatar" />
         <h1 className="card-fullname">Welcome, {username}!</h1>
-        {username === "Guest" && (
-          <button onClick={handleSignIn} className="signin-btn">
-            Sign In with Farcaster
-          </button>
-        )}
       </div>
-
-      <WalletConnector />
 
       <div className="card-main">
         <div
@@ -259,13 +220,9 @@ export default function Card() {
                 />
               </div>
               <button className="contact-me" onClick={sendQuote}>
-                Save Quote
-              </button>
-              <button className="contact-me" onClick={mintQuote}>
-                Mint as Zora Coin
+                Send Quote
               </button>
             </div>
-            {message && <p className="message">{message}</p>}
           </div>
         </div>
 

@@ -12,26 +12,34 @@ export function FarcasterFrameProvider({ children }) {
   useEffect(() => {
     const initializeSDK = async () => {
       try {
+        // Step 1: Signal readiness
         await sdk.actions.ready();
         console.log("SDK is ready");
 
-        // Check if user is already signed in
+        // Step 2: Attempt sign-in
+        console.log("Attempting sign-in...");
+        const signInResult = await sdk.signin();
+        console.log("Sign-in result:", signInResult);
+
+        // Step 3: Get user data
         const user = sdk.user;
+        console.log("User object after sign-in:", user);
+
         if (user && user.username) {
           setUserData({
             username: user.username,
             pfpUrl: user.pfpUrl || "/default-avatar.jpg",
           });
-          console.log("User already signed in:", user);
+          console.log("User data set:", user);
         } else {
-          console.log("No user data on initial load, awaiting manual sign-in");
+          console.warn("No valid user data found after sign-in");
           setUserData({
             username: "Guest",
             pfpUrl: "/default-avatar.jpg",
           });
         }
       } catch (error) {
-        console.error("SDK initialization failed:", error);
+        console.error("SDK initialization or sign-in failed:", error);
         setUserData({
           username: "Guest",
           pfpUrl: "/default-avatar.jpg",
@@ -41,29 +49,8 @@ export function FarcasterFrameProvider({ children }) {
     initializeSDK();
   }, []);
 
-  const handleSignIn = async () => {
-    try {
-      console.log("Manual sign-in triggered");
-      await sdk.signin();
-      const user = sdk.user;
-      console.log("User after manual sign-in:", user);
-
-      if (user && user.username) {
-        setUserData({
-          username: user.username,
-          pfpUrl: user.pfpUrl || "/default-avatar.jpg",
-        });
-        console.log("User data updated:", user);
-      } else {
-        console.warn("Sign-in succeeded but no user data");
-      }
-    } catch (error) {
-      console.error("Manual sign-in failed:", error);
-    }
-  };
-
   return (
-    <FarcasterContext.Provider value={{ userData, handleSignIn }}>
+    <FarcasterContext.Provider value={{ userData }}>
       {children}
     </FarcasterContext.Provider>
   );
