@@ -1,5 +1,5 @@
 import ClientLayout from "../components/ClientLayout";
-
+import FarcasterFrameProvider from "../components/FarcasterFrameProvider";
 export const metadata = {
   title: "Quote Card",
   description: "A simple quote card app",
@@ -31,7 +31,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <ClientLayout>{children}</ClientLayout>
+        <FarcasterFrameProvider>{children}</FarcasterFrameProvider>
       </body>
     </html>
   );
