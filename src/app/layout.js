@@ -23,7 +23,7 @@ export default function RootLayout({ children }) {
                 "name": "Quote",
                 "url": "https://quote-production-679a.up.railway.app/",
                 "splashImageUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
-                "splashBackgroundColor": "#131313"
+                "splashBackgroundColor": "#eeccff"
               }
             }
           }'
