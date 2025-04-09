@@ -16,14 +16,14 @@ export default function RootLayout({ children }) {
           name="fc:frame"
           content='{
             "version": "next",
-            "imageUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
+            "imageUrl": "https://quote-production-679a.up.railway.app/assets/icon.png",
             "button": {
               "title": "quote",
               "action": {
                 "type": "launch_frame",
                 "name": "Quote",
                 "url": "https://quote-production-679a.up.railway.app/",
-                "splashImageUrl": "https://quote-production-679a.up.railway.app/assets/phone.png",
+                "splashImageUrl": "https://quote-production-679a.up.railway.app/assets/icon.png",
                 "splashBackgroundColor": "#eeccff"
               }
             }
