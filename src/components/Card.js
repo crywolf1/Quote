@@ -1,18 +1,18 @@
 "use client";
 
-import { useFarcaster } from "./FarcasterFrameProvider"; // Import the hook
+import { useFarcaster } from "./FarcasterFrameProvider";
 import { useState, useEffect } from "react";
-import { useAccount } from "wagmi"; // For wallet address
-import { createCoin } from "@zoralabs/coins-sdk"; // For Zora token minting
-import WalletConnector from "./WalletConnector"; // Wallet connection component
+import { useAccount } from "wagmi";
+import { createCoin } from "@zoralabs/coins-sdk";
+import WalletConnector from "./WalletConnector";
 import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
 export default function Card() {
-  const { userData } = useFarcaster(); // Get user data from context
-  const { address } = useAccount(); // Get wallet address
-  const username = userData?.username || "Guest"; // Fallback to "Guest"
-  const pfpUrl = userData?.pfpUrl || "/default-avatar.jpg"; // Fallback to default avatar
+  const { userData, handleSignIn } = useFarcaster();
+  const { address } = useAccount();
+  const username = userData?.username || "Guest";
+  const pfpUrl = userData?.pfpUrl || "/default-avatar.jpg";
 
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
@@ -22,7 +22,6 @@ export default function Card() {
   const [editedText, setEditedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Fetch quotes from API
   const fetchQuotes = async () => {
     try {
       const res = await fetch("/api/quote");
@@ -42,7 +41,6 @@ export default function Card() {
     fetchQuotes();
   }, []);
 
-  // Navigation for quote carousel
   const handleLeftClick = () => {
     setCurrentIndex(
       (prevIndex) => (prevIndex - 1 + quotes.length) % quotes.length
@@ -53,7 +51,6 @@ export default function Card() {
     setCurrentIndex((prevIndex) => (prevIndex + 1) % quotes.length);
   };
 
-  // Save quote to API
   const sendQuote = async () => {
     if (!quote.trim()) {
       setMessage("Quote cannot be empty!");
@@ -78,7 +75,6 @@ export default function Card() {
     }
   };
 
-  // Mint quote as a Zora Coin
   const mintQuote = async () => {
     if (!address) {
       setMessage("Please connect your wallet first.");
@@ -88,20 +84,18 @@ export default function Card() {
       setMessage("Quote cannot be empty!");
       return;
     }
-
     try {
       const coin = await createCoin({
         metadata: {
           name: `Quote by ${username}`,
           description: quote,
-          image: pfpUrl, // Use user's profile picture as token image
+          image: pfpUrl,
         },
         owner: address,
       });
       console.log("Coin minted:", coin);
       setMessage("Quote minted as a Zora Coin!");
-      setQuote(""); // Clear input after minting
-      // Optionally save to API as well
+      setQuote("");
       await sendQuote();
     } catch (error) {
       console.error("Failed to mint Coin:", error);
@@ -109,7 +103,6 @@ export default function Card() {
     }
   };
 
-  // Edit quote
   const handleEdit = (index) => {
     setEditIndex(index);
     setEditedText(quotes[index].text);
@@ -139,7 +132,6 @@ export default function Card() {
     }
   };
 
-  // Delete quote
   const handleDelete = async (index) => {
     try {
       const res = await fetch(`/api/quote/${quotes[index]._id}`, {
@@ -157,7 +149,6 @@ export default function Card() {
     }
   };
 
-  // Section navigation
   const handleSectionChange = (section) => {
     if (editIndex !== null) {
       setEditIndex(null);
@@ -170,13 +161,16 @@ export default function Card() {
       <div className="card-header">
         <img src={pfpUrl} alt="Avatar" className="card-avatar" />
         <h1 className="card-fullname">Welcome, {username}!</h1>
+        {username === "Guest" && (
+          <button onClick={handleSignIn} className="signin-btn">
+            Sign In with Farcaster
+          </button>
+        )}
       </div>
 
-      {/* Wallet Connector */}
       <WalletConnector />
 
       <div className="card-main">
-        {/* Quote Display Section */}
         <div
           className={`card-section ${
             activeSection === "#about" ? "is-active" : ""
@@ -191,7 +185,6 @@ export default function Card() {
           </div>
         </div>
 
-        {/* All Quotes Section */}
         <div
           className={`card-section ${
             activeSection === "#experience" ? "is-active" : ""
@@ -244,7 +237,6 @@ export default function Card() {
           </div>
         </div>
 
-        {/* Write Quote Section */}
         <div
           className={`card-section ${
             activeSection === "#contact" ? "is-active" : ""
@@ -277,7 +269,6 @@ export default function Card() {
           </div>
         </div>
 
-        {/* Navigation */}
         <div className="card-container2">
           {activeSection === "#about" && (
             <div className="card-buttons1">
