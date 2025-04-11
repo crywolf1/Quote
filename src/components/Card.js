@@ -22,6 +22,16 @@ export default function Card() {
   const [editedText, setEditedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  useEffect(() => {
+    console.log("Card component rendered with:", {
+      userData,
+      isInitialized,
+      hasUsername: !!userData?.username,
+      hasPfp: !!userData?.pfpUrl,
+      fid: userData?.fid,
+    });
+  }, [userData, isInitialized]);
+
   // Fetch quotes from API
   const fetchQuotes = async () => {
     try {
@@ -165,17 +175,32 @@ export default function Card() {
     setActiveSection(section);
   };
 
+  if (!isInitialized) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">
-        <img
-          src={userData?.pfpUrl || "/default-avatar.jpg"}
-          alt="Avatar"
-          className="card-avatar"
-        />
-        <h1 className="card-fullname">
-          Welcome, {userData?.username || "Guest"}!
-        </h1>
+        {/* Add debug data attribute */}
+        <div data-debug={`has-user-data:${!!userData}`}>
+          <img
+            src={userData?.pfpUrl || "/default-avatar.jpg"}
+            alt="Avatar"
+            className="card-avatar"
+            onError={(e) => {
+              console.log("Failed to load profile image");
+              e.target.src = "/default-avatar.jpg";
+            }}
+          />
+          <h1 className="card-fullname">
+            {userData ? (
+              <>Welcome, {userData.username}!</>
+            ) : (
+              <>Welcome, Guest! (No user data)</>
+            )}
+          </h1>
+        </div>
       </div>
       {/* Wallet Connector */}
       <WalletConnector />
