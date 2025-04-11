@@ -1,3 +1,9 @@
+// src/components/FarcasterFrameProvider.js
+"use client";
+
+import { createContext, useContext, useEffect, useState } from "react";
+import { sdk } from "@farcaster/frame-sdk";
+
 const FarcasterContext = createContext();
 
 export function FarcasterFrameProvider({ children }) {
