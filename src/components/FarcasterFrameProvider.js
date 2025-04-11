@@ -8,53 +8,76 @@ const FarcasterContext = createContext();
 export function FarcasterFrameProvider({ children }) {
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     const initializeSDK = async () => {
-      console.log("Starting SDK initialization...");
+      // Check if SDK is available
+      if (!sdk) {
+        console.error("Farcaster SDK not found");
+        setError("SDK not available");
+        return;
+      }
+
+      console.log("Starting SDK initialization...", { sdk });
 
       try {
         // Check if we're in Warpcast environment
         const isInWarpcast = window?.parent !== window;
-        console.log("Is in Warpcast:", isInWarpcast);
+        console.log("Environment check:", {
+          isInWarpcast,
+          windowLocation: window.location.href,
+          parentLocation: window?.parent?.location?.href,
+        });
 
         // Initialize Farcaster SDK with debug info
-        console.log("Attempting SDK ready...");
+        console.log("SDK actions available:", Object.keys(sdk.actions));
         await sdk.actions.ready();
         console.log("✅ Farcaster SDK ready");
+        setIsInitialized(true);
 
         // Get frame context with debug info
-        console.log("Attempting to get context...");
         const context = await sdk.getContext();
-        console.log("Frame context received:", context);
+        console.log("Frame context:", {
+          context,
+          hasContext: !!context,
+          hasFid: !!context?.fid,
+        });
 
-        if (context && context.fid) {
-          console.log(`Found FID: ${context.fid}, fetching user data...`);
-
-          // Log the API endpoint we're calling
-          const apiUrl = `/api/neynar/neynar?fid=${context.fid}`;
-          console.log("Calling API endpoint:", apiUrl);
+        if (context?.fid) {
+          // Build API URL with origin for production
+          const baseUrl = window.location.origin;
+          const apiUrl = `${baseUrl}/api/neynar/neynar?fid=${context.fid}`;
+          console.log("API call:", { apiUrl, fid: context.fid });
 
           try {
             const response = await fetch(apiUrl);
-            console.log("API response status:", response.status);
+            const contentType = response.headers.get("content-type");
+            console.log("API response:", {
+              status: response.status,
+              contentType,
+              ok: response.ok,
+            });
 
             const data = await response.json();
-            console.log("API response data:", data);
+            console.log("API data:", data);
 
-            if (response.ok) {
-              const userData = {
+            if (response.ok && data) {
+              const newUserData = {
                 username: data.username || `fid:${context.fid}`,
                 pfpUrl: data.pfpUrl || "/default-avatar.jpg",
                 fid: context.fid,
               };
-              console.log("Setting user data:", userData);
-              setUserData(userData);
+              console.log("Setting user data:", newUserData);
+              setUserData(newUserData);
             } else {
-              throw new Error(data.error || "Failed to fetch user data");
+              throw new Error(data?.error || "Failed to fetch user data");
             }
           } catch (apiError) {
-            console.error("API call failed:", apiError);
+            console.error("API error details:", {
+              message: apiError.message,
+              stack: apiError.stack,
+            });
             setError(`API Error: ${apiError.message}`);
             setUserData({
               username: `fid:${context.fid}`,
@@ -63,15 +86,19 @@ export function FarcasterFrameProvider({ children }) {
             });
           }
         } else {
-          console.warn("No FID found in context");
-          setError("No FID in context");
+          console.warn("Context validation failed:", { context });
+          setError("Invalid context");
           setUserData({
             username: "Guest",
             pfpUrl: "/default-avatar.jpg",
           });
         }
       } catch (error) {
-        console.error("SDK initialization error:", error);
+        console.error("SDK error details:", {
+          message: error.message,
+          stack: error.stack,
+          initialized: isInitialized,
+        });
         setError(`SDK Error: ${error.message}`);
         setUserData({
           username: "Guest",
@@ -83,12 +110,18 @@ export function FarcasterFrameProvider({ children }) {
     initializeSDK();
   }, []);
 
-  // Debug render
-  console.log("Current userData state:", userData);
-  console.log("Current error state:", error);
+  // Enhanced debug logging
+  useEffect(() => {
+    console.log("Provider state:", {
+      hasUserData: !!userData,
+      userData,
+      error,
+      isInitialized,
+    });
+  }, [userData, error, isInitialized]);
 
   return (
-    <FarcasterContext.Provider value={{ userData, error }}>
+    <FarcasterContext.Provider value={{ userData, error, isInitialized }}>
       {children}
     </FarcasterContext.Provider>
   );
