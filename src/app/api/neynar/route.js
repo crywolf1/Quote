@@ -1,49 +1,35 @@
-import { NextResponse } from "next/server";
+import { NeynarAPIClient } from "@neynar/nodejs-sdk";
 
-export async function GET(req) {
+export async function GET(request) {
+  if (!process.env.NEYNAR_API_KEY) {
+    console.error("NEYNAR_API_KEY not found");
+    return Response.json({ error: "API key not configured" }, { status: 500 });
+  }
+
   try {
-    const { fid } = req.nextUrl.searchParams;
-    console.log("Received FID:", fid);
+    const { searchParams } = new URL(request.url);
+    const fid = searchParams.get("fid");
 
     if (!fid) {
-      return NextResponse.json({ error: "FID is required" }, { status: 400 });
+      return Response.json({ error: "FID is required" }, { status: 400 });
     }
 
-    // Simulate fetching user data from an external service (e.g., Neynar API)
-    const userData = await fetchUserDataFromService(fid);
+    const neynar = new NeynarAPIClient(process.env.NEYNAR_API_KEY);
+    const response = await neynar.lookupUser(fid);
 
-    if (!userData) {
-      console.error("No user data found for FID:", fid);
-      return NextResponse.json(
-        { error: "No user data found" },
-        { status: 404 }
-      );
+    if (!response?.result?.user) {
+      return Response.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Log the fetched data
-    console.log("Fetched user data:", userData);
-
-    return NextResponse.json({
-      username: userData.username || "Guest",
-      pfpUrl: userData.pfp_url || "/default-avatar.jpg", // Adjust to use pfp_url from response
+    return Response.json({
+      users: [
+        {
+          ...response.result.user,
+        },
+      ],
     });
   } catch (error) {
-    console.error("Error fetching user data:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch user data" },
-      { status: 500 }
-    );
+    console.error("Neynar API error:", error);
+    return Response.json({ error: error.message }, { status: 500 });
   }
-}
-
-async function fetchUserDataFromService(fid) {
-  // Simulate fetching user data from an external API (e.g., Neynar API)
-  const response = await fetch(`https://api.neynar.com/users/${fid}`);
-  if (response.ok) {
-    const data = await response.json();
-    console.log("Fetched data from Neynar API:", data);
-    return data.users[0]; // Assuming the response structure is { users: [...] }
-  }
-  console.error("Failed to fetch user data from Neynar API");
-  return null;
 }

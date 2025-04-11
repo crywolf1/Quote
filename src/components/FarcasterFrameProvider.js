@@ -7,58 +7,60 @@ const FarcasterContext = createContext();
 
 export function FarcasterFrameProvider({ children }) {
   const [userData, setUserData] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     const initializeSDK = async () => {
-      if (!sdk) {
-        console.error("Farcaster SDK not found");
-        return;
-      }
-
       try {
-        // Initialize the Farcaster SDK
+        // Initialize Farcaster SDK
         await sdk.actions.ready();
-        console.log("Farcaster SDK initialized");
+        console.log("✅ Farcaster SDK ready");
+        setIsInitialized(true);
 
-        // Access the context directly (using context, not getContext)
-        const context = sdk.context;
-        console.log("Frame context:", { fid: context?.fid });
+        // Get frame context
+        const context = await sdk.getContext();
+        console.log("Frame context:", context);
 
-        if (!context?.fid) {
-          throw new Error("No FID available in frame context");
-        }
+        if (context?.fid) {
+          try {
+            // Fetch user data from Neynar API
+            const response = await fetch(
+              `/api/neynar/neynar?fid=${context.fid}`
+            );
+            const result = await response.json();
 
-        // Log the FID before making the API call
-        console.log("Context FID:", context.fid);
-
-        // Fetch user data from the API route
-        const apiUrl = `${window.location.origin}/api/neynar?fid=${context.fid}`;
-        console.log("Fetching from:", apiUrl);
-
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-          throw new Error(`API call failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("API response data:", data);
-
-        // Store user data in state
-        if (data.username && data.pfpUrl) {
-          setUserData({
-            username: data.username,
-            pfpUrl: data.pfpUrl,
-            fid: context.fid,
-          });
+            if (response.ok && result.users?.[0]) {
+              const user = result.users[0];
+              setUserData({
+                username: user.display_name || user.username,
+                pfpUrl: user.pfp_url,
+                fid: user.fid,
+                followerCount: user.follower_count,
+                followingCount: user.following_count,
+                profile: user.profile,
+                verifiedAddresses: user.verified_addresses,
+              });
+              console.log("✅ User data set from Neynar:", user);
+            } else {
+              throw new Error("Invalid user data from Neynar");
+            }
+          } catch (error) {
+            console.error("❌ Neynar API error:", error);
+            setUserData({
+              username: `fid:${context.fid}`,
+              pfpUrl: "/default-avatar.jpg",
+              fid: context.fid,
+            });
+          }
         } else {
+          console.warn("No FID in context");
           setUserData({
             username: "Guest",
             pfpUrl: "/default-avatar.jpg",
           });
         }
       } catch (error) {
-        console.error("Error fetching user data:", error.message);
-        // Set fallback data on error
+        console.error("❌ SDK error:", error);
         setUserData({
           username: "Guest",
           pfpUrl: "/default-avatar.jpg",
@@ -70,7 +72,7 @@ export function FarcasterFrameProvider({ children }) {
   }, []);
 
   return (
-    <FarcasterContext.Provider value={{ userData }}>
+    <FarcasterContext.Provider value={{ userData, isInitialized }}>
       {children}
     </FarcasterContext.Provider>
   );
