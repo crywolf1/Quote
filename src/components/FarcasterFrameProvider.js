@@ -1,4 +1,3 @@
-// farcasterframeprovider.js
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
@@ -21,8 +20,8 @@ export function FarcasterFrameProvider({ children }) {
         await sdk.actions.ready();
         console.log("Farcaster SDK initialized");
 
-        // Get the frame context
-        const context = await sdk.getContext();
+        // Access the context directly
+        const context = sdk.context; // Directly accessing the context instead of using getContext()
         console.log("Frame context:", { fid: context?.fid });
 
         if (!context?.fid) {
