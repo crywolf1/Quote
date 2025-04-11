@@ -13,8 +13,6 @@ export default function Card() {
   const { address } = useAccount(); // Get wallet address
 
   console.log("userData in Card.js:", userData);
-  const username = userData?.username || "Guest";
-  const pfp_Url = userData?.pfp_Url || "/default-avatar.jpg";
 
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
@@ -170,8 +168,14 @@ export default function Card() {
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">
-        <img src={userData.pfpUrl} alt="Avatar" className="card-avatar" />
-        <h1 className="card-fullname">Welcome, {userData.username}!</h1>
+        <img
+          src={userData?.pfpUrl || "/default-avatar.jpg"}
+          alt="Avatar"
+          className="card-avatar"
+        />
+        <h1 className="card-fullname">
+          Welcome, {userData?.username || "Guest"}!
+        </h1>
       </div>
       {/* Wallet Connector */}
       <WalletConnector />
