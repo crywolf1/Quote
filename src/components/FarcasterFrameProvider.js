@@ -1,8 +1,7 @@
-// src/components/FarcasterFrameProvider.js
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { sdk } from "@farcaster/frame-sdk";
+import Neynar from "@neynar/nodejs-sdk";
 
 const FarcasterContext = createContext();
 
@@ -10,40 +9,41 @@ export function FarcasterFrameProvider({ children }) {
   const [userData, setUserData] = useState(null);
 
   useEffect(() => {
-    const initializeSDK = async () => {
+    const initializeNeynar = async () => {
       try {
-        // Step 1: Signal readiness
-        await sdk.actions.ready();
-        console.log("SDK is ready");
+        // Step 1: Initialize Neynar with your API key
+        const neynar = new Neynar({
+          apiKey: process.env.NEYNAR_API_KEY, // Replace with your actual API key
+        });
+        console.log("Neynar initialized");
 
-        // Step 2: Attempt sign-in
-        console.log("Attempting sign-in...");
-        const signInResult = await sdk.signin();
-        console.log("Sign-in result:", signInResult);
+        // Step 2: Fetch user data
+        const user = await neynar.getUser();
+        console.log("Neynar user data:", user);
 
-        // Step 3: Get user data from sign-in result
-        if (signInResult && signInResult.username) {
+        // Step 3: Set user data
+        if (user && user.username) {
           setUserData({
-            username: signInResult.username,
-            pfpUrl: signInResult.pfpUrl || "/default-avatar.jpg",
+            username: user.username,
+            pfpUrl: user.pfpUrl || "/default-avatar.jpg",
           });
-          console.log("User data set:", signInResult);
         } else {
-          console.warn("No valid user data found after sign-in");
+          console.warn("No valid user data found");
           setUserData({
             username: "Guest",
             pfpUrl: "/default-avatar.jpg",
           });
         }
       } catch (error) {
-        console.error("SDK initialization or sign-in failed:", error);
+        console.error("Neynar initialization or user fetch failed:", error);
         setUserData({
           username: "Guest",
           pfpUrl: "/default-avatar.jpg",
         });
       }
     };
-    initializeSDK();
+
+    initializeNeynar();
   }, []);
 
   return (
