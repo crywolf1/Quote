@@ -1,9 +1,3 @@
-// src/components/FarcasterFrameProvider.js
-"use client";
-
-import { createContext, useContext, useEffect, useState } from "react";
-import { sdk } from "@farcaster/frame-sdk";
-
 const FarcasterContext = createContext();
 
 export function FarcasterFrameProvider({ children }) {
@@ -21,16 +15,13 @@ export function FarcasterFrameProvider({ children }) {
         const signInResult = await sdk.signin();
         console.log("Sign-in result:", signInResult);
 
-        // Step 3: Get user data
-        const user = sdk.user;
-        console.log("User object after sign-in:", user);
-
-        if (user && user.username) {
+        // Step 3: Get user data from sign-in result
+        if (signInResult && signInResult.username) {
           setUserData({
-            username: user.username,
-            pfpUrl: user.pfpUrl || "/default-avatar.jpg",
+            username: signInResult.username,
+            pfpUrl: signInResult.pfpUrl || "/default-avatar.jpg",
           });
-          console.log("User data set:", user);
+          console.log("User data set:", signInResult);
         } else {
           console.warn("No valid user data found after sign-in");
           setUserData({
