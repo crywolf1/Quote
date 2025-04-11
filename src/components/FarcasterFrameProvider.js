@@ -43,7 +43,7 @@ export function FarcasterFrameProvider({ children }) {
         // Store user data in state
         setUserData({
           username: data.username || "Guest",
-          pfpUrl: data.pfpUrl || "/default-avatar.jpg",
+          pfp_Url: data.pfp_Url || "/default-avatar.jpg",
           fid: context.fid,
         });
       } catch (error) {

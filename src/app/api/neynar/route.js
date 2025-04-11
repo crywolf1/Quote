@@ -24,7 +24,7 @@ export async function GET(req) {
     console.log("Fetched user data:", userData);
     return NextResponse.json({
       username: userData.username || "Guest",
-      pfpUrl: userData.pfp_url || "/default-avatar.jpg",
+      pfp_Url: userData.pfp_url || "/default-avatar.jpg", // Adjusting to use pfp_url from response
     });
   } catch (error) {
     console.error("Error fetching user data:", error);
@@ -37,7 +37,6 @@ export async function GET(req) {
 
 async function fetchUserDataFromService(fid) {
   // Simulate fetching user data from an external API (e.g., Neynar API)
-  // Replace with actual API call to Neynar or another service
   const response = await fetch(`https://api.neynar.com/users/${fid}`);
   if (response.ok) {
     const data = await response.json();

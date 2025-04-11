@@ -14,7 +14,7 @@ export default function Card() {
 
   console.log("userData in Card.js:", userData);
   const username = userData?.username || "Guest";
-  const pfpUrl = userData?.pfpUrl || "/default-avatar.jpg";
+  const pfp_Url = userData?.pfp_Url || "/default-avatar.jpg";
 
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
@@ -167,15 +167,11 @@ export default function Card() {
     setActiveSection(section);
   };
 
-  if (!userData) {
-    return <div>Loading...</div>;
-  }
-
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">
-        <img src={userData.pfp_url} alt="Avatar" className="card-avatar" />
-        <h1 className="card-fullname">Welcome, {userData.username}!</h1>
+        <img src={pfp_Url} alt="Avatar" className="card-avatar" />
+        <h1 className="card-fullname">Welcome, {username}!</h1>
       </div>
       {/* Wallet Connector */}
       <WalletConnector />
