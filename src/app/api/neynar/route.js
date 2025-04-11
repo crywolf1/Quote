@@ -1,4 +1,3 @@
-// src/app/api/neynar/route.js
 import { NextResponse } from "next/server";
 
 export async function GET(req) {
@@ -10,8 +9,8 @@ export async function GET(req) {
       return NextResponse.json({ error: "FID is required" }, { status: 400 });
     }
 
-    // Fetch user data from Neynar or external service using FID
-    const userData = await fetchUserDataFromService(fid); // Replace with actual fetching logic
+    // Simulate fetching user data from an external service (e.g., Neynar API)
+    const userData = await fetchUserDataFromService(fid);
 
     if (!userData) {
       console.error("No user data found for FID:", fid);
@@ -21,10 +20,12 @@ export async function GET(req) {
       );
     }
 
+    // Log the fetched data
     console.log("Fetched user data:", userData);
+
     return NextResponse.json({
       username: userData.username || "Guest",
-      pfp_Url: userData.pfp_url || "/default-avatar.jpg", // Adjusting to use pfp_url from response
+      pfpUrl: userData.pfp_url || "/default-avatar.jpg", // Adjust to use pfp_url from response
     });
   } catch (error) {
     console.error("Error fetching user data:", error);
@@ -40,7 +41,9 @@ async function fetchUserDataFromService(fid) {
   const response = await fetch(`https://api.neynar.com/users/${fid}`);
   if (response.ok) {
     const data = await response.json();
-    return data.users[0]; // Example: returning the first user object
+    console.log("Fetched data from Neynar API:", data);
+    return data.users[0]; // Assuming the response structure is { users: [...] }
   }
+  console.error("Failed to fetch user data from Neynar API");
   return null;
 }

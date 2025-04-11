@@ -28,6 +28,9 @@ export function FarcasterFrameProvider({ children }) {
           throw new Error("No FID available in frame context");
         }
 
+        // Log the FID before making the API call
+        console.log("Context FID:", context.fid);
+
         // Fetch user data from the API route
         const apiUrl = `${window.location.origin}/api/neynar?fid=${context.fid}`;
         console.log("Fetching from:", apiUrl);
@@ -41,11 +44,18 @@ export function FarcasterFrameProvider({ children }) {
         console.log("API response data:", data);
 
         // Store user data in state
-        setUserData({
-          username: data.username || "Guest",
-          pfp_Url: data.pfp_Url || "/default-avatar.jpg",
-          fid: context.fid,
-        });
+        if (data.username && data.pfpUrl) {
+          setUserData({
+            username: data.username,
+            pfpUrl: data.pfpUrl,
+            fid: context.fid,
+          });
+        } else {
+          setUserData({
+            username: "Guest",
+            pfpUrl: "/default-avatar.jpg",
+          });
+        }
       } catch (error) {
         console.error("Error fetching user data:", error.message);
         // Set fallback data on error
