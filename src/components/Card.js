@@ -11,8 +11,10 @@ import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 export default function Card() {
   const { userData } = useFarcaster(); // Get user data from context
   const { address } = useAccount(); // Get wallet address
-  const username = userData?.username || "Guest"; // Fallback to "Guest"
-  const pfpUrl = userData?.pfpUrl || "/default-avatar.jpg"; // Fallback to default avatar
+
+  console.log("userData in Card.js:", userData);
+  const username = userData?.username || "Guest";
+  const pfpUrl = userData?.pfpUrl || "/default-avatar.jpg";
 
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
@@ -94,7 +96,7 @@ export default function Card() {
         metadata: {
           name: `Quote by ${username}`,
           description: quote,
-          image: pfpUrl, // Use user's profile picture as token image
+          image: pfp_url, // Use user's profile picture as token image
         },
         owner: address,
       });
@@ -171,7 +173,6 @@ export default function Card() {
         <img src={pfpUrl} alt="Avatar" className="card-avatar" />
         <h1 className="card-fullname">Welcome, {username}!</h1>
       </div>
-
       {/* Wallet Connector */}
       <WalletConnector />
 
