@@ -19,7 +19,7 @@
     "@farcaster/core": "^0.16.0",
     "@farcaster/frame-sdk": "^0.0.34",
     "@farcaster/frame-wagmi-connector": "^0.0.22",
-    "@neynar/nodejs-sdk": "^2.25.1",
+    "@neynar/nodejs-sdk": "^2.26.1",
     "@tanstack/react-query": "^5.72.2",
     "@zoralabs/coins-sdk": "^0.0.5",
     "axios": "^1.8.4",

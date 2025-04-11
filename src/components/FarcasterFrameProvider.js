@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { sdk } from "@farcaster/frame-sdk"; // Farcaster SDK
-import Neynar from "@neynar/nodejs-sdk"; // Neynar SDK
 
 const FarcasterContext = createContext();
 
@@ -31,24 +30,18 @@ export function FarcasterFrameProvider({ children }) {
           return; // Exit if Farcaster provides valid data
         }
 
-        // Step 4: Fallback to Neynar if Farcaster fails
+        // Step 4: Fallback to Neynar API route if Farcaster fails
         console.warn("Farcaster sign-in failed, attempting Neynar...");
-        const neynar = new Neynar({
-          apiKey: process.env.NEXT_PUBLIC_NEYNAR_API_KEY, // Use environment variable for API key
-        });
-        await neynar.init();
-        console.log("Neynar initialized");
-
-        const user = await neynar.getUser();
-        console.log("Neynar user data:", user);
-
-        if (user && user.username) {
+        const response = await fetch("/api/neynar/neynar");
+        if (response.ok) {
+          const user = await response.json();
           setUserData({
             username: user.username,
             pfpUrl: user.pfpUrl || "/default-avatar.jpg",
           });
+          console.log("User data set from Neynar API:", user);
         } else {
-          console.warn("No valid user data found in Neynar");
+          console.warn("Neynar API failed to fetch user data");
           setUserData({
             username: "Guest",
             pfpUrl: "/default-avatar.jpg",
