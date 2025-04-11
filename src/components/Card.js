@@ -167,11 +167,15 @@ export default function Card() {
     setActiveSection(section);
   };
 
+  if (!userData) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">
-        <img src={pfpUrl} alt="Avatar" className="card-avatar" />
-        <h1 className="card-fullname">Welcome, {username}!</h1>
+        <img src={userData.pfp_url} alt="Avatar" className="card-avatar" />
+        <h1 className="card-fullname">Welcome, {userData.username}!</h1>
       </div>
       {/* Wallet Connector */}
       <WalletConnector />

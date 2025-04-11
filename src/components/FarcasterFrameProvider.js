@@ -20,8 +20,8 @@ export function FarcasterFrameProvider({ children }) {
         await sdk.actions.ready();
         console.log("Farcaster SDK initialized");
 
-        // Access the context directly
-        const context = sdk.context; // Directly accessing the context instead of using getContext()
+        // Access the context directly (using context, not getContext)
+        const context = sdk.context;
         console.log("Frame context:", { fid: context?.fid });
 
         if (!context?.fid) {
@@ -42,8 +42,8 @@ export function FarcasterFrameProvider({ children }) {
 
         // Store user data in state
         setUserData({
-          username: data.username,
-          pfpUrl: data.pfpUrl,
+          username: data.username || "Guest",
+          pfpUrl: data.pfpUrl || "/default-avatar.jpg",
           fid: context.fid,
         });
       } catch (error) {
