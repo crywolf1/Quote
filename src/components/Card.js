@@ -9,7 +9,156 @@ import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
 export default function Card() {
-  const { userData, isInitialized } = useFarcaster(); // Get user data from context
+  const { userData, isInitialized } = useFarcaster(); //   "use client";
+  
+  import { useFarcaster } from "./FarcasterFrameProvider";
+  import { useState, useEffect } from "react";
+  // ...existing imports...
+  
+  export default function Card() {
+    const { userData, isInitialized } = useFarcaster();
+    const { address } = useAccount();
+  
+    // Enhanced debugging
+    useEffect(() => {
+      // Log every render
+      console.log("🔄 Card Component Render:", {
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV,
+        isProduction: process.env.NODE_ENV === 'production',
+        userData,
+        isInitialized,
+        hasUserData: !!userData,
+        userDataKeys: userData ? Object.keys(userData) : null,
+        username: userData?.username,
+        pfpUrl: userData?.pfpUrl,
+        fid: userData?.fid
+      });
+  
+      // Force console flush in production
+      if (process.env.NODE_ENV === 'production') {
+        console.log('🚀 Production build detected');
+      }
+    }, [userData, isInitialized]);
+  
+    // Add loading and error states
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
+  
+    // ...existing state declarations...
+  
+    useEffect(() => {
+      const initializeComponent = async () => {
+        try {
+          setIsLoading(true);
+          console.log("📱 Component initialization started");
+          
+          // Check if we're in Warpcast
+          const isInWarpcast = window?.parent !== window;
+          console.log("🔍 Environment check:", { isInWarpcast });
+  
+          // Wait for user data
+          if (!userData && isInitialized) {
+            console.log("⚠️ No user data available after initialization");
+          }
+  
+          await fetchQuotes();
+          setIsLoading(false);
+        } catch (err) {
+          console.error("❌ Component initialization error:", err);
+          setError(err.message);
+          setIsLoading(false);
+        }
+      };
+  
+      initializeComponent();
+    }, []);
+  
+    // Loading state
+    if (isLoading) {
+      return <div>Loading component...</div>;
+    }
+  
+    // Error state
+    if (error) {
+      return <div>Error: {error}</div>;
+    }
+  
+    // Debug render
+    if (!userData) {
+      console.warn("⚠️ Rendering without user data");
+    }
+  
+    return (
+      <div className="card" data-state={activeSection}>
+        <div className="card-header">
+          {/* Add extensive debug attributes */}
+          <div 
+            data-debug={JSON.stringify({
+              hasUserData: !!userData,
+              isInitialized,
+              username: userData?.username,
+              timestamp: Date.now()
+            })}
+          >
+            <img
+              src={userData?.pfpUrl || "/default-avatar.jpg"}
+              alt="Avatar"
+              className="card-avatar"
+              onError={(e) => {
+                console.log("🖼️ Image load error, using fallback");
+                e.target.src = "/default-avatar.jpg";
+              }}
+            />
+            <h1 className="card-fullname">
+              {userData ? (
+                <>Welcome, {userData.username}! (FID: {userData.fid})</>
+              ) : (
+                <>Welcome, Guest! (Waiting for user data...)</>
+              )}
+            </h1>
+          </div>
+        </div>
+  
+        {/* ...rest of your existing JSX... */}
+      </div>
+    );
+  }  // Update in the same file
+  const mintQuote = async () => {
+    if (!address) {
+      setMessage("Please connect your wallet first.");
+      return;
+    }
+    if (!quote.trim()) {
+      setMessage("Quote cannot be empty!");
+      return;
+    }
+  
+    try {
+      console.log("🌟 Minting quote with user data:", {
+        username: userData?.username,
+        pfpUrl: userData?.pfpUrl,
+        address
+      });
+  
+      const coin = await createCoin({
+        metadata: {
+          name: `Quote by ${userData?.username || 'Anonymous'}`,
+          description: quote,
+          image: userData?.pfpUrl || '/default-avatar.jpg',
+        },
+        owner: address,
+      });
+      
+      console.log("✅ Coin minted:", coin);
+      setMessage("Quote minted as a Zora Coin!");
+      setQuote("");
+      await sendQuote();
+    } catch (error) {
+      console.error("❌ Minting error:", error);
+      setMessage("Failed to mint quote: " + error.message);
+    }
+  };
   const { address } = useAccount(); // Get wallet address
 
   console.log("userData in Card.js:", userData);
