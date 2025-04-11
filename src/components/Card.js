@@ -9,7 +9,7 @@ import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
 export default function Card() {
-  const { userData } = useFarcaster(); // Get user data from context
+  const { userData, isInitialized } = useFarcaster(); // Get user data from context
   const { address } = useAccount(); // Get wallet address
 
   console.log("userData in Card.js:", userData);
