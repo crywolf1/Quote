@@ -18,7 +18,7 @@ export default function RootLayout({ children }) {
             "version": "next",
             "imageUrl": "https://quote-production-679a.up.railway.app/assets/icon.png",
             "button": {
-              "title": "quote",
+              "title": "Quote",
               "action": {
                 "type": "launch_frame",
                 "name": "Quote",
