@@ -1,15 +1,25 @@
 import { NeynarAPIClient } from "@neynar/nodejs-sdk";
 
 export async function GET(request) {
-  // Debug: Log request details
-  console.log("API Request received:", {
-    url: request.url,
-    headers: Object.fromEntries(request.headers),
+  // First, log everything about the environment and request
+  console.log("Environment check:", {
+    nodeEnv: process.env.NODE_ENV,
+    hasApiKey: !!process.env.NEYNAR_API_KEY,
+    apiKeyPrefix: process.env.NEYNAR_API_KEY?.substring(0, 4),
   });
 
+  // Force console logs to appear
+  console.log(
+    "Request details:",
+    {
+      method: request.method,
+      url: request.url,
+    },
+    new Date().toISOString()
+  );
+
   if (!process.env.NEYNAR_API_KEY) {
-    console.error("NEYNAR_API_KEY is not defined");
-    return Response.json({ error: "API key not configured" }, { status: 500 });
+    throw new Error("NEYNAR_API_KEY is not defined");
   }
 
   const client = new NeynarAPIClient(process.env.NEYNAR_API_KEY);
@@ -18,47 +28,64 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const fid = searchParams.get("fid");
 
-    console.log("Received FID:", fid);
+    // Debug FID
+    console.log(`Processing FID: ${fid}`, new Date().toISOString());
 
     if (!fid) {
-      return Response.json({ error: "No FID provided" }, { status: 400 });
+      throw new Error("No FID provided");
     }
 
-    // Fetch user data from Neynar
-    const response = await client.lookupUser(fid);
-    console.log("Raw Neynar response:", JSON.stringify(response, null, 2));
+    // Try direct user lookup with error handling
+    try {
+      const userResponse = await client.lookupUser(fid);
+      console.log("Neynar Response:", JSON.stringify(userResponse, null, 2));
 
-    // Check if we have the user data in the expected structure
-    if (!response || !response.result || !response.result.user) {
-      console.error("Invalid response structure from Neynar");
-      return Response.json({ error: "Invalid user data" }, { status: 500 });
+      // Extract user data from response
+      const userData = {
+        username:
+          userResponse?.result?.user?.display_name ||
+          userResponse?.result?.user?.username ||
+          `fid:${fid}`,
+        pfpUrl: userResponse?.result?.user?.pfp_url || "/default-avatar.jpg",
+        fid: fid,
+      };
+
+      // Force log the final data
+      console.log("Final user data:", JSON.stringify(userData, null, 2));
+
+      return new Response(JSON.stringify(userData), {
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store",
+        },
+      });
+    } catch (lookupError) {
+      console.error("User lookup failed:", {
+        error: lookupError.message,
+        stack: lookupError.stack,
+      });
+      throw lookupError;
     }
-
-    const user = response.result.user;
-    console.log("Processed user data:", user);
-
-    const userData = {
-      username: user.display_name || user.username,
-      pfpUrl: user.pfp_url,
-      fid: user.fid,
-      profile: {
-        bio: user.profile?.bio,
-        followers: user.follower_count,
-        following: user.following_count,
-      },
-    };
-
-    console.log("Sending response:", userData);
-
-    return Response.json(userData);
   } catch (error) {
-    console.error("Neynar API error:", {
+    // Log error with timestamp
+    console.error("API Error:", {
       message: error.message,
       stack: error.stack,
+      timestamp: new Date().toISOString(),
     });
-    return Response.json(
-      { error: "Failed to fetch user data", details: error.message },
-      { status: 500 }
+
+    return new Response(
+      JSON.stringify({
+        error: "API Error",
+        message: error.message,
+      }),
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store",
+        },
+      }
     );
   }
 }
