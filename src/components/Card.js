@@ -23,6 +23,9 @@ export default function Card() {
   const [editIndex, setEditIndex] = useState(null);
   const [editedText, setEditedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Memoized user data
   const displayUser = useMemo(() => {
@@ -42,10 +45,11 @@ export default function Card() {
         setWalletUserData(data.users[0]);
       } else {
         setWalletUserData(null);
+        setMessage("No Farcaster account found for this wallet.");
       }
     } catch (error) {
       console.error("Failed to fetch wallet user:", error);
-      setWalletUserData(null);
+      setMessage("Failed to fetch wallet user. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -139,7 +143,7 @@ export default function Card() {
   // Save and mint functions
   const sendQuote = async () => {
     if (!quote.trim()) {
-      setMessage("Quote cannot be empty!");
+      setErrorMessage("Quote cannot be empty!");
       return;
     }
 
@@ -151,15 +155,15 @@ export default function Card() {
       });
 
       if (res.ok) {
-        setMessage("Quote saved successfully!");
+        setSuccessMessage("Quote saved successfully!");
         setQuote("");
         fetchQuotes();
       } else {
         const data = await res.json();
-        setMessage(data.error || "Failed to save quote.");
+        setErrorMessage(data.error || "Failed to save quote.");
       }
     } catch (error) {
-      setMessage("Failed to save quote. Please try again.");
+      setErrorMessage("Failed to save quote. Please try again.");
     }
   };
 
@@ -334,8 +338,12 @@ export default function Card() {
                   onChange={(e) => setQuote(e.target.value)}
                 />
               </div>
-              <button className="contact-me" onClick={sendQuote}>
-                Save Quote
+              <button
+                className="contact-me"
+                onClick={sendQuote}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save Quote"}
               </button>
               <button className="contact-me" onClick={mintQuote}>
                 Mint as Zora Coin

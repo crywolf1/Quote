@@ -610,11 +610,19 @@
   background: #9ca3af;
 }
 
-.error-message {
-  margin-top: 0.5rem;
+
+.success-message {
+  color: #16a34a;
+  background: #d1fae5;
   padding: 0.5rem;
   border-radius: 6px;
-  background: #fee2e2;
+  margin-top: 0.5rem;
+}
+
+.error-message {
   color: #b91c1c;
-  font-size: 0.875rem;
+  background: #fee2e2;
+  padding: 0.5rem;
+  border-radius: 6px;
+  margin-top: 0.5rem;
 }

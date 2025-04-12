@@ -13,13 +13,13 @@ export async function GET(request) {
       throw new Error("NEYNAR_API_KEY not configured");
     }
 
+    // Initialize Neynar client
     const neynarClient = new NeynarV2(process.env.NEYNAR_API_KEY);
 
     if (address) {
       try {
-        const userResponse = await neynarClient.lookupUserByVerification(
-          address
-        );
+        // Use the correct method to fetch user by Ethereum address
+        const userResponse = await neynarClient.lookupUserByVerification(address);
         console.log("✅ User lookup response:", userResponse);
 
         if (!userResponse?.user) {

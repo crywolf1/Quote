@@ -1,30 +1,29 @@
 "use client";
 
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useNetwork } from "wagmi";
 import { useState } from "react";
-
-// Wallet configuration
-const walletConfig = {
-  appName: "Quote App",
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-  chains: ["base"],
-  frameConfig: {
-    version: "next",
-    image: "https://quote-production-679a.up.railway.app/icon.png",
-    buttons: [
-      {
-        label: "Connect Wallet",
-        action: "post",
-      },
-    ],
-  },
-};
+import { base } from "wagmi/chains";
 
 export default function WalletConnector() {
   const { address, isConnected } = useAccount();
   const { connect, connectors, isLoading, pendingConnector } = useConnect();
   const { disconnect } = useDisconnect();
+  const { chain } = useNetwork();
   const [error, setError] = useState(null);
+
+  if (isConnected && chain?.id !== base.id) {
+    return (
+      <div className="wallet-connected">
+        <span className="wallet-address">
+          {address?.slice(0, 6)}...{address?.slice(-4)}
+        </span>
+        <p className="wrong-network">Please switch to the Base network.</p>
+        <button onClick={() => disconnect()} className="disconnect-button">
+          Disconnect
+        </button>
+      </div>
+    );
+  }
 
   if (isConnected) {
     return (
@@ -46,16 +45,21 @@ export default function WalletConnector() {
           key={connector.id}
           onClick={() => {
             setError(null);
-            connect({ connector, chainId: 8453 }); // Base chain ID
+            connect({ connector, chainId: base.id }).catch((err) => {
+              console.error("Wallet connection error:", err);
+              setError({ message: "Failed to connect wallet. Please try again." });
+            });
           }}
           disabled={!connector.ready || isLoading}
           className={`connect-button ${
             isLoading && connector.id === pendingConnector?.id ? "loading" : ""
           }`}
         >
-          {isLoading && connector.id === pendingConnector?.id
-            ? "Connecting..."
-            : `Connect ${connector.name}`}
+          {isLoading && connector.id === pendingConnector?.id ? (
+            <span className="spinner"></span>
+          ) : (
+            `Connect ${connector.name}`
+          )}
         </button>
       ))}
       {error && <div className="error-message">{error.message}</div>}
