@@ -1,4 +1,3 @@
-// src/components/FarcasterFrameProvider.js
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
@@ -10,35 +9,45 @@ export function FarcasterFrameProvider({ children }) {
   const [userData, setUserData] = useState(null);
 
   useEffect(() => {
-    const initialize = async () => {
+    const initializeSDK = async () => {
       try {
-        await sdk.actions.ready(); // 🔑 Required for Frames to load
-        const context = sdk.context;
+        // Initialize SDK
+        await sdk.actions.ready();
+        console.log("✅ SDK ready");
 
-        console.log("Farcaster context:", context);
+        const context = await sdk.actions.getFrameContext();
+        console.log("✅ Frame context:", context);
 
         if (!context?.fid) {
-          throw new Error("FID not found in context");
+          throw new Error("No FID available in frame context");
         }
 
-        const response = await fetch(
-          `${window.location.origin}/api/neynar?fid=${context.fid}`
-        );
+        const apiUrl = `https://quote-production-679a.up.railway.app/api/neynar?fid=${context.fid}`;
+        console.log("🌐 Fetching user data from:", apiUrl);
+
+        const response = await fetch(apiUrl);
+        console.log("📦 Raw fetch response:", response);
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch user data: ${response.status}`);
+          throw new Error(`API call failed: ${response.status}`);
         }
 
         const data = await response.json();
-        console.log("User data from API:", data);
+        console.log("🎉 Fetched user data:", data);
 
-        setUserData({
-          fid: context.fid,
-          username: data.username || "Guest",
-          pfpUrl: data.pfpUrl || "/default-avatar.jpg",
-        });
-      } catch (err) {
-        console.error("Farcaster SDK error:", err);
+        if (data.users && data.users.length > 0) {
+          const user = data.users[0]; // Access the first user from the array
+          setUserData({
+            username: user.username || "Guest",
+            pfpUrl: user.pfp_url || "/default-avatar.jpg",
+            fid: context.fid,
+          });
+        } else {
+          throw new Error("User data is empty or invalid");
+        }
+      } catch (error) {
+        console.error("❌ Error in initializeSDK:", error);
+        // Set fallback user data
         setUserData({
           username: "Guest",
           pfpUrl: "/default-avatar.jpg",
@@ -46,7 +55,7 @@ export function FarcasterFrameProvider({ children }) {
       }
     };
 
-    initialize();
+    initializeSDK();
   }, []);
 
   return (
