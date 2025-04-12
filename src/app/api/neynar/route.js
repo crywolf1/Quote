@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { NeynarAPIClient } from "@neynar/nodejs-sdk";
+import { NeynarAPIClient, Configuration } from "@neynar/nodejs-sdk";
 
 export async function GET(request) {
   try {
@@ -13,36 +13,46 @@ export async function GET(request) {
       throw new Error("NEYNAR_API_KEY not configured");
     }
 
-    const client = new NeynarAPIClient(process.env.NEYNAR_API_KEY);
+    // Initialize Neynar client with v2 configuration
+    const config = new Configuration({
+      apiKey: process.env.NEYNAR_API_KEY,
+      baseOptions: {
+        headers: {
+          "x-neynar-experimental": true,
+        },
+      },
+    });
+
+    const client = new NeynarAPIClient(config);
 
     if (address) {
       console.log("📱 Fetching user by address:", address);
       const response = await client.lookupUserByVerification(address);
       console.log("✅ Neynar address lookup response:", response);
 
-      if (!response?.result?.user) {
+      if (!response?.user) {
         return NextResponse.json(
           { error: "No user found for address" },
           { status: 404 }
         );
       }
 
-      return formatUserResponse(response.result.user);
+      return formatUserResponse(response.user);
     }
 
     if (fid) {
       console.log("🎯 Fetching user by FID:", fid);
-      const response = await client.lookupUser(fid);
+      const response = await client.fetchUser(fid); // Updated method name for v2
       console.log("✅ Neynar FID lookup response:", response);
 
-      if (!response?.result?.user) {
+      if (!response?.user) {
         return NextResponse.json(
           { error: "No user found for FID" },
           { status: 404 }
         );
       }
 
-      return formatUserResponse(response.result.user);
+      return formatUserResponse(response.user);
     }
 
     throw new Error("Either FID or address is required");
@@ -57,15 +67,15 @@ function formatUserResponse(user) {
     users: [
       {
         username: user.username,
-        display_name: user.display_name,
-        pfp_url: user.pfp_url,
+        display_name: user.displayName,
+        pfp_url: user.pfp?.url,
         fid: user.fid,
         profile: {
           bio: user.profile?.bio,
         },
-        follower_count: user.follower_count,
-        following_count: user.following_count,
-        verified_addresses: user.verified_addresses,
+        follower_count: user.followerCount,
+        following_count: user.followingCount,
+        verified_addresses: user.verifications?.map((v) => v.address),
       },
     ],
   });
