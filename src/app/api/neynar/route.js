@@ -10,7 +10,7 @@ export async function GET(request) {
     console.log("🔍 Request params:", { fid, address });
 
     if (!process.env.NEYNAR_API_KEY) {
-      throw new Error("NEYNAR_API_KEY not configured");
+      throw new Error("NEYNAR_API_KEY is not configured in the environment.");
     }
 
     // Initialize Neynar client
@@ -19,14 +19,12 @@ export async function GET(request) {
     // Fetch user by Ethereum address
     if (address) {
       try {
-        const userResponse = await neynarClient.lookupUserByVerification(
-          address
-        );
-        console.log("✅ User lookup response:", userResponse);
+        const userResponse = await neynarClient.lookupUserByVerification(address);
+        console.log("✅ User lookup response by address:", userResponse);
 
         if (!userResponse?.user) {
           return NextResponse.json(
-            { error: "No Farcaster account found for this address" },
+            { error: "No Farcaster account found for this Ethereum address." },
             { status: 404 }
           );
         }
@@ -35,7 +33,7 @@ export async function GET(request) {
       } catch (error) {
         console.error("❌ Neynar API Error (address lookup):", error);
         return NextResponse.json(
-          { error: "Failed to fetch user data by Ethereum address" },
+          { error: "Failed to fetch user data by Ethereum address." },
           { status: 500 }
         );
       }
@@ -49,7 +47,7 @@ export async function GET(request) {
 
         if (!userResponse?.user) {
           return NextResponse.json(
-            { error: "User not found" },
+            { error: "No Farcaster account found for this FID." },
             { status: 404 }
           );
         }
@@ -58,14 +56,14 @@ export async function GET(request) {
       } catch (error) {
         console.error("❌ Neynar API Error (FID lookup):", error);
         return NextResponse.json(
-          { error: "Failed to fetch user data by FID" },
+          { error: "Failed to fetch user data by FID." },
           { status: 500 }
         );
       }
     }
 
     // If neither address nor FID is provided
-    throw new Error("Either 'fid' or 'address' query parameter is required");
+    throw new Error("Either 'fid' or 'address' query parameter is required.");
   } catch (error) {
     console.error("❌ API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

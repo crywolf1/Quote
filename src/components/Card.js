@@ -1,19 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useAccount } from "wagmi";
-import { createCoin } from "@zoralabs/coins-sdk";
-import WalletConnector from "./WalletConnector";
-import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
+import { sdk } from "@farcaster/frame-sdk"; // Import Farcaster Frame SDK
 import "../styles/style.css";
 
 export default function Card() {
-  // Auth and wallet states
   const [userData, setUserData] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
-  const { address } = useAccount();
-  const [walletUserData, setWalletUserData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // UI states
   const [activeSection, setActiveSection] = useState("#about");
@@ -25,53 +19,57 @@ export default function Card() {
   const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-  // Memoized user data
-  const displayUser = useMemo(() => {
-    return (
-      userData ||
-      walletUserData || { username: "Guest", pfpUrl: "/default-avatar.jpg" }
-    );
-  }, [userData, walletUserData]);
-
-  // Fetch Farcaster user data
-  const fetchFarcasterUser = async (address) => {
+  // Fetch Farcaster user data using FID or wallet address
+  const fetchFarcasterUser = async (fid, address) => {
     try {
-      const response = await fetch(`/api/neynar?address=${address}`);
+      const response = await fetch(
+        `/api/neynar?${fid ? `fid=${fid}` : `address=${address}`}`
+      );
       const data = await response.json();
 
       if (response.ok && data.users?.[0]) {
         setUserData(data.users[0]);
       } else {
-        setErrorMessage("No Farcaster account found for this wallet.");
+        setErrorMessage("No Farcaster account found for this user.");
       }
     } catch (error) {
       console.error("Error fetching Farcaster user data:", error);
       setErrorMessage("Failed to fetch user data. Please try again.");
-    }
-  };
-
-  // Fetch user data by wallet address
-  const fetchWalletUser = useCallback(async () => {
-    if (!address) return;
-
-    try {
-      setIsLoading(true);
-      const response = await fetch(`/api/neynar?address=${address}`);
-      const data = await response.json();
-
-      if (response.ok && data.users?.[0]) {
-        setWalletUserData(data.users[0]);
-      } else {
-        setWalletUserData(null);
-        setErrorMessage("No Farcaster account found for this wallet.");
-      }
-    } catch (error) {
-      console.error("Failed to fetch wallet user:", error);
-      setErrorMessage("Failed to fetch wallet user. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  }, [address]);
+  };
+
+  // Initialize Farcaster Frame SDK and fetch user data
+  useEffect(() => {
+    const initializeFarcaster = async () => {
+      try {
+        // Wait for the Frame SDK to be ready
+        await sdk.actions.ready();
+
+        // Get the user's Frame context (FID and wallet address)
+        const context = await sdk.actions.getFrameContext();
+        console.log("Farcaster Frame Context:", context);
+
+        if (context?.fid) {
+          // Fetch user data using FID
+          fetchFarcasterUser(context.fid, null);
+        } else if (context?.address) {
+          // Fetch user data using wallet address
+          fetchFarcasterUser(null, context.address);
+        } else {
+          setErrorMessage("No Farcaster user context found.");
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Error initializing Farcaster Frame SDK:", error);
+        setErrorMessage("Failed to initialize Farcaster. Please try again.");
+        setIsLoading(false);
+      }
+    };
+
+    initializeFarcaster();
+  }, []);
 
   // Fetch quotes from API
   const fetchQuotes = useCallback(async () => {
@@ -194,46 +192,6 @@ export default function Card() {
     }
   };
 
-  const mintQuote = async () => {
-    if (!address) {
-      setErrorMessage("Please connect your wallet first.");
-      return;
-    }
-    if (!quote.trim()) {
-      setErrorMessage("Quote cannot be empty!");
-      return;
-    }
-
-    try {
-      const coin = await createCoin({
-        metadata: {
-          name: `Quote by ${
-            displayUser?.displayName || displayUser?.username || "Anonymous"
-          }`,
-          description: quote,
-          image: displayUser?.pfpUrl || "/default-avatar.jpg",
-        },
-        owner: address,
-      });
-
-      setSuccessMessage("Quote minted as a Zora Coin!");
-      setQuote("");
-      await sendQuote();
-    } catch (error) {
-      console.error("Failed to mint Coin:", error);
-      setErrorMessage("Failed to mint quote: " + error.message);
-    }
-  };
-
-  // Effects
-  useEffect(() => {
-    fetchWalletUser();
-  }, [fetchWalletUser]);
-
-  useEffect(() => {
-    fetchQuotes();
-  }, [fetchQuotes]);
-
   // Loading state
   if (isLoading) {
     return (
@@ -244,17 +202,31 @@ export default function Card() {
     );
   }
 
+  // Error state
+  if (errorMessage) {
+    return (
+      <div className="error-container">
+        <p>{errorMessage}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="card" data-state={activeSection}>
-      <WalletConnector onWalletConnect={fetchFarcasterUser} />
-
       {userData ? (
         <div>
           <h1>Welcome, {userData.display_name || userData.username}!</h1>
-          <img src={userData.pfp_url || "/default-avatar.jpg"} alt="Profile" />
+          <img
+            src={userData.pfp_url || "/default-avatar.jpg"}
+            alt="Profile"
+            className="card-avatar"
+          />
+          <p>{userData.profile?.bio || "No bio available."}</p>
+          <p>Followers: {userData.follower_count}</p>
+          <p>Following: {userData.following_count}</p>
         </div>
       ) : (
-        <p>{errorMessage || "Connect your wallet to fetch user data."}</p>
+        <p>No user data available.</p>
       )}
 
       <div className="card-main">
@@ -270,55 +242,6 @@ export default function Card() {
             <p className="card-desc">
               {quotes[currentIndex]?.text || "No quotes yet."}
             </p>
-          </div>
-        </div>
-
-        {/* All Quotes Section */}
-        <div
-          className={`card-section ${
-            activeSection === "#experience" ? "is-active" : ""
-          }`}
-          id="experience"
-        >
-          <div className="card-content">
-            <div className="card-subtitle">All Quotes</div>
-            <div className="quotes-list">
-              {quotes.length > 0 ? (
-                quotes.map((quote, index) => (
-                  <div key={quote._id} className="quote-item">
-                    {editIndex === index ? (
-                      <div>
-                        <textarea
-                          value={editedText}
-                          className="text-area1"
-                          onChange={(e) => setEditedText(e.target.value)}
-                          maxLength={240}
-                        />
-                        <button onClick={handleUpdateQuote}>Save</button>
-                      </div>
-                    ) : (
-                      <p>{quote.text}</p>
-                    )}
-                    <div className="quote-actions">
-                      <button
-                        className="edit-btn"
-                        onClick={() => handleEdit(index)}
-                      >
-                        <FaEdit />
-                      </button>
-                      <button
-                        className="delete-btn"
-                        onClick={() => handleDelete(index)}
-                      >
-                        <FaTrashAlt />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p>No quotes available.</p>
-              )}
-            </div>
           </div>
         </div>
 
@@ -351,52 +274,11 @@ export default function Card() {
               >
                 {isSaving ? "Saving..." : "Save Quote"}
               </button>
-              <button
-                className="contact-me"
-                onClick={mintQuote}
-                disabled={isSaving}
-              >
-                {isSaving ? "Minting..." : "Mint as Zora Coin"}
-              </button>
             </div>
             {successMessage && (
               <p className="success-message">{successMessage}</p>
             )}
             {errorMessage && <p className="error-message">{errorMessage}</p>}
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <div className="card-container2">
-          {activeSection === "#about" && (
-            <div className="card-buttons1">
-              <button className="nav-btn left" onClick={handleLeftClick}>
-                <FaArrowLeft size={30} />
-              </button>
-              <button className="nav-btn right" onClick={handleRightClick}>
-                <FaArrowRight size={30} />
-              </button>
-            </div>
-          )}
-          <div className="card-buttons">
-            <button
-              className={activeSection === "#about" ? "is-active" : ""}
-              onClick={() => handleSectionChange("#about")}
-            >
-              Quote
-            </button>
-            <button
-              className={activeSection === "#experience" ? "is-active" : ""}
-              onClick={() => handleSectionChange("#experience")}
-            >
-              All Quotes
-            </button>
-            <button
-              className={activeSection === "#contact" ? "is-active" : ""}
-              onClick={() => handleSectionChange("#contact")}
-            >
-              Add
-            </button>
           </div>
         </div>
       </div>
