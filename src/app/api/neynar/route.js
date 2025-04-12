@@ -7,48 +7,48 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const fid = searchParams.get("fid");
 
+    console.log("🔥 Incoming request to /api/neynar with fid:", fid);
+
     if (!fid) {
-      console.error("Missing FID");
-      return NextResponse.json({ error: "Missing FID" }, { status: 400 });
+      console.warn("❌ Missing fid in query params");
+      return NextResponse.json({ error: "Missing fid" }, { status: 400 });
     }
 
-    const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
+    const apiKey = process.env.NEYNAR_API_KEY;
+    if (!apiKey) {
+      console.error("❌ Missing NEYNAR_API_KEY in env");
+      return NextResponse.json({ error: "Missing API key" }, { status: 500 });
+    }
+
     const response = await fetch(
       `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
       {
         headers: {
-          accept: "application/json",
-          api_key: NEYNAR_API_KEY,
+          "Content-Type": "application/json",
+          api_key: apiKey,
         },
       }
     );
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Neynar API Error:", errorData);
-      return NextResponse.json(
-        { error: "Failed to fetch from Neynar" },
-        { status: 500 }
-      );
+    const data = await response.json();
+    console.log("✅ Neynar API response:", data);
+
+    if (!data.users || data.users.length === 0) {
+      console.warn("❌ No users found for fid:", fid);
+      return NextResponse.json({ error: "Users not found" }, { status: 404 });
     }
 
-    const json = await response.json();
-    const user = json.users[0];
-
-    if (!user) {
-      console.error("User not found in Neynar response");
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const user = data.users[0];
 
     return NextResponse.json({
       username: user.username,
-      displayName: user.display_name,
       pfpUrl: user.pfp_url,
+      fid: user.fid,
     });
-  } catch (err) {
-    console.error("API Route Error:", err);
+  } catch (error) {
+    console.error("❌ Error in /api/neynar:", error.message);
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
