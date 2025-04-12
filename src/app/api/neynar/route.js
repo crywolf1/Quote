@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { NeynarAPIClient, Configuration } from "@neynar/nodejs-sdk";
+import { NeynarV2 } from "@neynar/nodejs-sdk";
 
 export async function GET(request) {
   try {
@@ -9,50 +9,30 @@ export async function GET(request) {
 
     console.log("🔍 Request params:", { fid, address });
 
-    if (!process.env.NEYNAR_API_KEY) {
-      throw new Error("NEYNAR_API_KEY not configured");
-    }
-
-    const config = new Configuration({
-      apiKey: process.env.NEYNAR_API_KEY,
-      baseOptions: {
-        headers: {
-          "x-neynar-experimental": true,
-        },
-      },
-    });
-
-    const client = new NeynarAPIClient(config);
+    const neynarClient = new NeynarV2(process.env.NEYNAR_API_KEY);
 
     if (address) {
       console.log("📱 Fetching user by address:", address);
-      // Updated method name for v2
-      const response = await client.getUserByVerification(address);
+      const response = await neynarClient.fetchUserByVerification(address);
       console.log("✅ Neynar address lookup response:", response);
 
-      if (!response?.result?.user) {
-        return NextResponse.json(
-          { error: "No user found for address" },
-          { status: 404 }
-        );
+      if (!response?.result) {
+        return NextResponse.json({ error: "No user found for address" }, { status: 404 });
       }
 
-      return formatUserResponse(response.result.user);
+      return formatUserResponse(response.result);
     }
 
     if (fid) {
       console.log("🎯 Fetching user by FID:", fid);
-      const response = await client.lookupUser(fid);
+      const response = await neynarClient.fetchUser(fid);
       console.log("✅ Neynar FID lookup response:", response);
 
-      if (!response?.result?.user) {
-        return NextResponse.json(
-          { error: "No user found for FID" },
-          { status: 404 }
-        );
+      if (!response?.result) {
+        return NextResponse.json({ error: "No user found for FID" }, { status: 404 });
       }
 
-      return formatUserResponse(response.result.user);
+      return formatUserResponse(response.result);
     }
 
     throw new Error("Either FID or address is required");
@@ -64,20 +44,17 @@ export async function GET(request) {
 
 function formatUserResponse(user) {
   return NextResponse.json({
-    users: [
-      {
-        username: user.username,
-        display_name: user.display_name || user.username,
-        pfp_url: user.pfp?.url || user.pfp_url,
-        fid: user.fid,
-        profile: {
-          bio: user.profile?.bio,
-        },
-        follower_count: user.follower_count || user.followerCount,
-        following_count: user.following_count || user.followingCount,
-        verified_addresses:
-          user.verified_addresses || user.verifications?.map((v) => v.address),
+    users: [{
+      username: user.username,
+      display_name: user.displayName,
+      pfp_url: user.pfp?.url,
+      fid: user.fid,
+      profile: {
+        bio: user.profile?.bio,
       },
-    ],
+      follower_count: user.followerCount,
+      following_count: user.followingCount,
+      verified_addresses: user.verifications?.map(v => v.address) || []
+    }]
   });
 }

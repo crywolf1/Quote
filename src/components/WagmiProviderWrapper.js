@@ -41,3 +41,11 @@ const config = createConfig({
     injected(),
   ],
 });
+
+export default function WagmiProviderWrapper({ children }) {
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </WagmiProvider>
+  );
+}
