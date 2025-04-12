@@ -1,18 +1,15 @@
-"use client";
-
-import { useAccount, useConnect } from "wagmi";
-
-export default function WalletConnector() {
-  const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
-
-  if (isConnected) {
-    return <div>Connected as {address}</div>;
-  }
-
-  return (
-    <button onClick={() => connect({ connector: connectors[0] })}>
-      Connect Wallet
-    </button>
-  );
-}
+export const walletConfig = {
+  appName: "Quote App",
+  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+  chains: ["base"],
+  frameConfig: {
+    version: "next",
+    image: "https://quote-production-679a.up.railway.app/icon.png",
+    buttons: [
+      {
+        label: "Connect Wallet",
+        action: "post",
+      },
+    ],
+  },
+};

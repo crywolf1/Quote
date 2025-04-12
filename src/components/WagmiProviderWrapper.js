@@ -4,8 +4,8 @@ import { WagmiProvider, createConfig, http } from "wagmi";
 import { base } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { injected, walletConnect } from "wagmi/connectors";
+import { farcasterFrame } from "@farcaster/frame-wagmi-connector";
 
-// Create a new QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -15,12 +15,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// Your WalletConnect project ID from dashboard.walletconnect.com
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
-
-if (!projectId) {
-  console.warn("⚠️ WalletConnect projectId not configured");
-}
 
 const config = createConfig({
   chains: [base],
@@ -28,12 +23,14 @@ const config = createConfig({
     [base.id]: http(),
   },
   connectors: [
-    injected({
-      target: "metaMask",
+    farcasterFrame({
+      name: "Quote App",
+      description: "Quote App using Farcaster",
+      url: "https://quote-production-679a.up.railway.app",
+      icons: ["https://quote-production-679a.up.railway.app/icon.png"],
     }),
     walletConnect({
       projectId,
-      showQrModal: true,
       metadata: {
         name: "Quote App",
         description: "Quote App using Farcaster",
@@ -41,13 +38,6 @@ const config = createConfig({
         icons: ["https://quote-production-679a.up.railway.app/icon.png"],
       },
     }),
+    injected(),
   ],
 });
-
-export default function WagmiProviderWrapper({ children }) {
-  return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </WagmiProvider>
-  );
-}
