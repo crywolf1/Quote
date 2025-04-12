@@ -1,7 +1,6 @@
 "use client";
-
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useFarcaster } from "./FarcasterFrameProvider"; // Import the hook
-import { useState, useEffect } from "react";
 import { useAccount } from "wagmi"; // For wallet address
 import { createCoin } from "@zoralabs/coins-sdk"; // For Zora token minting
 import WalletConnector from "./WalletConnector"; // Wallet connection component
