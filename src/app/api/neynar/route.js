@@ -16,10 +16,12 @@ export async function GET(request) {
     // Initialize Neynar client
     const neynarClient = new NeynarV2(process.env.NEYNAR_API_KEY);
 
+    // Fetch user by Ethereum address
     if (address) {
       try {
-        // Use the correct method to fetch user by Ethereum address
-        const userResponse = await neynarClient.lookupUserByVerification(address);
+        const userResponse = await neynarClient.lookupUserByVerification(
+          address
+        );
         console.log("✅ User lookup response:", userResponse);
 
         if (!userResponse?.user) {
@@ -31,34 +33,39 @@ export async function GET(request) {
 
         return formatUserResponse(userResponse.user);
       } catch (error) {
-        console.error("❌ Neynar API Error:", error);
+        console.error("❌ Neynar API Error (address lookup):", error);
         return NextResponse.json(
-          { error: "Failed to fetch user data" },
+          { error: "Failed to fetch user data by Ethereum address" },
           { status: 500 }
         );
       }
     }
 
+    // Fetch user by FID
     if (fid) {
       try {
         const userResponse = await neynarClient.lookupUser(fid);
+        console.log("✅ User lookup response by FID:", userResponse);
+
         if (!userResponse?.user) {
           return NextResponse.json(
             { error: "User not found" },
             { status: 404 }
           );
         }
+
         return formatUserResponse(userResponse.user);
       } catch (error) {
-        console.error("❌ Neynar API Error:", error);
+        console.error("❌ Neynar API Error (FID lookup):", error);
         return NextResponse.json(
-          { error: "Failed to fetch user data" },
+          { error: "Failed to fetch user data by FID" },
           { status: 500 }
         );
       }
     }
 
-    throw new Error("Either FID or address is required");
+    // If neither address nor FID is provided
+    throw new Error("Either 'fid' or 'address' query parameter is required");
   } catch (error) {
     console.error("❌ API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

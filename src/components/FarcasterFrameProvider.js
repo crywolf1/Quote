@@ -15,9 +15,15 @@ export function FarcasterFrameProvider({ children }) {
 
   useEffect(() => {
     const initializeSDK = async () => {
+      const timeout = new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Frame SDK initialization timed out")),
+          5000
+        )
+      );
+
       try {
-        // Initialize Frame SDK
-        await sdk.actions.ready();
+        await Promise.race([sdk.actions.ready(), timeout]);
         console.log("✅ Frame SDK ready");
         setIsFrameReady(true);
 
@@ -28,6 +34,10 @@ export function FarcasterFrameProvider({ children }) {
         if (context?.fid) {
           await handleFarcasterUser(context.fid);
           return;
+        } else {
+          console.warn(
+            "⚠️ No Frame context found. Falling back to wallet authentication."
+          );
         }
 
         // Try wallet auth if no frame context
@@ -55,10 +65,13 @@ export function FarcasterFrameProvider({ children }) {
       if (response.ok && data.users?.[0]) {
         setUserData(formatUserData(data.users[0]));
         setAuthStatus("authenticated");
+      } else {
+        console.warn("⚠️ No user found for the provided FID.");
+        setAuthStatus("guest");
       }
     } catch (error) {
       console.error("❌ Farcaster auth error:", error);
-      throw error;
+      setAuthStatus("failed");
     }
   };
 
@@ -70,25 +83,36 @@ export function FarcasterFrameProvider({ children }) {
       if (response.ok && data.users?.[0]) {
         setUserData(formatUserData(data.users[0]));
         setAuthStatus("authenticated");
+      } else {
+        console.warn("⚠️ No user found for the provided wallet address.");
+        setAuthStatus("guest");
       }
     } catch (error) {
       console.error("❌ Wallet auth error:", error);
-      throw error;
+      setAuthStatus("failed");
     }
   };
 
   const formatUserData = (user) => ({
-    username: user.username,
-    displayName: user.display_name,
-    pfpUrl: user.pfp_url,
-    fid: user.fid,
+    username: user.username || "Unknown",
+    displayName: user.display_name || "Unknown",
+    pfpUrl: user.pfp_url || "/default-avatar.jpg",
+    fid: user.fid || null,
     profile: {
-      bio: user.profile?.bio,
+      bio: user.profile?.bio || "",
     },
-    followerCount: user.follower_count,
-    followingCount: user.following_count,
-    verifiedAddresses: user.verified_addresses,
+    followerCount: user.follower_count || 0,
+    followingCount: user.following_count || 0,
+    verifiedAddresses: user.verified_addresses || [],
   });
+
+  useEffect(() => {
+    if (authStatus === "failed") {
+      console.error(
+        "⚠️ Authentication failed. Check the Frame SDK or API configuration."
+      );
+    }
+  }, [authStatus]);
 
   return (
     <FarcasterContext.Provider

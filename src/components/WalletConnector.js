@@ -1,31 +1,33 @@
 "use client";
 
 import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { base } from "wagmi/chains";
 
-export default function WalletConnector() {
-  const { address, isConnected, connector } = useAccount();
+export default function WalletConnector({ onWalletConnect }) {
+  const { address, isConnected } = useAccount();
   const { connect, connectors, isLoading, pendingConnector } = useConnect();
   const { disconnect } = useDisconnect();
   const [error, setError] = useState(null);
 
-  // Fallback to connector.chainId if useNetwork is unavailable
-  const chainId = connector?.chainId || null;
+  const handleConnect = async (connector) => {
+    setError(null);
+    try {
+      await connect({ connector, chainId: base.id });
+      if (onWalletConnect) {
+        onWalletConnect(address); // Pass the connected address to the parent component
+      }
+    } catch (err) {
+      console.error("Wallet connection error:", err);
+      setError({ message: "Failed to connect wallet. Please try again." });
+    }
+  };
 
-  if (isConnected && chainId !== base.id) {
-    return (
-      <div className="wallet-connected">
-        <span className="wallet-address">
-          {address?.slice(0, 6)}...{address?.slice(-4)}
-        </span>
-        <p className="wrong-network">Please switch to the Base network.</p>
-        <button onClick={() => disconnect()} className="disconnect-button">
-          Disconnect
-        </button>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (isConnected && onWalletConnect) {
+      onWalletConnect(address); // Automatically fetch user data if already connected
+    }
+  }, [isConnected, address, onWalletConnect]);
 
   if (isConnected) {
     return (
@@ -45,15 +47,7 @@ export default function WalletConnector() {
       {connectors.map((connector) => (
         <button
           key={connector.id}
-          onClick={() => {
-            setError(null);
-            connect({ connector, chainId: base.id }).catch((err) => {
-              console.error("Wallet connection error:", err);
-              setError({
-                message: "Failed to connect wallet. Please try again.",
-              });
-            });
-          }}
+          onClick={() => handleConnect(connector)}
           disabled={!connector.ready || isLoading}
           className={`connect-button ${
             isLoading && connector.id === pendingConnector?.id ? "loading" : ""

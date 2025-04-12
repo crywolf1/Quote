@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useFarcaster } from "./FarcasterFrameProvider";
 import { useAccount } from "wagmi";
 import { createCoin } from "@zoralabs/coins-sdk";
 import WalletConnector from "./WalletConnector";
@@ -10,7 +9,8 @@ import "../styles/style.css";
 
 export default function Card() {
   // Auth and wallet states
-  const { userData, authStatus } = useFarcaster();
+  const [userData, setUserData] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
   const { address } = useAccount();
   const [walletUserData, setWalletUserData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -18,19 +18,37 @@ export default function Card() {
   // UI states
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
-  const [message, setMessage] = useState("");
   const [quotes, setQuotes] = useState([]);
   const [editIndex, setEditIndex] = useState(null);
   const [editedText, setEditedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
 
   // Memoized user data
   const displayUser = useMemo(() => {
-    return userData || walletUserData;
+    return (
+      userData ||
+      walletUserData || { username: "Guest", pfpUrl: "/default-avatar.jpg" }
+    );
   }, [userData, walletUserData]);
+
+  // Fetch Farcaster user data
+  const fetchFarcasterUser = async (address) => {
+    try {
+      const response = await fetch(`/api/neynar?address=${address}`);
+      const data = await response.json();
+
+      if (response.ok && data.users?.[0]) {
+        setUserData(data.users[0]);
+      } else {
+        setErrorMessage("No Farcaster account found for this wallet.");
+      }
+    } catch (error) {
+      console.error("Error fetching Farcaster user data:", error);
+      setErrorMessage("Failed to fetch user data. Please try again.");
+    }
+  };
 
   // Fetch user data by wallet address
   const fetchWalletUser = useCallback(async () => {
@@ -45,11 +63,11 @@ export default function Card() {
         setWalletUserData(data.users[0]);
       } else {
         setWalletUserData(null);
-        setMessage("No Farcaster account found for this wallet.");
+        setErrorMessage("No Farcaster account found for this wallet.");
       }
     } catch (error) {
       console.error("Failed to fetch wallet user:", error);
-      setMessage("Failed to fetch wallet user. Please try again.");
+      setErrorMessage("Failed to fetch wallet user. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -66,9 +84,12 @@ export default function Card() {
         if (data.quotes.length > 0) {
           setCurrentIndex(Math.floor(Math.random() * data.quotes.length));
         }
+      } else {
+        setErrorMessage("Failed to fetch quotes.");
       }
     } catch (error) {
-      setMessage("Failed to fetch quotes.");
+      console.error("Error fetching quotes:", error);
+      setErrorMessage("Failed to fetch quotes. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -82,7 +103,7 @@ export default function Card() {
 
   const handleUpdateQuote = async () => {
     if (!editedText.trim()) {
-      setMessage("Quote cannot be empty!");
+      setErrorMessage("Quote cannot be empty!");
       return;
     }
 
@@ -94,15 +115,16 @@ export default function Card() {
       });
 
       if (res.ok) {
-        setMessage("Quote updated successfully!");
+        setSuccessMessage("Quote updated successfully!");
         setEditIndex(null);
         fetchQuotes();
       } else {
         const data = await res.json();
-        setMessage(data.error || "Failed to update quote.");
+        setErrorMessage(data.error || "Failed to update quote.");
       }
     } catch (error) {
-      setMessage("Failed to update quote. Please try again.");
+      console.error("Failed to update quote:", error);
+      setErrorMessage("Failed to update quote. Please try again.");
     }
   };
 
@@ -113,14 +135,15 @@ export default function Card() {
       });
 
       if (res.ok) {
-        setMessage("Quote deleted successfully!");
+        setSuccessMessage("Quote deleted successfully!");
         fetchQuotes();
       } else {
         const data = await res.json();
-        setMessage(data.error || "Failed to delete quote.");
+        setErrorMessage(data.error || "Failed to delete quote.");
       }
     } catch (error) {
-      setMessage("Failed to delete quote. Please try again.");
+      console.error("Failed to delete quote:", error);
+      setErrorMessage("Failed to delete quote. Please try again.");
     }
   };
 
@@ -148,6 +171,7 @@ export default function Card() {
     }
 
     try {
+      setIsSaving(true);
       const res = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -163,17 +187,20 @@ export default function Card() {
         setErrorMessage(data.error || "Failed to save quote.");
       }
     } catch (error) {
+      console.error("Failed to save quote:", error);
       setErrorMessage("Failed to save quote. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const mintQuote = async () => {
     if (!address) {
-      setMessage("Please connect your wallet first.");
+      setErrorMessage("Please connect your wallet first.");
       return;
     }
     if (!quote.trim()) {
-      setMessage("Quote cannot be empty!");
+      setErrorMessage("Quote cannot be empty!");
       return;
     }
 
@@ -189,12 +216,12 @@ export default function Card() {
         owner: address,
       });
 
-      setMessage("Quote minted as a Zora Coin!");
+      setSuccessMessage("Quote minted as a Zora Coin!");
       setQuote("");
       await sendQuote();
     } catch (error) {
       console.error("Failed to mint Coin:", error);
-      setMessage("Failed to mint quote: " + error.message);
+      setErrorMessage("Failed to mint quote: " + error.message);
     }
   };
 
@@ -208,7 +235,7 @@ export default function Card() {
   }, [fetchQuotes]);
 
   // Loading state
-  if (authStatus === "loading" || isLoading) {
+  if (isLoading) {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
@@ -217,39 +244,18 @@ export default function Card() {
     );
   }
 
-  // Error state
-  if (authStatus === "failed") {
-    return (
-      <div className="error-container">
-        <p>Failed to load user data. Please try again.</p>
-        <WalletConnector />
-      </div>
-    );
-  }
-
   return (
     <div className="card" data-state={activeSection}>
-      <div className="card-header">
-        <img
-          src={displayUser?.pfpUrl || "/default-avatar.jpg"}
-          alt="Avatar"
-          className="card-avatar"
-          onError={(e) => {
-            e.target.src = "/default-avatar.jpg";
-          }}
-        />
-        <h1 className="card-fullname">
-          Welcome,{" "}
-          {displayUser?.displayName || displayUser?.username || "Guest"}!
-        </h1>
-        {address && !walletUserData && (
-          <p className="wallet-info">
-            Connected wallet has no associated Farcaster account
-          </p>
-        )}
-      </div>
+      <WalletConnector onWalletConnect={fetchFarcasterUser} />
 
-      <WalletConnector />
+      {userData ? (
+        <div>
+          <h1>Welcome, {userData.display_name || userData.username}!</h1>
+          <img src={userData.pfp_url || "/default-avatar.jpg"} alt="Profile" />
+        </div>
+      ) : (
+        <p>{errorMessage || "Connect your wallet to fetch user data."}</p>
+      )}
 
       <div className="card-main">
         {/* Quote Display Section */}
@@ -345,11 +351,18 @@ export default function Card() {
               >
                 {isSaving ? "Saving..." : "Save Quote"}
               </button>
-              <button className="contact-me" onClick={mintQuote}>
-                Mint as Zora Coin
+              <button
+                className="contact-me"
+                onClick={mintQuote}
+                disabled={isSaving}
+              >
+                {isSaving ? "Minting..." : "Mint as Zora Coin"}
               </button>
             </div>
-            {message && <p className="message">{message}</p>}
+            {successMessage && (
+              <p className="success-message">{successMessage}</p>
+            )}
+            {errorMessage && <p className="error-message">{errorMessage}</p>}
           </div>
         </div>
 
