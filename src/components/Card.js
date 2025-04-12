@@ -44,6 +44,11 @@ export default function Card() {
   useEffect(() => {
     const initializeFarcaster = async () => {
       try {
+        // Check if the SDK is available
+        if (!sdk || !sdk.actions) {
+          throw new Error("Farcaster Frame SDK is not available.");
+        }
+
         // Wait for the Frame SDK to be ready
         await sdk.actions.ready();
 
@@ -63,7 +68,9 @@ export default function Card() {
         }
       } catch (error) {
         console.error("Error initializing Farcaster Frame SDK:", error);
-        setErrorMessage("Failed to initialize Farcaster. Please try again.");
+        setErrorMessage(
+          error.message || "Failed to initialize Farcaster. Please try again."
+        );
         setIsLoading(false);
       }
     };
