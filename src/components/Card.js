@@ -13,8 +13,6 @@ export default function Card() {
   const { address } = useAccount(); // Get wallet address
 
   console.log("userData in Card.js:", userData);
-  const username = userData?.username || "Guest";
-  const pfp_Url = userData?.pfp_Url || "/default-avatar.jpg";
 
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
