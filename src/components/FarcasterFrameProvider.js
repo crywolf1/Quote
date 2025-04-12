@@ -2,52 +2,74 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { sdk } from "@farcaster/frame-sdk";
+import { getSignInMessage } from "@farcaster/auth-kit";
 
 const FarcasterContext = createContext();
 
 export function FarcasterFrameProvider({ children }) {
   const [userData, setUserData] = useState(null);
+  const [authStatus, setAuthStatus] = useState("loading");
 
   useEffect(() => {
     const initializeSDK = async () => {
       try {
-        // Initialize SDK
+        // 1. Initialize Frame SDK
         await sdk.actions.ready();
-        console.log("✅ SDK ready");
+        console.log("✅ Frame SDK ready");
 
+        // 2. Get frame context for FID
         const context = await sdk.actions.getFrameContext();
         console.log("✅ Frame context:", context);
 
         if (!context?.fid) {
-          throw new Error("No FID available in frame context");
+          throw new Error("No FID in frame context");
         }
 
-        const apiUrl = `https://quote-production-679a.up.railway.app/api/neynar?fid=${context.fid}`;
-        console.log("🌐 Fetching user data from:", apiUrl);
+        // 3. Get sign-in message
+        const message = await getSignInMessage({
+          fid: context.fid,
+          siweUri: "https://quote-production-679a.up.railway.app",
+          domain: "quote-production-679a.up.railway.app",
+        });
+        console.log("✅ Sign message generated");
+
+        // 4. Fetch user data from Neynar
+        const apiUrl = `/api/neynar?fid=${context.fid}`; // Changed to relative URL
+        console.log("🔍 Fetching user data:", apiUrl);
 
         const response = await fetch(apiUrl);
-        console.log("📦 Raw fetch response:", response);
+        const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(`API call failed: ${response.status}`);
+          throw new Error(`Neynar API error: ${data.error || response.status}`);
         }
 
-        const data = await response.json();
-        console.log("🎉 Fetched user data:", data);
-
-        if (data.users && data.users.length > 0) {
-          const user = data.users[0]; // Access the first user from the array
+        // 5. Set authenticated user data - Updated to match new response structure
+        if (data.users?.[0]) {
+          const user = data.users[0];
           setUserData({
-            username: user.username || "Guest",
-            pfpUrl: user.pfp_url || "/default-avatar.jpg",
-            fid: context.fid,
+            username: user.username,
+            displayName: user.display_name,
+            pfpUrl: user.pfp_url,
+            fid: user.fid,
+            profile: {
+              bio: user.profile?.bio,
+            },
+            followerCount: user.follower_count,
+            followingCount: user.following_count,
+            verifiedAddresses: user.verified_addresses,
           });
+          setAuthStatus("authenticated");
+          console.log(
+            "✅ User authenticated:",
+            user.display_name || user.username
+          );
         } else {
-          throw new Error("User data is empty or invalid");
+          throw new Error("Invalid user data structure");
         }
       } catch (error) {
-        console.error("❌ Error in initializeSDK:", error);
-        // Set fallback user data
+        console.error("❌ Auth error:", error);
+        setAuthStatus("failed");
         setUserData({
           username: "Guest",
           pfpUrl: "/default-avatar.jpg",
@@ -58,13 +80,23 @@ export function FarcasterFrameProvider({ children }) {
     initializeSDK();
   }, []);
 
+  const value = {
+    userData,
+    authStatus,
+    isAuthenticated: authStatus === "authenticated",
+  };
+
   return (
-    <FarcasterContext.Provider value={{ userData }}>
+    <FarcasterContext.Provider value={value}>
       {children}
     </FarcasterContext.Provider>
   );
 }
 
 export function useFarcaster() {
-  return useContext(FarcasterContext);
+  const context = useContext(FarcasterContext);
+  if (!context) {
+    throw new Error("useFarcaster must be used within FarcasterFrameProvider");
+  }
+  return context;
 }

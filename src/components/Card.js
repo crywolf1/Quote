@@ -9,8 +9,8 @@ import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
 export default function Card() {
-  const { userData } = useFarcaster(); // Get user data from context
-  const { address } = useAccount(); // Get wallet address
+  const { userData, authStatus } = useFarcaster(); // Add authStatus
+  const { address } = useAccount();
 
   console.log("userData in Card.js:", userData);
 
@@ -92,16 +92,17 @@ export default function Card() {
     try {
       const coin = await createCoin({
         metadata: {
-          name: `Quote by ${username}`,
+          name: `Quote by ${
+            userData?.displayName || userData?.username || "Anonymous"
+          }`,
           description: quote,
-          image: pfp_url, // Use user's profile picture as token image
+          image: userData?.pfpUrl || "/default-avatar.jpg",
         },
         owner: address,
       });
       console.log("Coin minted:", coin);
       setMessage("Quote minted as a Zora Coin!");
-      setQuote(""); // Clear input after minting
-      // Optionally save to API as well
+      setQuote("");
       await sendQuote();
     } catch (error) {
       console.error("Failed to mint Coin:", error);
@@ -165,11 +166,25 @@ export default function Card() {
     setActiveSection(section);
   };
 
+  if (authStatus === "loading") {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">
-        <img src={userData?.pfpUrl} alt="Avatar" className="card-avatar" />
-        <h1 className="card-fullname">Welcome, {userData?.username}!</h1>
+        <img
+          src={userData?.pfpUrl || "/default-avatar.jpg"}
+          alt="Avatar"
+          className="card-avatar"
+          onError={(e) => {
+            console.log("Failed to load profile image");
+            e.target.src = "/default-avatar.jpg";
+          }}
+        />
+        <h1 className="card-fullname">
+          Welcome, {userData?.displayName || userData?.username || "Guest"}!
+        </h1>
       </div>
       {/* Wallet Connector */}
       <WalletConnector />

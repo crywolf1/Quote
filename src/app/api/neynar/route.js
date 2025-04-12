@@ -1,6 +1,5 @@
-// src/app/api/neynar/route.js
-
 import { NextResponse } from "next/server";
+import { NeynarAPIClient } from "@neynar/nodejs-sdk";
 
 export async function GET(request) {
   try {
@@ -14,39 +13,40 @@ export async function GET(request) {
       return NextResponse.json({ error: "Missing fid" }, { status: 400 });
     }
 
-    const apiKey = process.env.NEYNAR_API_KEY;
-    if (!apiKey) {
-      console.error("❌ Missing NEYNAR_API_KEY in env");
-      return NextResponse.json({ error: "Missing API key" }, { status: 500 });
+    // Initialize Neynar client
+    const client = new NeynarAPIClient(process.env.NEYNAR_API_KEY);
+    console.log("✅ Neynar client initialized");
+
+    // Use the SDK to fetch user data
+    const response = await client.lookupUser(fid);
+    console.log("✅ Neynar API response:", response);
+
+    if (!response?.result?.user) {
+      console.warn("❌ No user found for fid:", fid);
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const response = await fetch(
-      `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          api_key: apiKey,
-        },
-      }
-    );
+    const user = response.result.user;
 
-    const data = await response.json();
-    console.log("✅ Neynar API response:", data);
-
-    if (!data.users || data.users.length === 0) {
-      console.warn("❌ No users found for fid:", fid);
-      return NextResponse.json({ error: "Users not found" }, { status: 404 });
-    }
-
-    const user = data.users[0];
-
+    // Return structured user data matching Neynar v2 response
     return NextResponse.json({
-      username: user.username,
-      pfpUrl: user.pfp_url,
-      fid: user.fid,
+      users: [
+        {
+          username: user.username,
+          display_name: user.display_name,
+          pfp_url: user.pfp_url,
+          fid: user.fid,
+          profile: {
+            bio: user.profile?.bio,
+          },
+          follower_count: user.follower_count,
+          following_count: user.following_count,
+          verified_addresses: user.verified_addresses,
+        },
+      ],
     });
   } catch (error) {
-    console.error("❌ Error in /api/neynar:", error.message);
+    console.error("❌ Error in /api/neynar:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
