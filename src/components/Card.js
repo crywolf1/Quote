@@ -9,10 +9,15 @@ import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
 export default function Card() {
-  const { userData, authStatus } = useFarcaster(); // Add authStatus
+  const { userData, authStatus } = useFarcaster();
   const { address } = useAccount();
-
+  const [walletUserData, setWalletUserData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   console.log("userData in Card.js:", userData);
+
+  const displayUser = useMemo(() => {
+    return userData || walletUserData;
+  }, [userData, walletUserData]);
 
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
@@ -22,9 +27,36 @@ export default function Card() {
   const [editedText, setEditedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Fetch quotes from API
-  const fetchQuotes = async () => {
+  const fetchWalletUser = useCallback(async () => {
+    if (!address) return;
+
     try {
+      setIsLoading(true);
+      console.log("🔍 Fetching user data for address:", address);
+      const response = await fetch(`/api/neynar?address=${address}`);
+      const data = await response.json();
+
+      if (response.ok && data.users?.[0]) {
+        console.log("✅ Wallet user data:", data.users[0]);
+        setWalletUserData(data.users[0]);
+      } else {
+        console.warn("⚠️ No Farcaster user found for wallet");
+        setWalletUserData(null);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching wallet user:", error);
+      setWalletUserData(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [address]);
+
+  // Use either frame user data or wallet user data
+
+  // Fetch quotes from API
+  const fetchQuotes = useCallback(async () => {
+    try {
+      setIsLoading(true);
       const res = await fetch("/api/quote");
       const data = await res.json();
       if (res.ok) {
@@ -35,8 +67,10 @@ export default function Card() {
       }
     } catch (error) {
       setMessage("Failed to fetch quotes.");
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchQuotes();
@@ -166,15 +200,39 @@ export default function Card() {
     setActiveSection(section);
   };
 
-  if (authStatus === "loading") {
-    return <div>Loading...</div>;
+  useEffect(() => {
+    fetchWalletUser();
+  }, [fetchWalletUser]);
+
+  useEffect(() => {
+    fetchQuotes();
+  }, [fetchQuotes]);
+
+  if (authStatus === "loading" || isLoading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (authStatus === "failed") {
+    return (
+      <div className="error-container">
+        <p>Failed to load user data. Please try again.</p>
+        <WalletConnector />
+      </div>
+    );
   }
 
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">
         <img
-          src={userData?.pfpUrl || "/default-avatar.jpg"}
+          src={
+            displayUser?.pfpUrl || displayUser?.pfp_url || "/default-avatar.jpg"
+          }
           alt="Avatar"
           className="card-avatar"
           onError={(e) => {
@@ -183,8 +241,18 @@ export default function Card() {
           }}
         />
         <h1 className="card-fullname">
-          Welcome, {userData?.displayName || userData?.username || "Guest"}!
+          Welcome,{" "}
+          {displayUser?.displayName ||
+            displayUser?.display_name ||
+            displayUser?.username ||
+            "Guest"}
+          !
         </h1>
+        {address && !walletUserData && (
+          <p className="wallet-info">
+            Connected wallet has no associated Farcaster account
+          </p>
+        )}
       </div>
       {/* Wallet Connector */}
       <WalletConnector />

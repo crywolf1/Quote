@@ -2,92 +2,100 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { sdk } from "@farcaster/frame-sdk";
-import { getSignInMessage } from "@farcaster/auth-kit";
+import { useAccount, useSignMessage } from "wagmi";
 
 const FarcasterContext = createContext();
 
 export function FarcasterFrameProvider({ children }) {
   const [userData, setUserData] = useState(null);
   const [authStatus, setAuthStatus] = useState("loading");
+  const { address, isConnected } = useAccount();
+  const { signMessage } = useSignMessage();
 
   useEffect(() => {
     const initializeSDK = async () => {
       try {
-        // 1. Initialize Frame SDK
+        // Initialize Frame SDK
         await sdk.actions.ready();
         console.log("✅ Frame SDK ready");
 
-        // 2. Get frame context for FID
+        // Try frame context first
         const context = await sdk.actions.getFrameContext();
-        console.log("✅ Frame context:", context);
+        console.log("🔄 Frame context:", context);
 
-        if (!context?.fid) {
-          throw new Error("No FID in frame context");
+        if (context?.fid) {
+          await handleFarcasterUser(context.fid);
+          return;
         }
 
-        // 3. Get sign-in message
-        const message = await getSignInMessage({
-          fid: context.fid,
-          siweUri: "https://quote-production-679a.up.railway.app",
-          domain: "quote-production-679a.up.railway.app",
-        });
-        console.log("✅ Sign message generated");
-
-        // 4. Fetch user data from Neynar
-        const apiUrl = `/api/neynar?fid=${context.fid}`; // Changed to relative URL
-        console.log("🔍 Fetching user data:", apiUrl);
-
-        const response = await fetch(apiUrl);
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(`Neynar API error: ${data.error || response.status}`);
+        // Try wallet auth if no frame context
+        if (isConnected && address) {
+          await handleWalletUser(address);
+          return;
         }
 
-        // 5. Set authenticated user data - Updated to match new response structure
-        if (data.users?.[0]) {
-          const user = data.users[0];
-          setUserData({
-            username: user.username,
-            displayName: user.display_name,
-            pfpUrl: user.pfp_url,
-            fid: user.fid,
-            profile: {
-              bio: user.profile?.bio,
-            },
-            followerCount: user.follower_count,
-            followingCount: user.following_count,
-            verifiedAddresses: user.verified_addresses,
-          });
-          setAuthStatus("authenticated");
-          console.log(
-            "✅ User authenticated:",
-            user.display_name || user.username
-          );
-        } else {
-          throw new Error("Invalid user data structure");
-        }
+        setAuthStatus("guest");
+        setUserData({ username: "Guest", pfpUrl: "/default-avatar.jpg" });
       } catch (error) {
         console.error("❌ Auth error:", error);
         setAuthStatus("failed");
-        setUserData({
-          username: "Guest",
-          pfpUrl: "/default-avatar.jpg",
-        });
       }
     };
 
     initializeSDK();
-  }, []);
+  }, [address, isConnected]);
 
-  const value = {
-    userData,
-    authStatus,
-    isAuthenticated: authStatus === "authenticated",
+  const handleFarcasterUser = async (fid) => {
+    try {
+      const response = await fetch(`/api/neynar?fid=${fid}`);
+      const data = await response.json();
+
+      if (response.ok && data.users?.[0]) {
+        setUserData(formatUserData(data.users[0]));
+        setAuthStatus("authenticated");
+      }
+    } catch (error) {
+      console.error("❌ Farcaster auth error:", error);
+      throw error;
+    }
   };
 
+  const handleWalletUser = async (walletAddress) => {
+    try {
+      const response = await fetch(`/api/neynar?address=${walletAddress}`);
+      const data = await response.json();
+
+      if (response.ok && data.users?.[0]) {
+        setUserData(formatUserData(data.users[0]));
+        setAuthStatus("authenticated");
+      }
+    } catch (error) {
+      console.error("❌ Wallet auth error:", error);
+      throw error;
+    }
+  };
+
+  const formatUserData = (user) => ({
+    username: user.username,
+    displayName: user.display_name,
+    pfpUrl: user.pfp_url,
+    fid: user.fid,
+    profile: {
+      bio: user.profile?.bio,
+    },
+    followerCount: user.follower_count,
+    followingCount: user.following_count,
+    verifiedAddresses: user.verified_addresses,
+  });
+
   return (
-    <FarcasterContext.Provider value={value}>
+    <FarcasterContext.Provider
+      value={{
+        userData,
+        authStatus,
+        isAuthenticated: authStatus === "authenticated",
+      }}
+    >
       {children}
     </FarcasterContext.Provider>
   );

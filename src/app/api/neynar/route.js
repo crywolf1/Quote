@@ -5,51 +5,68 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const fid = searchParams.get("fid");
+    const address = searchParams.get("address");
 
-    console.log("🔥 Incoming request to /api/neynar with fid:", fid);
+    console.log("🔍 Request params:", { fid, address });
 
-    if (!fid) {
-      console.warn("❌ Missing fid in query params");
-      return NextResponse.json({ error: "Missing fid" }, { status: 400 });
+    if (!process.env.NEYNAR_API_KEY) {
+      throw new Error("NEYNAR_API_KEY not configured");
     }
 
-    // Initialize Neynar client
     const client = new NeynarAPIClient(process.env.NEYNAR_API_KEY);
-    console.log("✅ Neynar client initialized");
 
-    // Use the SDK to fetch user data
-    const response = await client.lookupUser(fid);
-    console.log("✅ Neynar API response:", response);
+    if (address) {
+      console.log("📱 Fetching user by address:", address);
+      const response = await client.lookupUserByVerification(address);
+      console.log("✅ Neynar address lookup response:", response);
 
-    if (!response?.result?.user) {
-      console.warn("❌ No user found for fid:", fid);
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      if (!response?.result?.user) {
+        return NextResponse.json(
+          { error: "No user found for address" },
+          { status: 404 }
+        );
+      }
+
+      return formatUserResponse(response.result.user);
     }
 
-    const user = response.result.user;
+    if (fid) {
+      console.log("🎯 Fetching user by FID:", fid);
+      const response = await client.lookupUser(fid);
+      console.log("✅ Neynar FID lookup response:", response);
 
-    // Return structured user data matching Neynar v2 response
-    return NextResponse.json({
-      users: [
-        {
-          username: user.username,
-          display_name: user.display_name,
-          pfp_url: user.pfp_url,
-          fid: user.fid,
-          profile: {
-            bio: user.profile?.bio,
-          },
-          follower_count: user.follower_count,
-          following_count: user.following_count,
-          verified_addresses: user.verified_addresses,
-        },
-      ],
-    });
+      if (!response?.result?.user) {
+        return NextResponse.json(
+          { error: "No user found for FID" },
+          { status: 404 }
+        );
+      }
+
+      return formatUserResponse(response.result.user);
+    }
+
+    throw new Error("Either FID or address is required");
   } catch (error) {
-    console.error("❌ Error in /api/neynar:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    console.error("❌ API Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
+}
+
+function formatUserResponse(user) {
+  return NextResponse.json({
+    users: [
+      {
+        username: user.username,
+        display_name: user.display_name,
+        pfp_url: user.pfp_url,
+        fid: user.fid,
+        profile: {
+          bio: user.profile?.bio,
+        },
+        follower_count: user.follower_count,
+        following_count: user.following_count,
+        verified_addresses: user.verified_addresses,
+      },
+    ],
+  });
 }
