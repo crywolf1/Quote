@@ -1,23 +1,21 @@
 "use client";
+
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useFarcaster } from "./FarcasterFrameProvider"; // Import the hook
-import { useAccount } from "wagmi"; // For wallet address
-import { createCoin } from "@zoralabs/coins-sdk"; // For Zora token minting
-import WalletConnector from "./WalletConnector"; // Wallet connection component
-import "../styles/style.css";
+import { useFarcaster } from "./FarcasterFrameProvider";
+import { useAccount } from "wagmi";
+import { createCoin } from "@zoralabs/coins-sdk";
+import WalletConnector from "./WalletConnector";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
+import "../styles/style.css";
 
 export default function Card() {
+  // Auth and wallet states
   const { userData, authStatus } = useFarcaster();
   const { address } = useAccount();
   const [walletUserData, setWalletUserData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  console.log("userData in Card.js:", userData);
 
-  const displayUser = useMemo(() => {
-    return userData || walletUserData;
-  }, [userData, walletUserData]);
-
+  // UI states
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
   const [message, setMessage] = useState("");
@@ -26,31 +24,32 @@ export default function Card() {
   const [editedText, setEditedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Memoized user data
+  const displayUser = useMemo(() => {
+    return userData || walletUserData;
+  }, [userData, walletUserData]);
+
+  // Fetch user data by wallet address
   const fetchWalletUser = useCallback(async () => {
     if (!address) return;
 
     try {
       setIsLoading(true);
-      console.log("🔍 Fetching user data for address:", address);
       const response = await fetch(`/api/neynar?address=${address}`);
       const data = await response.json();
 
       if (response.ok && data.users?.[0]) {
-        console.log("✅ Wallet user data:", data.users[0]);
         setWalletUserData(data.users[0]);
       } else {
-        console.warn("⚠️ No Farcaster user found for wallet");
         setWalletUserData(null);
       }
     } catch (error) {
-      console.error("❌ Error fetching wallet user:", error);
+      console.error("Failed to fetch wallet user:", error);
       setWalletUserData(null);
     } finally {
       setIsLoading(false);
     }
   }, [address]);
-
-  // Use either frame user data or wallet user data
 
   // Fetch quotes from API
   const fetchQuotes = useCallback(async () => {
@@ -71,11 +70,57 @@ export default function Card() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchQuotes();
-  }, []);
+  // Quote actions
+  const handleEdit = (index) => {
+    setEditIndex(index);
+    setEditedText(quotes[index].text);
+  };
 
-  // Navigation for quote carousel
+  const handleUpdateQuote = async () => {
+    if (!editedText.trim()) {
+      setMessage("Quote cannot be empty!");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/quote/${quotes[editIndex]._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: editedText }),
+      });
+
+      if (res.ok) {
+        setMessage("Quote updated successfully!");
+        setEditIndex(null);
+        fetchQuotes();
+      } else {
+        const data = await res.json();
+        setMessage(data.error || "Failed to update quote.");
+      }
+    } catch (error) {
+      setMessage("Failed to update quote. Please try again.");
+    }
+  };
+
+  const handleDelete = async (index) => {
+    try {
+      const res = await fetch(`/api/quote/${quotes[index]._id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setMessage("Quote deleted successfully!");
+        fetchQuotes();
+      } else {
+        const data = await res.json();
+        setMessage(data.error || "Failed to delete quote.");
+      }
+    } catch (error) {
+      setMessage("Failed to delete quote. Please try again.");
+    }
+  };
+
+  // Navigation handlers
   const handleLeftClick = () => {
     setCurrentIndex(
       (prevIndex) => (prevIndex - 1 + quotes.length) % quotes.length
@@ -86,32 +131,38 @@ export default function Card() {
     setCurrentIndex((prevIndex) => (prevIndex + 1) % quotes.length);
   };
 
-  // Save quote to API
+  const handleSectionChange = (section) => {
+    if (editIndex !== null) setEditIndex(null);
+    setActiveSection(section);
+  };
+
+  // Save and mint functions
   const sendQuote = async () => {
     if (!quote.trim()) {
       setMessage("Quote cannot be empty!");
       return;
     }
+
     try {
       const res = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: quote }),
       });
-      const data = await res.json();
+
       if (res.ok) {
         setMessage("Quote saved successfully!");
         setQuote("");
         fetchQuotes();
       } else {
+        const data = await res.json();
         setMessage(data.error || "Failed to save quote.");
       }
     } catch (error) {
-      setMessage("Something went wrong. Try again.");
+      setMessage("Failed to save quote. Please try again.");
     }
   };
 
-  // Mint quote as a Zora Coin
   const mintQuote = async () => {
     if (!address) {
       setMessage("Please connect your wallet first.");
@@ -126,14 +177,14 @@ export default function Card() {
       const coin = await createCoin({
         metadata: {
           name: `Quote by ${
-            userData?.displayName || userData?.username || "Anonymous"
+            displayUser?.displayName || displayUser?.username || "Anonymous"
           }`,
           description: quote,
-          image: userData?.pfpUrl || "/default-avatar.jpg",
+          image: displayUser?.pfpUrl || "/default-avatar.jpg",
         },
         owner: address,
       });
-      console.log("Coin minted:", coin);
+
       setMessage("Quote minted as a Zora Coin!");
       setQuote("");
       await sendQuote();
@@ -143,62 +194,7 @@ export default function Card() {
     }
   };
 
-  // Edit quote
-  const handleEdit = (index) => {
-    setEditIndex(index);
-    setEditedText(quotes[index].text);
-  };
-
-  const handleUpdateQuote = async () => {
-    if (!editedText.trim()) {
-      setMessage("Quote cannot be empty!");
-      return;
-    }
-    try {
-      const res = await fetch(`/api/quote/${quotes[editIndex]._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: editedText }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMessage("Quote updated successfully!");
-        setEditIndex(null);
-        fetchQuotes();
-      } else {
-        setMessage(data.error || "Failed to update quote.");
-      }
-    } catch (error) {
-      setMessage("Something went wrong. Try again.");
-    }
-  };
-
-  // Delete quote
-  const handleDelete = async (index) => {
-    try {
-      const res = await fetch(`/api/quote/${quotes[index]._id}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMessage("Quote deleted successfully!");
-        fetchQuotes();
-      } else {
-        setMessage(data.error || "Failed to delete quote.");
-      }
-    } catch (error) {
-      setMessage("Something went wrong. Try again.");
-    }
-  };
-
-  // Section navigation
-  const handleSectionChange = (section) => {
-    if (editIndex !== null) {
-      setEditIndex(null);
-    }
-    setActiveSection(section);
-  };
-
+  // Effects
   useEffect(() => {
     fetchWalletUser();
   }, [fetchWalletUser]);
@@ -207,6 +203,7 @@ export default function Card() {
     fetchQuotes();
   }, [fetchQuotes]);
 
+  // Loading state
   if (authStatus === "loading" || isLoading) {
     return (
       <div className="loading-container">
@@ -216,6 +213,7 @@ export default function Card() {
     );
   }
 
+  // Error state
   if (authStatus === "failed") {
     return (
       <div className="error-container">
@@ -229,23 +227,16 @@ export default function Card() {
     <div className="card" data-state={activeSection}>
       <div className="card-header">
         <img
-          src={
-            displayUser?.pfpUrl || displayUser?.pfp_url || "/default-avatar.jpg"
-          }
+          src={displayUser?.pfpUrl || "/default-avatar.jpg"}
           alt="Avatar"
           className="card-avatar"
           onError={(e) => {
-            console.log("Failed to load profile image");
             e.target.src = "/default-avatar.jpg";
           }}
         />
         <h1 className="card-fullname">
           Welcome,{" "}
-          {displayUser?.displayName ||
-            displayUser?.display_name ||
-            displayUser?.username ||
-            "Guest"}
-          !
+          {displayUser?.displayName || displayUser?.username || "Guest"}!
         </h1>
         {address && !walletUserData && (
           <p className="wallet-info">
@@ -253,7 +244,7 @@ export default function Card() {
           </p>
         )}
       </div>
-      {/* Wallet Connector */}
+
       <WalletConnector />
 
       <div className="card-main">
@@ -290,11 +281,7 @@ export default function Card() {
                         <textarea
                           value={editedText}
                           className="text-area1"
-                          onChange={(e) => {
-                            if (e.target.value.length <= 240) {
-                              setEditedText(e.target.value);
-                            }
-                          }}
+                          onChange={(e) => setEditedText(e.target.value)}
                           maxLength={240}
                         />
                         <button onClick={handleUpdateQuote}>Save</button>

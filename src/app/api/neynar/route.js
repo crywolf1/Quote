@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { NeynarV2 } from "@neynar/nodejs-sdk";
+import { NeynarAPIClient } from "@neynar/nodejs-sdk";
 
 export async function GET(request) {
   try {
@@ -9,30 +9,69 @@ export async function GET(request) {
 
     console.log("🔍 Request params:", { fid, address });
 
-    const neynarClient = new NeynarV2(process.env.NEYNAR_API_KEY);
+    if (!process.env.NEYNAR_API_KEY) {
+      throw new Error("NEYNAR_API_KEY not configured");
+    }
+
+    // Initialize client with API key directly
+    const client = new NeynarAPIClient(process.env.NEYNAR_API_KEY);
 
     if (address) {
       console.log("📱 Fetching user by address:", address);
-      const response = await neynarClient.fetchUserByVerification(address);
-      console.log("✅ Neynar address lookup response:", response);
+      try {
+        // First get FID by ethereum address
+        const verificationResponse = await client.lookupUserByVerification(
+          address
+        );
+        console.log("✅ Verification response:", verificationResponse);
 
-      if (!response?.result) {
-        return NextResponse.json({ error: "No user found for address" }, { status: 404 });
+        if (!verificationResponse?.result?.user) {
+          return NextResponse.json(
+            { error: "No user found for address" },
+            { status: 404 }
+          );
+        }
+
+        // Get full user data using FID
+        const userResponse = await client.lookupUser(
+          verificationResponse.result.user.fid
+        );
+        console.log("✅ User response:", userResponse);
+
+        if (!userResponse?.result?.user) {
+          return NextResponse.json(
+            { error: "User data not found" },
+            { status: 404 }
+          );
+        }
+
+        return formatUserResponse(userResponse.result.user);
+      } catch (error) {
+        console.error("❌ Neynar API Error:", error);
+        return NextResponse.json(
+          { error: "Failed to fetch user data" },
+          { status: 500 }
+        );
       }
-
-      return formatUserResponse(response.result);
     }
 
     if (fid) {
-      console.log("🎯 Fetching user by FID:", fid);
-      const response = await neynarClient.fetchUser(fid);
-      console.log("✅ Neynar FID lookup response:", response);
-
-      if (!response?.result) {
-        return NextResponse.json({ error: "No user found for FID" }, { status: 404 });
+      try {
+        const userResponse = await client.lookupUser(fid);
+        if (!userResponse?.result?.user) {
+          return NextResponse.json(
+            { error: "User not found" },
+            { status: 404 }
+          );
+        }
+        return formatUserResponse(userResponse.result.user);
+      } catch (error) {
+        console.error("❌ Neynar API Error:", error);
+        return NextResponse.json(
+          { error: "Failed to fetch user data" },
+          { status: 500 }
+        );
       }
-
-      return formatUserResponse(response.result);
     }
 
     throw new Error("Either FID or address is required");
@@ -44,17 +83,22 @@ export async function GET(request) {
 
 function formatUserResponse(user) {
   return NextResponse.json({
-    users: [{
-      username: user.username,
-      display_name: user.displayName,
-      pfp_url: user.pfp?.url,
-      fid: user.fid,
-      profile: {
-        bio: user.profile?.bio,
+    users: [
+      {
+        username: user.username,
+        display_name: user.displayName || user.username,
+        pfp_url: user.pfp?.url || user.pfp_url,
+        fid: user.fid,
+        profile: {
+          bio: user.profile?.bio,
+        },
+        follower_count: user.followerCount || user.follower_count,
+        following_count: user.followingCount || user.following_count,
+        verified_addresses:
+          user.verifications?.map((v) => v.address) ||
+          user.verified_addresses ||
+          [],
       },
-      follower_count: user.followerCount,
-      following_count: user.followingCount,
-      verified_addresses: user.verifications?.map(v => v.address) || []
-    }]
+    ],
   });
 }
