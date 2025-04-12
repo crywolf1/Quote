@@ -1,17 +1,19 @@
 "use client";
 
-import { useAccount, useConnect, useDisconnect, useNetwork } from "wagmi";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { useState } from "react";
 import { base } from "wagmi/chains";
 
 export default function WalletConnector() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, connector } = useAccount();
   const { connect, connectors, isLoading, pendingConnector } = useConnect();
   const { disconnect } = useDisconnect();
-  const { chain } = useNetwork();
   const [error, setError] = useState(null);
 
-  if (isConnected && chain?.id !== base.id) {
+  // Fallback to connector.chainId if useNetwork is unavailable
+  const chainId = connector?.chainId || null;
+
+  if (isConnected && chainId !== base.id) {
     return (
       <div className="wallet-connected">
         <span className="wallet-address">
@@ -47,7 +49,9 @@ export default function WalletConnector() {
             setError(null);
             connect({ connector, chainId: base.id }).catch((err) => {
               console.error("Wallet connection error:", err);
-              setError({ message: "Failed to connect wallet. Please try again." });
+              setError({
+                message: "Failed to connect wallet. Please try again.",
+              });
             });
           }}
           disabled={!connector.ready || isLoading}
