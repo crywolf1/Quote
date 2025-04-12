@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { NeynarAPIClient, Configuration } from "@neynar/nodejs-sdk";
+import { NeynarV2 } from "@neynar/nodejs-sdk";
 
 export async function GET(request) {
   try {
@@ -13,42 +13,23 @@ export async function GET(request) {
       throw new Error("NEYNAR_API_KEY not configured");
     }
 
-    // Correct v2 SDK configuration
-    const config = new Configuration({
-      apiKey: process.env.NEYNAR_API_KEY,
-      baseOptions: {
-        headers: {
-          "x-neynar-api-key": process.env.NEYNAR_API_KEY,
-          "x-neynar-experimental": true,
-        },
-      },
-    });
-
-    const client = new NeynarAPIClient(config);
+    const neynarClient = new NeynarV2(process.env.NEYNAR_API_KEY);
 
     if (address) {
       try {
-        const verifications = await client.verificationsByAddress(address);
-        console.log("✅ Verifications:", verifications);
+        const userResponse = await neynarClient.lookupUserByVerification(
+          address
+        );
+        console.log("✅ User lookup response:", userResponse);
 
-        if (!verifications?.result?.verifications?.length) {
+        if (!userResponse?.user) {
           return NextResponse.json(
             { error: "No Farcaster account found for this address" },
             { status: 404 }
           );
         }
 
-        const fid = verifications.result.verifications[0].fid;
-        const userResponse = await client.fetchUser(fid);
-
-        if (!userResponse?.result?.user) {
-          return NextResponse.json(
-            { error: "User data not found" },
-            { status: 404 }
-          );
-        }
-
-        return formatUserResponse(userResponse.result.user);
+        return formatUserResponse(userResponse.user);
       } catch (error) {
         console.error("❌ Neynar API Error:", error);
         return NextResponse.json(
@@ -58,7 +39,26 @@ export async function GET(request) {
       }
     }
 
-    throw new Error("Address parameter is required");
+    if (fid) {
+      try {
+        const userResponse = await neynarClient.lookupUser(fid);
+        if (!userResponse?.user) {
+          return NextResponse.json(
+            { error: "User not found" },
+            { status: 404 }
+          );
+        }
+        return formatUserResponse(userResponse.user);
+      } catch (error) {
+        console.error("❌ Neynar API Error:", error);
+        return NextResponse.json(
+          { error: "Failed to fetch user data" },
+          { status: 500 }
+        );
+      }
+    }
+
+    throw new Error("Either FID or address is required");
   } catch (error) {
     console.error("❌ API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

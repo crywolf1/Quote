@@ -4,7 +4,6 @@ import { WagmiProvider, createConfig, http } from "wagmi";
 import { base } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { injected, walletConnect } from "wagmi/connectors";
-import { farcasterFrame } from "@farcaster/frame-wagmi-connector";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,11 +22,8 @@ const config = createConfig({
     [base.id]: http(),
   },
   connectors: [
-    farcasterFrame({
-      name: "Quote App",
-      description: "Quote App using Farcaster",
-      url: "https://quote-production-679a.up.railway.app",
-      icons: ["https://quote-production-679a.up.railway.app/icon.png"],
+    injected({
+      target: "metaMask",
     }),
     walletConnect({
       projectId,
@@ -38,7 +34,6 @@ const config = createConfig({
         icons: ["https://quote-production-679a.up.railway.app/icon.png"],
       },
     }),
-    injected(),
   ],
 });
 

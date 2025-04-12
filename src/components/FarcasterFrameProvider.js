@@ -11,6 +11,7 @@ export function FarcasterFrameProvider({ children }) {
   const [authStatus, setAuthStatus] = useState("loading");
   const { address, isConnected } = useAccount();
   const { signMessage } = useSignMessage();
+  const [isFrameReady, setIsFrameReady] = useState(false);
 
   useEffect(() => {
     const initializeSDK = async () => {
@@ -18,6 +19,7 @@ export function FarcasterFrameProvider({ children }) {
         // Initialize Frame SDK
         await sdk.actions.ready();
         console.log("✅ Frame SDK ready");
+        setIsFrameReady(true);
 
         // Try frame context first
         const context = await sdk.actions.getFrameContext();
