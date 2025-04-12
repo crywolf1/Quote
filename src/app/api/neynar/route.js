@@ -13,7 +13,6 @@ export async function GET(request) {
       throw new Error("NEYNAR_API_KEY not configured");
     }
 
-    // Initialize Neynar client with v2 configuration
     const config = new Configuration({
       apiKey: process.env.NEYNAR_API_KEY,
       baseOptions: {
@@ -27,32 +26,33 @@ export async function GET(request) {
 
     if (address) {
       console.log("📱 Fetching user by address:", address);
-      const response = await client.lookupUserByVerification(address);
+      // Updated method name for v2
+      const response = await client.getUserByVerification(address);
       console.log("✅ Neynar address lookup response:", response);
 
-      if (!response?.user) {
+      if (!response?.result?.user) {
         return NextResponse.json(
           { error: "No user found for address" },
           { status: 404 }
         );
       }
 
-      return formatUserResponse(response.user);
+      return formatUserResponse(response.result.user);
     }
 
     if (fid) {
       console.log("🎯 Fetching user by FID:", fid);
-      const response = await client.fetchUser(fid); // Updated method name for v2
+      const response = await client.lookupUser(fid);
       console.log("✅ Neynar FID lookup response:", response);
 
-      if (!response?.user) {
+      if (!response?.result?.user) {
         return NextResponse.json(
           { error: "No user found for FID" },
           { status: 404 }
         );
       }
 
-      return formatUserResponse(response.user);
+      return formatUserResponse(response.result.user);
     }
 
     throw new Error("Either FID or address is required");
@@ -67,15 +67,16 @@ function formatUserResponse(user) {
     users: [
       {
         username: user.username,
-        display_name: user.displayName,
-        pfp_url: user.pfp?.url,
+        display_name: user.display_name || user.username,
+        pfp_url: user.pfp?.url || user.pfp_url,
         fid: user.fid,
         profile: {
           bio: user.profile?.bio,
         },
-        follower_count: user.followerCount,
-        following_count: user.followingCount,
-        verified_addresses: user.verifications?.map((v) => v.address),
+        follower_count: user.follower_count || user.followerCount,
+        following_count: user.following_count || user.followingCount,
+        verified_addresses:
+          user.verified_addresses || user.verifications?.map((v) => v.address),
       },
     ],
   });
