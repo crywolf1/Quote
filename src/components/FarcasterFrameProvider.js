@@ -1,54 +1,63 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { sdk } from "@farcaster/frame-sdk"; // Import the Farcaster SDK
+import { createFrameSdk } from "@farcaster/frame-sdk";
+import { useSearchParams } from "next/navigation";
 
 const FarcasterContext = createContext();
 
+export const useFarcaster = () => useContext(FarcasterContext);
+
 export const FarcasterFrameProvider = ({ children }) => {
   const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const initializeApp = async () => {
+    const initFarcaster = async () => {
       try {
-        // Signal to Farcaster that the app is ready
+        const sdk = createFrameSdk();
+
+        // Always call .ready() to allow the mini app to work inside Farcaster
         await sdk.actions.ready();
 
-        // Extract the FID from the URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const fid = urlParams.get("fid");
+        const frameContext = await sdk.getFrameContext();
 
+        const fid = frameContext?.message?.cast?.fid;
         if (!fid) {
-          console.log("FID not found, using guest.");
-          return setUserData(null);
+          console.warn("FID not found in frame context");
+          setUserData(null);
+          setLoading(false);
+          return;
         }
 
-        // Fetch user data from your API
+        // Fetch user data from backend Neynar proxy API
         const res = await fetch(`/api/neynar?fid=${fid}`);
         const data = await res.json();
 
-        if (data && data.username) {
+        if (!res.ok) {
+          console.error("Failed to fetch user from Neynar:", data.error);
+          setUserData(null);
+        } else {
           setUserData({
             username: data.username,
-            pfpUrl: data.pfpUrl,
+            pfpUrl: data.pfp_url, // Make sure this key exists
           });
-        } else {
-          setUserData(null);
         }
-      } catch (error) {
-        console.error("Error initializing Farcaster app:", error);
+      } catch (err) {
+        console.error("Farcaster SDK init error:", err);
         setUserData(null);
+      } finally {
+        setLoading(false);
       }
     };
 
-    initializeApp();
+    initFarcaster();
   }, []);
 
   return (
-    <FarcasterContext.Provider value={{ userData }}>
+    <FarcasterContext.Provider value={{ userData, loading }}>
       {children}
     </FarcasterContext.Provider>
   );
 };
-
-export const useFarcaster = () => useContext(FarcasterContext);
