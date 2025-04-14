@@ -1,35 +1,33 @@
-// backend/api/farcaster-profile.js
+// /api/farcaster-profile.js
 import { NeynarAPIClient, Configuration } from "@neynar/nodejs-sdk";
 
-// Set up your Neynar API Client
 const config = new Configuration({
-  apiKey: process.env.NEYNAR_API_KEY, // Make sure to set your API key in the environment variables
+  apiKey: process.env.NEYNAR_API_KEY,
 });
 const client = new NeynarAPIClient(config);
 
 export default async function handler(req, res) {
-  const { ethAddress } = req.query; // Get Ethereum address from query param
+  const { fid } = req.query;
 
-  if (!ethAddress) {
-    return res.status(400).json({ error: "Ethereum address is required" });
+  if (!fid) {
+    return res.status(400).json({ error: "FID is required" });
   }
 
   try {
-    // Fetch the user profile based on Ethereum address
-    const response = await client.fetchBulkUsersByEthOrSolAddress({
-      addresses: [ethAddress],
-    });
+    const response = await client.lookupUserByFID({ fid: parseInt(fid) });
 
-    const user = response.result?.user;
-
-    if (!user) {
+    if (!response || !response.result || !response.result.user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Respond with the user's Farcaster profile
-    res.status(200).json(user);
+    const user = response.result.user;
+
+    res.status(200).json({
+      username: user.username,
+      pfpUrl: user.pfp_url,
+    });
   } catch (error) {
-    console.error("Error fetching Farcaster profile:", error);
-    res.status(500).json({ error: "Error fetching Farcaster profile" });
+    console.error("Error fetching user by FID:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 }
