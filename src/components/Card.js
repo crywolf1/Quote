@@ -170,11 +170,11 @@ const pfp_Url = userData?.pfpUrl || "/default-avatar.jpg";
     <div className="card" data-state={activeSection}>
       <div className="card-header">
         <img
-          src={userData?.pfpUrl || "/default-avatar.jpg"}
-          alt="Avatar"
-          className="card-avatar"
-        />
-        <h1 className="card-fullname">Welcome, {userData?.username}!</h1>
+  src={pfp_Url}
+  alt="Avatar"
+  className="card-avatar"
+/>
+<h1 className="card-fullname">Welcome, {username}!</h1>
       </div>
       {/* Wallet Connector */}
       <WalletConnector />
