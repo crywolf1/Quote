@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { FrameValidationData, getFrameMessage } from "@farcaster/frame-sdk";
+import { sdk } from "@farcaster/frame-sdk"; // Import the Farcaster SDK
 
 const FarcasterContext = createContext();
 
@@ -9,8 +9,12 @@ export const FarcasterFrameProvider = ({ children }) => {
   const [userData, setUserData] = useState(null);
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const initializeApp = async () => {
       try {
+        // Signal to Farcaster that the app is ready
+        await sdk.actions.ready();
+
+        // Extract the FID from the URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const fid = urlParams.get("fid");
 
@@ -19,23 +23,25 @@ export const FarcasterFrameProvider = ({ children }) => {
           return setUserData(null);
         }
 
+        // Fetch user data from your API
         const res = await fetch(`/api/neynar?fid=${fid}`);
         const data = await res.json();
-        if (data && data.user) {
+
+        if (data && data.username) {
           setUserData({
-            username: data.user.username,
-            pfpUrl: data.user.pfp_url,
+            username: data.username,
+            pfpUrl: data.pfpUrl,
           });
         } else {
           setUserData(null);
         }
       } catch (error) {
-        console.error("Failed to fetch Farcaster user data:", error);
+        console.error("Error initializing Farcaster app:", error);
         setUserData(null);
       }
     };
 
-    fetchUserData();
+    initializeApp();
   }, []);
 
   return (
