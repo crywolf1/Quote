@@ -16,7 +16,7 @@ export const FarcasterFrameProvider = ({ children }) => {
   useEffect(() => {
     const initFarcaster = async () => {
       try {
-        const sdk = createFrameSdk();
+        
 
         // Always call .ready() to allow the mini app to work inside Farcaster
         await sdk.actions.ready();
