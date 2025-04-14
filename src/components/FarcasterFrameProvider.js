@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { createFrameSdk } from "@farcaster/frame-sdk";
+import { sdk } from "@farcaster/frame-sdk";
 import { useSearchParams } from "next/navigation";
 
 const FarcasterContext = createContext();
