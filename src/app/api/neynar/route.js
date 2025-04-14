@@ -1,35 +1,35 @@
-import { NeynarAPIClient } from "@neynar/nodejs-sdk";
+// backend/api/farcaster-profile.js
+import { NeynarAPIClient, Configuration } from "@neynar/nodejs-sdk";
 
-export async function GET(request) {
-  if (!process.env.NEYNAR_API_KEY) {
-    console.error("NEYNAR_API_KEY not found");
-    return Response.json({ error: "API key not configured" }, { status: 500 });
+// Set up your Neynar API Client
+const config = new Configuration({
+  apiKey: process.env.NEYNAR_API_KEY, // Make sure to set your API key in the environment variables
+});
+const client = new NeynarAPIClient(config);
+
+export default async function handler(req, res) {
+  const { ethAddress } = req.query; // Get Ethereum address from query param
+
+  if (!ethAddress) {
+    return res.status(400).json({ error: "Ethereum address is required" });
   }
 
   try {
-    const { searchParams } = new URL(request.url);
-    const fid = searchParams.get("fid");
-
-    if (!fid) {
-      return Response.json({ error: "FID is required" }, { status: 400 });
-    }
-
-    const neynar = new NeynarAPIClient(process.env.NEYNAR_API_KEY);
-    const response = await neynar.lookupUser(fid);
-
-    if (!response?.result?.user) {
-      return Response.json({ error: "User not found" }, { status: 404 });
-    }
-
-    return Response.json({
-      users: [
-        {
-          ...response.result.user,
-        },
-      ],
+    // Fetch the user profile based on Ethereum address
+    const response = await client.fetchBulkUsersByEthOrSolAddress({
+      addresses: [ethAddress],
     });
+
+    const user = response.result?.user;
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Respond with the user's Farcaster profile
+    res.status(200).json(user);
   } catch (error) {
-    console.error("Neynar API error:", error);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error("Error fetching Farcaster profile:", error);
+    res.status(500).json({ error: "Error fetching Farcaster profile" });
   }
 }

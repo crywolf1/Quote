@@ -12,7 +12,6 @@ export default function Card() {
   const { userData } = useFarcaster(); // Get user data from context
   const { address } = useAccount(); // Get wallet address
 
-  console.log("userData in Card.js:", userData);
   const username = userData?.username || "Guest";
   const pfp_Url = userData?.pfp_Url || "/default-avatar.jpg";
 
