@@ -7,41 +7,74 @@ const FarcasterContext = createContext();
 
 export function FarcasterFrameProvider({ children }) {
   const [userData, setUserData] = useState(null);
-  const [authStatus, setAuthStatus] = useState("loading");
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    const initializeFarcaster = async () => {
+    const initializeSDK = async () => {
       try {
         await sdk.actions.ready();
-        const context = await sdk.actions.getFrameContext();
-        console.log("Farcaster Frame Context:", context);
+        console.log("✅ Farcaster SDK ready");
+        setIsInitialized(true);
 
-        if (context?.fid || context?.address) {
-          setUserData(context);
-          setAuthStatus("authenticated");
+        const context = await sdk.getContext();
+        console.log("Frame context:", context);
+
+        if (context?.fid) {
+          try {
+            const response = await fetch(
+              `/api/neynar/neynar?fid=${context.fid}`
+            );
+            const result = await response.json();
+
+            if (response.ok && result.users?.[0]) {
+              const user = result.users[0];
+              setUserData({
+                username: user.display_name || user.username,
+                pfpUrl: user.pfp_url,
+                fid: user.fid,
+                followerCount: user.follower_count,
+                followingCount: user.following_count,
+                profile: user.profile,
+                verifiedAddresses: user.verified_addresses,
+              });
+              console.log("✅ User data set from Neynar:", user);
+            } else {
+              throw new Error("Invalid user data from Neynar");
+            }
+          } catch (error) {
+            console.error("❌ Neynar API error:", error);
+            setUserData({
+              username: `fid:${context.fid}`,
+              pfpUrl: "/default-avatar.jpg",
+              fid: context.fid,
+            });
+          }
         } else {
-          setAuthStatus("guest");
+          console.warn("No FID in context");
+          setUserData({
+            username: "Guest",
+            pfpUrl: "/default-avatar.jpg",
+          });
         }
       } catch (error) {
-        console.error("Error initializing Farcaster Frame SDK:", error);
-        setAuthStatus("failed");
+        console.error("❌ SDK error:", error);
+        setUserData({
+          username: "Guest",
+          pfpUrl: "/default-avatar.jpg",
+        });
       }
     };
 
-    initializeFarcaster();
+    initializeSDK();
   }, []);
 
   return (
-    <FarcasterContext.Provider value={{ userData, authStatus }}>
+    <FarcasterContext.Provider value={{ userData, isInitialized }}>
       {children}
     </FarcasterContext.Provider>
   );
 }
 
 export function useFarcaster() {
-  const context = useContext(FarcasterContext);
-  if (!context) {
-    throw new Error("useFarcaster must be used within FarcasterFrameProvider");
-  }
-  return context;
+  return useContext(FarcasterContext);
 }

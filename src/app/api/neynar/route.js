@@ -1,90 +1,35 @@
-import { NextResponse } from "next/server";
-import { NeynarV2 } from "@neynar/nodejs-sdk";
+import { NeynarAPIClient } from "@neynar/nodejs-sdk";
 
 export async function GET(request) {
+  if (!process.env.NEYNAR_API_KEY) {
+    console.error("NEYNAR_API_KEY not found");
+    return Response.json({ error: "API key not configured" }, { status: 500 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const fid = searchParams.get("fid");
-    const address = searchParams.get("address");
 
-    console.log("🔍 Request params:", { fid, address });
-
-    if (!process.env.NEYNAR_API_KEY) {
-      throw new Error("NEYNAR_API_KEY is not configured in the environment.");
+    if (!fid) {
+      return Response.json({ error: "FID is required" }, { status: 400 });
     }
 
-    // Initialize Neynar client
-    const neynarClient = new NeynarV2(process.env.NEYNAR_API_KEY);
+    const neynar = new NeynarAPIClient(process.env.NEYNAR_API_KEY);
+    const response = await neynar.lookupUser(fid);
 
-    // Fetch user by Ethereum address
-    if (address) {
-      try {
-        const userResponse = await neynarClient.lookupUserByVerification(address);
-        console.log("✅ User lookup response by address:", userResponse);
-
-        if (!userResponse?.user) {
-          return NextResponse.json(
-            { error: "No Farcaster account found for this Ethereum address." },
-            { status: 404 }
-          );
-        }
-
-        return formatUserResponse(userResponse.user);
-      } catch (error) {
-        console.error("❌ Neynar API Error (address lookup):", error);
-        return NextResponse.json(
-          { error: "Failed to fetch user data by Ethereum address." },
-          { status: 500 }
-        );
-      }
+    if (!response?.result?.user) {
+      return Response.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Fetch user by FID
-    if (fid) {
-      try {
-        const userResponse = await neynarClient.lookupUser(fid);
-        console.log("✅ User lookup response by FID:", userResponse);
-
-        if (!userResponse?.user) {
-          return NextResponse.json(
-            { error: "No Farcaster account found for this FID." },
-            { status: 404 }
-          );
-        }
-
-        return formatUserResponse(userResponse.user);
-      } catch (error) {
-        console.error("❌ Neynar API Error (FID lookup):", error);
-        return NextResponse.json(
-          { error: "Failed to fetch user data by FID." },
-          { status: 500 }
-        );
-      }
-    }
-
-    // If neither address nor FID is provided
-    throw new Error("Either 'fid' or 'address' query parameter is required.");
-  } catch (error) {
-    console.error("❌ API Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
-
-function formatUserResponse(user) {
-  return NextResponse.json({
-    users: [
-      {
-        username: user.username,
-        display_name: user.displayName,
-        pfp_url: user.pfp?.url,
-        fid: user.fid,
-        profile: {
-          bio: user.profile?.bio,
+    return Response.json({
+      users: [
+        {
+          ...response.result.user,
         },
-        follower_count: user.followerCount,
-        following_count: user.followingCount,
-        verified_addresses: user.verifications?.map((v) => v.address) || [],
-      },
-    ],
-  });
+      ],
+    });
+  } catch (error) {
+    console.error("Neynar API error:", error);
+    return Response.json({ error: error.message }, { status: 500 });
+  }
 }

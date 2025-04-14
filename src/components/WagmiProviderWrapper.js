@@ -1,40 +1,24 @@
 "use client";
 
-import { WagmiProvider, createConfig, http } from "wagmi";
+import { WagmiProvider } from "wagmi";
 import { base } from "wagmi/chains";
+import { createConfig, http } from "wagmi";
+import { farcasterFrame } from "@farcaster/frame-wagmi-connector";
+import { injected } from "wagmi/connectors";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { injected, walletConnect } from "wagmi/connectors";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
+const queryClient = new QueryClient();
 
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+const isFrame =
+  typeof window !== "undefined" &&
+  window?.navigator?.userAgent?.toLowerCase().includes("farcaster");
 
 const config = createConfig({
   chains: [base],
   transports: {
     [base.id]: http(),
   },
-  connectors: [
-    injected({
-      target: "metaMask",
-    }),
-    walletConnect({
-      projectId,
-      metadata: {
-        name: "Quote App",
-        description: "Quote App using Farcaster",
-        url: "https://quote-production-679a.up.railway.app",
-        icons: ["https://quote-production-679a.up.railway.app/icon.png"],
-      },
-    }),
-  ],
+  connectors: isFrame ? [farcasterFrame()] : [injected()],
 });
 
 export default function WagmiProviderWrapper({ children }) {

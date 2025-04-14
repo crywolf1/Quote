@@ -1,66 +1,31 @@
 "use client";
 
-import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { useState, useEffect } from "react";
-import { base } from "wagmi/chains";
+import { useAccount, useConnect } from "wagmi";
 
-export default function WalletConnector({ onWalletConnect }) {
+export default function WalletConnector() {
   const { address, isConnected } = useAccount();
-  const { connect, connectors, isLoading, pendingConnector } = useConnect();
-  const { disconnect } = useDisconnect();
-  const [error, setError] = useState(null);
+  const { connect, connectors, isPending } = useConnect();
 
-  const handleConnect = async (connector) => {
-    setError(null);
-    try {
-      await connect({ connector, chainId: base.id });
-      if (onWalletConnect) {
-        onWalletConnect(address); // Pass the connected address to the parent component
-      }
-    } catch (err) {
-      console.error("Wallet connection error:", err);
-      setError({ message: "Failed to connect wallet. Please try again." });
-    }
-  };
-
-  useEffect(() => {
-    if (isConnected && onWalletConnect) {
-      onWalletConnect(address); // Automatically fetch user data if already connected
-    }
-  }, [isConnected, address, onWalletConnect]);
+  const isFrame =
+    typeof window !== "undefined" &&
+    window?.navigator?.userAgent?.toLowerCase().includes("farcaster");
 
   if (isConnected) {
-    return (
-      <div className="wallet-connected">
-        <span className="wallet-address">
-          {address?.slice(0, 6)}...{address?.slice(-4)}
-        </span>
-        <button onClick={() => disconnect()} className="disconnect-button">
-          Disconnect
-        </button>
-      </div>
-    );
+    return <div>🔗 Connected as {address}</div>;
   }
 
-  return (
-    <div className="wallet-buttons">
-      {connectors.map((connector) => (
-        <button
-          key={connector.id}
-          onClick={() => handleConnect(connector)}
-          disabled={!connector.ready || isLoading}
-          className={`connect-button ${
-            isLoading && connector.id === pendingConnector?.id ? "loading" : ""
-          }`}
-        >
-          {isLoading && connector.id === pendingConnector?.id ? (
-            <span className="spinner"></span>
-          ) : (
-            `Connect ${connector.name}`
-          )}
-        </button>
-      ))}
-      {error && <div className="error-message">{error.message}</div>}
-    </div>
+  if (isFrame && connectors.length === 0) {
+    return <div>⚠️ Wallet connect not supported in this frame.</div>;
+  }
+
+  return connectors.length > 0 ? (
+    <button
+      disabled={isPending}
+      onClick={() => connect({ connector: connectors[0] })}
+    >
+      {isPending ? "Connecting..." : "Connect Wallet"}
+    </button>
+  ) : (
+    <div>No wallet connectors available</div>
   );
 }

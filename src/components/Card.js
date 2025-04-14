@@ -1,87 +1,32 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { sdk } from "@farcaster/frame-sdk"; // Import Farcaster Frame SDK
+import { useFarcaster } from "./FarcasterFrameProvider"; // Import the hook
+import { useState, useEffect } from "react";
+import { useAccount } from "wagmi"; // For wallet address
+import { createCoin } from "@zoralabs/coins-sdk"; // For Zora token minting
+import WalletConnector from "./WalletConnector"; // Wallet connection component
 import "../styles/style.css";
+import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
 export default function Card() {
-  const [userData, setUserData] = useState(null);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const { userData } = useFarcaster(); // Get user data from context
+  const { address } = useAccount(); // Get wallet address
 
-  // UI states
+  console.log("userData in Card.js:", userData);
+  const username = userData?.username || "Guest";
+  const pfp_Url = userData?.pfp_Url || "/default-avatar.jpg";
+
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
+  const [message, setMessage] = useState("");
   const [quotes, setQuotes] = useState([]);
   const [editIndex, setEditIndex] = useState(null);
   const [editedText, setEditedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isSaving, setIsSaving] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-
-  // Fetch Farcaster user data using FID or wallet address
-  const fetchFarcasterUser = async (fid, address) => {
-    try {
-      const response = await fetch(
-        `/api/neynar?${fid ? `fid=${fid}` : `address=${address}`}`
-      );
-      const data = await response.json();
-
-      if (response.ok && data.users?.[0]) {
-        setUserData(data.users[0]);
-      } else {
-        setErrorMessage("No Farcaster account found for this user.");
-      }
-    } catch (error) {
-      console.error("Error fetching Farcaster user data:", error);
-      setErrorMessage("Failed to fetch user data. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Initialize Farcaster Frame SDK and fetch user data
-  useEffect(() => {
-    const initializeFarcaster = async () => {
-      try {
-        // Check if the SDK is available
-        if (!sdk || !sdk.actions) {
-          throw new Error("Farcaster Frame SDK is not available.");
-        }
-
-        // Wait for the Frame SDK to be ready
-        await sdk.actions.ready();
-
-        // Get the user's Frame context (FID and wallet address)
-        const context = await sdk.actions.getFrameContext();
-        console.log("Farcaster Frame Context:", context);
-
-        if (context?.fid) {
-          // Fetch user data using FID
-          fetchFarcasterUser(context.fid, null);
-        } else if (context?.address) {
-          // Fetch user data using wallet address
-          fetchFarcasterUser(null, context.address);
-        } else {
-          setErrorMessage("No Farcaster user context found.");
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("Error initializing Farcaster Frame SDK:", error);
-        setErrorMessage(
-          error.message || "Failed to initialize Farcaster. Please try again."
-        );
-        setIsLoading(false);
-      }
-    };
-
-    initializeFarcaster();
-  }, []);
 
   // Fetch quotes from API
-  const fetchQuotes = useCallback(async () => {
+  const fetchQuotes = async () => {
     try {
-      setIsLoading(true);
       const res = await fetch("/api/quote");
       const data = await res.json();
       if (res.ok) {
@@ -89,70 +34,17 @@ export default function Card() {
         if (data.quotes.length > 0) {
           setCurrentIndex(Math.floor(Math.random() * data.quotes.length));
         }
-      } else {
-        setErrorMessage("Failed to fetch quotes.");
       }
     } catch (error) {
-      console.error("Error fetching quotes:", error);
-      setErrorMessage("Failed to fetch quotes. Please try again.");
-    } finally {
-      setIsLoading(false);
+      setMessage("Failed to fetch quotes.");
     }
+  };
+
+  useEffect(() => {
+    fetchQuotes();
   }, []);
 
-  // Quote actions
-  const handleEdit = (index) => {
-    setEditIndex(index);
-    setEditedText(quotes[index].text);
-  };
-
-  const handleUpdateQuote = async () => {
-    if (!editedText.trim()) {
-      setErrorMessage("Quote cannot be empty!");
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/quote/${quotes[editIndex]._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: editedText }),
-      });
-
-      if (res.ok) {
-        setSuccessMessage("Quote updated successfully!");
-        setEditIndex(null);
-        fetchQuotes();
-      } else {
-        const data = await res.json();
-        setErrorMessage(data.error || "Failed to update quote.");
-      }
-    } catch (error) {
-      console.error("Failed to update quote:", error);
-      setErrorMessage("Failed to update quote. Please try again.");
-    }
-  };
-
-  const handleDelete = async (index) => {
-    try {
-      const res = await fetch(`/api/quote/${quotes[index]._id}`, {
-        method: "DELETE",
-      });
-
-      if (res.ok) {
-        setSuccessMessage("Quote deleted successfully!");
-        fetchQuotes();
-      } else {
-        const data = await res.json();
-        setErrorMessage(data.error || "Failed to delete quote.");
-      }
-    } catch (error) {
-      console.error("Failed to delete quote:", error);
-      setErrorMessage("Failed to delete quote. Please try again.");
-    }
-  };
-
-  // Navigation handlers
+  // Navigation for quote carousel
   const handleLeftClick = () => {
     setCurrentIndex(
       (prevIndex) => (prevIndex - 1 + quotes.length) % quotes.length
@@ -163,78 +55,130 @@ export default function Card() {
     setCurrentIndex((prevIndex) => (prevIndex + 1) % quotes.length);
   };
 
-  const handleSectionChange = (section) => {
-    if (editIndex !== null) setEditIndex(null);
-    setActiveSection(section);
-  };
-
-  // Save and mint functions
+  // Save quote to API
   const sendQuote = async () => {
     if (!quote.trim()) {
-      setErrorMessage("Quote cannot be empty!");
+      setMessage("Quote cannot be empty!");
       return;
     }
-
     try {
-      setIsSaving(true);
       const res = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: quote }),
       });
-
+      const data = await res.json();
       if (res.ok) {
-        setSuccessMessage("Quote saved successfully!");
+        setMessage("Quote saved successfully!");
         setQuote("");
         fetchQuotes();
       } else {
-        const data = await res.json();
-        setErrorMessage(data.error || "Failed to save quote.");
+        setMessage(data.error || "Failed to save quote.");
       }
     } catch (error) {
-      console.error("Failed to save quote:", error);
-      setErrorMessage("Failed to save quote. Please try again.");
-    } finally {
-      setIsSaving(false);
+      setMessage("Something went wrong. Try again.");
     }
   };
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>Loading...</p>
-      </div>
-    );
-  }
+  // Mint quote as a Zora Coin
+  const mintQuote = async () => {
+    if (!address) {
+      setMessage("Please connect your wallet first.");
+      return;
+    }
+    if (!quote.trim()) {
+      setMessage("Quote cannot be empty!");
+      return;
+    }
 
-  // Error state
-  if (errorMessage) {
-    return (
-      <div className="error-container">
-        <p>{errorMessage}</p>
-      </div>
-    );
-  }
+    try {
+      const coin = await createCoin({
+        metadata: {
+          name: `Quote by ${username}`,
+          description: quote,
+          image: userData?.pfpUrl || "/default-avatar.jpg",
+        },
+        owner: address,
+      });
+      console.log("Coin minted:", coin);
+      setMessage("Quote minted as a Zora Coin!");
+      setQuote(""); // Clear input after minting
+      // Optionally save to API as well
+      await sendQuote();
+    } catch (error) {
+      console.error("Failed to mint Coin:", error);
+      setMessage("Failed to mint quote: " + error.message);
+    }
+  };
+
+  // Edit quote
+  const handleEdit = (index) => {
+    setEditIndex(index);
+    setEditedText(quotes[index].text);
+  };
+
+  const handleUpdateQuote = async () => {
+    if (!editedText.trim()) {
+      setMessage("Quote cannot be empty!");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/quote/${quotes[editIndex]._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: editedText }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage("Quote updated successfully!");
+        setEditIndex(null);
+        fetchQuotes();
+      } else {
+        setMessage(data.error || "Failed to update quote.");
+      }
+    } catch (error) {
+      setMessage("Something went wrong. Try again.");
+    }
+  };
+
+  // Delete quote
+  const handleDelete = async (index) => {
+    try {
+      const res = await fetch(`/api/quote/${quotes[index]._id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage("Quote deleted successfully!");
+        fetchQuotes();
+      } else {
+        setMessage(data.error || "Failed to delete quote.");
+      }
+    } catch (error) {
+      setMessage("Something went wrong. Try again.");
+    }
+  };
+
+  // Section navigation
+  const handleSectionChange = (section) => {
+    if (editIndex !== null) {
+      setEditIndex(null);
+    }
+    setActiveSection(section);
+  };
 
   return (
     <div className="card" data-state={activeSection}>
-      {userData ? (
-        <div>
-          <h1>Welcome, {userData.display_name || userData.username}!</h1>
-          <img
-            src={userData.pfp_url || "/default-avatar.jpg"}
-            alt="Profile"
-            className="card-avatar"
-          />
-          <p>{userData.profile?.bio || "No bio available."}</p>
-          <p>Followers: {userData.follower_count}</p>
-          <p>Following: {userData.following_count}</p>
-        </div>
-      ) : (
-        <p>No user data available.</p>
-      )}
+      <div className="card-header">
+        <img
+          src={userData?.pfpUrl || "/default-avatar.jpg"}
+          alt="Avatar"
+          className="card-avatar"
+        />
+        <h1 className="card-fullname">Welcome, {userData?.username}!</h1>
+      </div>
+      {/* Wallet Connector */}
+      <WalletConnector />
 
       <div className="card-main">
         {/* Quote Display Section */}
@@ -249,6 +193,59 @@ export default function Card() {
             <p className="card-desc">
               {quotes[currentIndex]?.text || "No quotes yet."}
             </p>
+          </div>
+        </div>
+
+        {/* All Quotes Section */}
+        <div
+          className={`card-section ${
+            activeSection === "#experience" ? "is-active" : ""
+          }`}
+          id="experience"
+        >
+          <div className="card-content">
+            <div className="card-subtitle">All Quotes</div>
+            <div className="quotes-list">
+              {quotes.length > 0 ? (
+                quotes.map((quote, index) => (
+                  <div key={quote._id} className="quote-item">
+                    {editIndex === index ? (
+                      <div>
+                        <textarea
+                          value={editedText}
+                          className="text-area1"
+                          onChange={(e) => {
+                            if (e.target.value.length <= 240) {
+                              setEditedText(e.target.value);
+                            }
+                          }}
+                          maxLength={240}
+                        />
+                        <button onClick={handleUpdateQuote}>Save</button>
+                      </div>
+                    ) : (
+                      <p>{quote.text}</p>
+                    )}
+                    <div className="quote-actions">
+                      <button
+                        className="edit-btn"
+                        onClick={() => handleEdit(index)}
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        className="delete-btn"
+                        onClick={() => handleDelete(index)}
+                      >
+                        <FaTrashAlt />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p>No quotes available.</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -274,18 +271,48 @@ export default function Card() {
                   onChange={(e) => setQuote(e.target.value)}
                 />
               </div>
-              <button
-                className="contact-me"
-                onClick={sendQuote}
-                disabled={isSaving}
-              >
-                {isSaving ? "Saving..." : "Save Quote"}
+              <button className="contact-me" onClick={sendQuote}>
+                Save Quote
+              </button>
+              <button className="contact-me" onClick={mintQuote}>
+                Mint as Zora Coin
               </button>
             </div>
-            {successMessage && (
-              <p className="success-message">{successMessage}</p>
-            )}
-            {errorMessage && <p className="error-message">{errorMessage}</p>}
+            {message && <p className="message">{message}</p>}
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <div className="card-container2">
+          {activeSection === "#about" && (
+            <div className="card-buttons1">
+              <button className="nav-btn left" onClick={handleLeftClick}>
+                <FaArrowLeft size={30} />
+              </button>
+              <button className="nav-btn right" onClick={handleRightClick}>
+                <FaArrowRight size={30} />
+              </button>
+            </div>
+          )}
+          <div className="card-buttons">
+            <button
+              className={activeSection === "#about" ? "is-active" : ""}
+              onClick={() => handleSectionChange("#about")}
+            >
+              Quote
+            </button>
+            <button
+              className={activeSection === "#experience" ? "is-active" : ""}
+              onClick={() => handleSectionChange("#experience")}
+            >
+              All Quotes
+            </button>
+            <button
+              className={activeSection === "#contact" ? "is-active" : ""}
+              onClick={() => handleSectionChange("#contact")}
+            >
+              Add
+            </button>
           </div>
         </div>
       </div>
