@@ -1,31 +1,45 @@
 "use client";
 
-import { useAccount, useConnect } from "wagmi";
+import { useFarcaster } from "./FarcasterFrameProvider"; // Assuming Farcaster manages the connection state
+import { useAccount } from "wagmi"; // For wallet address, you can still use it for consistency
+import { useState, useEffect } from "react";
 
 export default function WalletConnector() {
-  const { address, isConnected } = useAccount();
-  const { connect, connectors, isPending } = useConnect();
+  const { address, isConnected } = useAccount(); // Wagmi hook for wallet address
+  const { userData, setUserData } = useFarcaster(); // Assuming Farcaster context manages user data
 
-  const isFrame =
-    typeof window !== "undefined" &&
-    window?.navigator?.userAgent?.toLowerCase().includes("farcaster");
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  if (isConnected) {
-    return <div>🔗 Connected as {address}</div>;
+  // If Farcaster has a user data connection
+  useEffect(() => {
+    if (userData) {
+      console.log("Farcaster user data:", userData);
+    }
+  }, [userData]);
+
+  const connectWallet = () => {
+    if (!isConnecting) {
+      setIsConnecting(true);
+      // Assuming FarcasterFrame has some function to connect wallet
+      // Example: Farcaster connection flow (adjust this to match your actual Farcaster method)
+      if (!isConnected) {
+        // Trigger Farcaster wallet connection flow
+        console.log("Initiating Farcaster connection...");
+        // This part depends on the Farcaster SDK or flow you're using
+        // Once connected, update the state (either with a hook or API response)
+        // Example:
+        // Farcaster.connectWallet();
+      }
+    }
+  };
+
+  if (isConnected || userData) {
+    return <div>Connected as {address || userData?.username}</div>;
   }
 
-  if (isFrame && connectors.length === 0) {
-    return <div>⚠️ Wallet connect not supported in this frame.</div>;
-  }
-
-  return connectors.length > 0 ? (
-    <button
-      disabled={isPending}
-      onClick={() => connect({ connector: connectors[0] })}
-    >
-      {isPending ? "Connecting..." : "Connect Wallet"}
+  return (
+    <button onClick={connectWallet} disabled={isConnecting}>
+      {isConnecting ? "Connecting..." : "Connect Wallet"}
     </button>
-  ) : (
-    <div>No wallet connectors available</div>
   );
 }
