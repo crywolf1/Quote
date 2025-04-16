@@ -11,49 +11,61 @@ export function FarcasterFrameProvider({ children }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const { address } = useAccount();
+  const { address: walletAddress } = useAccount();
 
   useEffect(() => {
-    const initialize = async () => {
+    const initializeSDK = async () => {
       try {
-        await sdk.actions.ready(); // Required to start SDK
+        await sdk.actions.ready();
         setIsInitialized(true);
 
         const context = sdk.actions.getContext
           ? await sdk.actions.getContext()
           : {};
+
         console.log("Frame context:", context);
 
-        const userAddress = context?.address || address;
-        if (!userAddress) {
-          throw new Error("User address not found.");
+        const fid = context?.fid;
+        const address = context?.address || walletAddress;
+
+        console.log("Looking up with FID:", fid);
+        console.log("Or with address:", address);
+
+        let userRes;
+        if (fid) {
+          userRes = await fetch(`/api/neynar?fid=${fid}`);
+        } else if (address) {
+          userRes = await fetch(`/api/neynar?address=${address}`);
         }
 
-        console.log("Using address for lookup:", userAddress);
+        const result = await userRes.json();
 
-        // Hit your Neynar API route
-        const res = await fetch(`/api/neynar?address=${userAddress}`);
-        const data = await res.json();
-
-        if (data && data.username) {
-          setUserData(data);
-        } else {
-          throw new Error("User not found via Neynar.");
+        if (!userRes.ok || !result.users || !result.users.length) {
+          throw new Error("User not found");
         }
+
+        const user = result.users[0];
+
+        setUserData({
+          username: user.username,
+          displayName: user.display_name,
+          pfpUrl: user.pfp.url,
+          fid: user.fid,
+        });
       } catch (err) {
-        console.error("Farcaster SDK init error:", err);
+        console.error("Error fetching user data:", err);
         setUserData({
           username: "Guest",
           pfpUrl: "/default-avatar.jpg",
         });
-        setError("Could not fetch user data.");
+        setError("Could not fetch user data");
       } finally {
         setLoading(false);
       }
     };
 
-    initialize();
-  }, [address]);
+    initializeSDK();
+  }, [walletAddress]);
 
   return (
     <FarcasterContext.Provider
