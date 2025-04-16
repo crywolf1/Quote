@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 export async function GET(request) {
   const apiKey = process.env.NEYNAR_API_KEY;
   if (!apiKey) {
+    console.error("Neynar API key not set");
     return NextResponse.json(
       { error: "API key not configured" },
       { status: 500 }
@@ -13,7 +14,10 @@ export async function GET(request) {
   const fid = searchParams.get("fid");
   const address = searchParams.get("address");
 
-  // FID lookup using GET with fids query param
+  console.log("Incoming request to /api/neynar with:");
+  console.log("fid:", fid);
+  console.log("address:", address);
+
   if (fid) {
     const res = await fetch(
       `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
@@ -26,6 +30,7 @@ export async function GET(request) {
     );
     const data = await res.json();
     if (!data.users || !data.users.length) {
+      console.warn("User not found for fid:", fid);
       return NextResponse.json(
         { error: "User not found", raw: data },
         { status: 404 }
@@ -34,10 +39,10 @@ export async function GET(request) {
     return NextResponse.json({ users: data.users });
   }
 
-  // Address lookup using GET with addresses query param
   if (address) {
+    const lower = address.toLowerCase();
     const res = await fetch(
-      `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${address.toLowerCase()}`,
+      `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${lower}`,
       {
         method: "GET",
         headers: {
@@ -46,9 +51,9 @@ export async function GET(request) {
       }
     );
     const data = await res.json();
-    // The response is an object with addresses as keys
-    const users = data[address.toLowerCase()] || [];
+    const users = data[lower] || [];
     if (!users.length) {
+      console.warn("User not found for address:", lower);
       return NextResponse.json(
         { error: "User not found", raw: data },
         { status: 404 }
