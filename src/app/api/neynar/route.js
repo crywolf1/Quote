@@ -26,14 +26,20 @@ export async function GET(request) {
           method: "GET",
           headers: {
             "x-api-key": apiKey,
+            Accept: "application/json",
           },
         }
       );
 
       if (!res.ok) {
-        console.error(`Neynar API error for FID ${fid}:`, await res.text());
+        const errorText = await res.text();
+        console.error(`Neynar API error for FID ${fid}:`, errorText);
         return NextResponse.json(
-          { error: "API request failed", status: res.status },
+          {
+            error: "API request failed",
+            status: res.status,
+            details: errorText,
+          },
           { status: res.status }
         );
       }
@@ -53,7 +59,7 @@ export async function GET(request) {
     } catch (error) {
       console.error("Error fetching user by FID:", error);
       return NextResponse.json(
-        { error: "Failed to fetch user data" },
+        { error: "Failed to fetch user data", details: error.message },
         { status: 500 }
       );
     }
@@ -68,17 +74,20 @@ export async function GET(request) {
           method: "GET",
           headers: {
             "x-api-key": apiKey,
+            Accept: "application/json",
           },
         }
       );
 
       if (!res.ok) {
-        console.error(
-          `Neynar API error for address ${lower}:`,
-          await res.text()
-        );
+        const errorText = await res.text();
+        console.error(`Neynar API error for address ${lower}:`, errorText);
         return NextResponse.json(
-          { error: "API request failed", status: res.status },
+          {
+            error: "API request failed",
+            status: res.status,
+            details: errorText,
+          },
           { status: res.status }
         );
       }
@@ -99,7 +108,7 @@ export async function GET(request) {
     } catch (error) {
       console.error("Error fetching user by address:", error);
       return NextResponse.json(
-        { error: "Failed to fetch user data" },
+        { error: "Failed to fetch user data", details: error.message },
         { status: 500 }
       );
     }

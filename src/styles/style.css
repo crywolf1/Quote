@@ -482,3 +482,69 @@
   cursor: pointer;
   margin-left: 10px;
 }
+/* Add these to your existing style.css */
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  font-size: 18px;
+  color: #555;
+}
+
+.connection-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background: #f9f9f9;
+  border-radius: 10px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.connection-error h2 {
+  color: #e74c3c;
+  margin-bottom: 20px;
+}
+
+.connection-error p {
+  margin-bottom: 30px;
+  color: #555;
+}
+
+.connect-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.connect-button:hover {
+  background: #2980b9;
+}
+
+.connect-button:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+
+.message {
+  margin-top: 20px;
+  padding: 10px;
+  background: #e3f2fd;
+  border-radius: 4px;
+  text-align: center;
+}

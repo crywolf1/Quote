@@ -4,25 +4,29 @@ import { useFarcaster } from "./FarcasterFrameProvider";
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { createCoin } from "@zoralabs/coins-sdk";
-import WalletConnector from "./WalletConnector";
-import ConnectWallet from "./ConnectWallet";
+
 import "../styles/style.css";
-import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
+import {
+  FaEdit,
+  FaTrashAlt,
+  FaArrowLeft,
+  FaArrowRight,
+  FaWallet,
+} from "react-icons/fa";
 
 export default function Card() {
-  const { userData, loading, error } = useFarcaster();
+  const { userData, loading, error, connectWallet, isConnected } =
+    useFarcaster();
   console.log("Card userData:", userData, "loading:", loading, "error:", error);
   const { address } = useAccount();
 
   // Use fallback values if userData is not loaded yet
-  const username = userData?.username || userData?.display_name || "Guest";
-  const pfpUrl = userData?.pfpUrl || userData?.pfp_url || "/default-avatar.jpg";
+  const username = userData?.username || userData?.displayName || "Guest";
+  const pfpUrl = userData?.pfpUrl || "/default-avatar.jpg";
   const bio = userData?.profile?.bio || "";
   const fid = userData?.fid || "";
-  const followerCount =
-    userData?.followerCount || userData?.follower_count || 0;
-  const followingCount =
-    userData?.followingCount || userData?.following_count || 0;
+  const followerCount = userData?.followerCount || 0;
+  const followingCount = userData?.followingCount || 0;
 
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
@@ -31,6 +35,7 @@ export default function Card() {
   const [editIndex, setEditIndex] = useState(null);
   const [editedText, setEditedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   // Fetch quotes from API
   const fetchQuotes = async () => {
@@ -51,6 +56,19 @@ export default function Card() {
   useEffect(() => {
     fetchQuotes();
   }, []);
+
+  // Handle wallet connection
+  const handleConnectWallet = async () => {
+    setIsConnecting(true);
+    try {
+      await connectWallet();
+      setMessage("Wallet connected. Retrieving Farcaster data...");
+    } catch (err) {
+      setMessage("Failed to connect wallet: " + err.message);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
 
   // Navigation for quote carousel
   const handleLeftClick = () => {
@@ -172,8 +190,24 @@ export default function Card() {
     setActiveSection(section);
   };
 
-  if (loading) return <div>Loading user data...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (loading)
+    return <div className="loading-container">Loading user data...</div>;
+
+  if (error && !isConnected) {
+    return (
+      <div className="connection-error">
+        <h2>Connection Required</h2>
+        <p>{error}</p>
+        <button
+          className="connect-button"
+          onClick={handleConnectWallet}
+          disabled={isConnecting}
+        >
+          <FaWallet /> {isConnecting ? "Connecting..." : "Connect Wallet"}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="card" data-state={activeSection}>
@@ -187,8 +221,7 @@ export default function Card() {
           <span>Following: {followingCount}</span>
         </div>
       </div>
-      <WalletConnector />
-      <ConnectWallet />
+
       <div className="card-main">
         {/* Quote Display Section */}
         <div
