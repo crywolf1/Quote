@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { sdk } from "@farcaster/frame-sdk";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { InjectedConnector } from "wagmi/connectors/injected";
+import { injected } from "wagmi/connectors"; // Fixed import path
 
 const FarcasterContext = createContext();
 
@@ -16,7 +16,7 @@ export function FarcasterFrameProvider({ children }) {
   // Wagmi hooks for wallet connection
   const { address, isConnected } = useAccount();
   const { connect } = useConnect({
-    connector: new InjectedConnector(),
+    connector: injected(), // Updated to use the factory function instead of instantiating directly
   });
   const { disconnect } = useDisconnect();
 
