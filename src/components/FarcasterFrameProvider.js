@@ -19,7 +19,7 @@ export function FarcasterFrameProvider({ children }) {
         await sdk.actions.ready();
         setIsInitialized(true);
 
-        const context = await sdk.actions.ready();
+        const context = await sdk.actions.getFrameContext();
         console.log("Frame context:", context);
         console.log("Wallet address from wagmi:", address);
 
@@ -70,12 +70,12 @@ export function FarcasterFrameProvider({ children }) {
           });
         }
       } catch (error) {
-        console.error("Farcaster SDK initialization error:", error);
-        setUserData({
-          username: "Guest",
-          pfpUrl: "/default-avatar.jpg",
-        });
-        setError("Failed to initialize Farcaster SDK.");
+  console.error("Farcaster SDK initialization error:", error);
+  setUserData({
+    username: "Guest",
+    pfpUrl: "/default-avatar.jpg",
+  });
+  setError("Failed to initialize Farcaster SDK.");
       } finally {
         setLoading(false);
       }
