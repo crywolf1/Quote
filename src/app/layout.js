@@ -16,14 +16,14 @@ export default function RootLayout({ children }) {
           name="fc:frame"
           content='{
             "version": "next",
-            "imageUrl": "https://quote-production-679a.up.railway.app/assets/icon.png",
+            "imageUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app/assets/icon.png",
             "button": {
               "title": "Quote",
               "action": {
                 "type": "launch_frame",
                 "name": "Quote",
-                "url": "https://quote-production-679a.up.railway.app/",
-                "splashImageUrl": "https://quote-production-679a.up.railway.app/assets/icon.png",
+                "url": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app/",
+                "splashImageUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app/assets/icon.png",
                 "splashBackgroundColor": "#eeccff"
               }
             }

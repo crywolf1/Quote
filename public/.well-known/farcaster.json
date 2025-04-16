@@ -7,12 +7,12 @@
   "frame": {
     "version": "1",
     "name": "Quote",
-    "iconUrl": "https://quote-production-679a.up.railway.app/assets/icon.png",
-    "homeUrl": "https://quote-production-679a.up.railway.app",
-    "imageUrl": "https://quote-production-679a.up.railway.app/assets/icon.png",
+    "iconUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app/assets/icon.png",
+    "homeUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app",
+    "imageUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app/assets/icon.png",
     "buttonTitle": "Quote",
-    "splashImageUrl": "https://quote-production-679a.up.railway.app/assets/icon.png",
+    "splashImageUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app/assets/icon.png",
     "splashBackgroundColor": "#eeccff",
-    "webhookUrl": "https://quote-production-679a.up.railway.app/api/webhook"
+    "webhookUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app/api/webhook"
   }
 }
