@@ -9,7 +9,7 @@ import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
 export default function Card() {
-  const { userData } = useFarcaster();
+  const { userData, loading, error } = useFarcaster();
   console.log("Card userData:", userData, "loading:", loading, "error:", error);
   const { address } = useAccount();
 
