@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { sdk } from "@farcaster/frame-sdk";
-import { useAccount } from "wagmi";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { InjectedConnector } from "wagmi/connectors/injected";
 
 const FarcasterContext = createContext();
 
@@ -11,114 +12,140 @@ export function FarcasterFrameProvider({ children }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const { address } = useAccount(); // Wagmi hook to get wallet address
 
-  useEffect(() => {
-    const initializeSDK = async () => {
+  // Wagmi hooks for wallet connection
+  const { address, isConnected } = useAccount();
+  const { connect } = useConnect({
+    connector: new InjectedConnector(),
+  });
+  const { disconnect } = useDisconnect();
+
+  // Function to connect wallet automatically or on button click
+  const connectWallet = async () => {
+    try {
+      await connect();
+      return true;
+    } catch (error) {
+      console.error("Error connecting wallet:", error);
+      setError("Failed to connect wallet. Please try again.");
+      return false;
+    }
+  };
+
+  // Try to get user data from Farcaster context or by wallet address
+  const tryGetUserData = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      // Initialize Frame SDK
+      await sdk.actions.ready();
+      setIsInitialized(true);
+
+      console.log("SDK initialized successfully");
+
+      // Try to get user context from Frame
+      let fid = null;
+      let userAddress = null;
+
       try {
-        // Initialize the SDK
-        await sdk.actions.ready();
-        setIsInitialized(true);
+        if (sdk.actions.getContext) {
+          const context = await sdk.actions.getContext();
+          console.log("Frame context:", context);
 
-        // Log SDK and context to debug
-        console.log("SDK object:", sdk);
-        console.log("SDK actions:", sdk.actions);
-
-        // Get context from SDK or use fallback
-        let context = {};
-        try {
-          if (sdk.actions.getContext) {
-            context = await sdk.actions.getContext();
-          }
-        } catch (contextError) {
-          console.warn("Error getting frame context:", contextError);
-        }
-
-        console.log("Frame context:", context);
-
-        const fid = context?.fid;
-        const userAddress = context?.address || address;
-
-        console.log("Using address for lookup:", userAddress);
-
-        // Fetch user data from the API
-        if (fid) {
-          console.log("Fetching data using FID:", fid);
-          try {
-            const userRes = await fetch(`/api/neynar?fid=${fid}`);
-            const result = await userRes.json();
-
-            console.log("API response for FID:", result);
-
-            if (userRes.ok && result.users && result.users.length) {
-              const user = result.users[0];
-
-              // Use the correct property names from the API
-              setUserData({
-                username: user.username || "Anonymous",
-                displayName: user.display_name || user.username || "Anonymous",
-                pfpUrl: user.pfp_url || "/default-avatar.jpg", // Use pfp_url instead of pfp.url
-                fid: user.fid,
-              });
-              return; // Exit early if successfully fetched with FID
-            }
-          } catch (fidError) {
-            console.warn(
-              "Failed to fetch with FID, trying address...",
-              fidError
-            );
+          if (context) {
+            fid = context.fid;
+            userAddress = context.address;
           }
         }
-
-        if (userAddress) {
-          console.log("Fetching data using address:", userAddress);
-          try {
-            const userRes = await fetch(`/api/neynar?address=${userAddress}`);
-            const result = await userRes.json();
-
-            console.log("API response for address:", result);
-
-            if (userRes.ok && result.users && result.users.length) {
-              const user = result.users[0];
-
-              // Use the correct property names from the API
-              setUserData({
-                username: user.username || "Anonymous",
-                displayName: user.display_name || user.username || "Anonymous",
-                pfpUrl: user.pfp_url || "/default-avatar.jpg", // Use pfp_url instead of pfp.url
-                fid: user.fid,
-              });
-              return; // Exit early if successfully fetched with address
-            } else {
-              throw new Error("User not found with address");
-            }
-          } catch (addressError) {
-            console.error("Error fetching with address:", addressError);
-            throw new Error(
-              "No Farcaster account found for this wallet address"
-            );
-          }
-        } else {
-          throw new Error("No FID or wallet address available");
-        }
-      } catch (err) {
-        console.error("Error in Farcaster initialization:", err);
-        setUserData({
-          username: "Guest",
-          pfpUrl: "/default-avatar.jpg",
-        });
-        setError(err.message || "Could not fetch user data");
-      } finally {
-        setLoading(false);
+      } catch (contextError) {
+        console.warn("Error getting frame context:", contextError);
       }
-    };
 
-    initializeSDK();
-  }, [address]);
+      // If no FID or address from context, use connected wallet address
+      if (!fid && !userAddress) {
+        userAddress = address;
+        console.log("Using connected wallet address:", userAddress);
+      }
+
+      // Try to fetch by FID first (more reliable)
+      if (fid) {
+        console.log("Fetching user data by FID:", fid);
+        const fidRes = await fetch(`/api/neynar?fid=${fid}`);
+        const fidData = await fidRes.json();
+
+        if (fidRes.ok && fidData.users && fidData.users.length) {
+          const user = fidData.users[0];
+          setUserData({
+            username: user.username || "Anonymous",
+            displayName: user.display_name || user.username || "Anonymous",
+            pfpUrl: user.pfp_url || "/default-avatar.jpg",
+            fid: user.fid,
+          });
+          setLoading(false);
+          return true;
+        }
+      }
+
+      // If no data from FID or no FID available, try by address
+      if (userAddress) {
+        console.log("Fetching user data by address:", userAddress);
+        const addrRes = await fetch(
+          `/api/neynar?address=${userAddress.toLowerCase()}`
+        );
+        const addrData = await addrRes.json();
+
+        if (addrRes.ok && addrData.users && addrData.users.length) {
+          const user = addrData.users[0];
+          setUserData({
+            username: user.username || "Anonymous",
+            displayName: user.display_name || user.username || "Anonymous",
+            pfpUrl: user.pfp_url || "/default-avatar.jpg",
+            fid: user.fid,
+          });
+          setLoading(false);
+          return true;
+        }
+      }
+
+      // If we reach here, no user data was found
+      throw new Error("No Farcaster account found");
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      setUserData({
+        username: "Guest",
+        pfpUrl: "/default-avatar.jpg",
+      });
+      setError("Connect your Farcaster account to continue");
+      setLoading(false);
+      return false;
+    }
+  };
+
+  // Initial setup - try to get user data when component mounts
+  useEffect(() => {
+    tryGetUserData();
+  }, []);
+
+  // When wallet address changes, try to get user data again
+  useEffect(() => {
+    if (isConnected && address) {
+      tryGetUserData();
+    }
+  }, [address, isConnected]);
 
   return (
     <FarcasterContext.Provider
-      value={{ userData, isInitialized, loading, error }}
+      value={{
+        userData,
+        isInitialized,
+        loading,
+        error,
+        connectWallet,
+        disconnect,
+        tryGetUserData,
+        isConnected,
+      }}
     >
       {children}
     </FarcasterContext.Provider>

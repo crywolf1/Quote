@@ -31,8 +31,7 @@ export async function GET(request) {
       );
 
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error(`Neynar API error for FID ${fid}:`, errorText);
+        console.error(`Neynar API error for FID ${fid}:`, await res.text());
         return NextResponse.json(
           { error: "API request failed", status: res.status },
           { status: res.status }
@@ -74,8 +73,10 @@ export async function GET(request) {
       );
 
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error(`Neynar API error for address ${lower}:`, errorText);
+        console.error(
+          `Neynar API error for address ${lower}:`,
+          await res.text()
+        );
         return NextResponse.json(
           { error: "API request failed", status: res.status },
           { status: res.status }
@@ -85,16 +86,16 @@ export async function GET(request) {
       const data = await res.json();
       console.log("Neynar API response for address:", data);
 
-      const users = data[lower] || [];
-      if (!users.length) {
+      // Check if data[address] exists
+      if (!data[lower] || !Array.isArray(data[lower]) || !data[lower].length) {
         console.warn("User not found for address:", lower);
         return NextResponse.json(
-          { error: "User not found", raw: data },
+          { error: "No Farcaster account found for this address", raw: data },
           { status: 404 }
         );
       }
 
-      return NextResponse.json({ users });
+      return NextResponse.json({ users: data[lower] });
     } catch (error) {
       console.error("Error fetching user by address:", error);
       return NextResponse.json(
