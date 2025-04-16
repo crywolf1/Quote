@@ -1,35 +1,64 @@
-// backend/api/farcaster-profile.js
-import { NeynarAPIClient, Configuration } from "@neynar/nodejs-sdk";
+import { NextResponse } from "next/server";
 
-// Set up your Neynar API Client
-const config = new Configuration({
-  apiKey: process.env.NEYNAR_API_KEY, // Make sure to set your API key in the environment variables
-});
-const client = new NeynarAPIClient(config);
-
-export default async function handler(req, res) {
-  const { ethAddress } = req.query; // Get Ethereum address from query param
-
-  if (!ethAddress) {
-    return res.status(400).json({ error: "Ethereum address is required" });
+export async function GET(request) {
+  const apiKey = process.env.NEYNAR_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "API key not configured" },
+      { status: 500 }
+    );
   }
 
-  try {
-    // Fetch the user profile based on Ethereum address
-    const response = await client.fetchBulkUsersByEthOrSolAddress({
-      addresses: [ethAddress],
-    });
+  const { searchParams } = new URL(request.url);
+  const fid = searchParams.get("fid");
+  const address = searchParams.get("address");
 
-    const user = response.result?.user;
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+  // FID lookup using GET with fids query param
+  if (fid) {
+    const res = await fetch(
+      `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
+      {
+        method: "GET",
+        headers: {
+          "x-api-key": apiKey,
+        },
+      }
+    );
+    const data = await res.json();
+    if (!data.users || !data.users.length) {
+      return NextResponse.json(
+        { error: "User not found", raw: data },
+        { status: 404 }
+      );
     }
-
-    // Respond with the user's Farcaster profile
-    res.status(200).json(user);
-  } catch (error) {
-    console.error("Error fetching Farcaster profile:", error);
-    res.status(500).json({ error: "Error fetching Farcaster profile" });
+    return NextResponse.json({ users: data.users });
   }
+
+  // Address lookup using GET with addresses query param
+  if (address) {
+    const res = await fetch(
+      `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${address.toLowerCase()}`,
+      {
+        method: "GET",
+        headers: {
+          "x-api-key": apiKey,
+        },
+      }
+    );
+    const data = await res.json();
+    // The response is an object with addresses as keys
+    const users = data[address.toLowerCase()] || [];
+    if (!users.length) {
+      return NextResponse.json(
+        { error: "User not found", raw: data },
+        { status: 404 }
+      );
+    }
+    return NextResponse.json({ users });
+  }
+
+  return NextResponse.json(
+    { error: "Provide 'fid' or 'address' as query param" },
+    { status: 400 }
+  );
 }

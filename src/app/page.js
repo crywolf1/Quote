@@ -3,6 +3,8 @@ import Card from "@/components/Card";
 import CanvasBackground from "../components/CanvasBackground";
 import "../styles/globals.css";
 import WalletConnector from "@/components/WalletConnector";
+import { NeynarAuthButton, useNeynarContext } from "@neynar/react";
+
 export default function Home() {
   return (
     <div className="relative w-full h-screen flex items-center justify-center">

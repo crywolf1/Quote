@@ -1,19 +1,26 @@
 "use client";
 
-import { useFarcaster } from "./FarcasterFrameProvider"; // Import the hook
+import { useFarcaster } from "./FarcasterFrameProvider";
 import { useState, useEffect } from "react";
-import { useAccount } from "wagmi"; // For wallet address
-import { createCoin } from "@zoralabs/coins-sdk"; // For Zora token minting
-import WalletConnector from "./WalletConnector"; // Wallet connection component
+import { useAccount } from "wagmi";
+import { createCoin } from "@zoralabs/coins-sdk";
+import WalletConnector from "./WalletConnector";
 import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
 export default function Card() {
-  const { userData } = useFarcaster(); // Get user data from context
-  const { address } = useAccount(); // Get wallet address
+  const { userData } = useFarcaster();
+  const { address } = useAccount();
 
-  const username = userData?.username || "Guest";
-  const pfp_Url = userData?.pfp_Url || "/default-avatar.jpg";
+  // Use fallback values if userData is not loaded yet
+  const username = userData?.username || userData?.display_name || "Guest";
+  const pfpUrl = userData?.pfpUrl || userData?.pfp_url || "/default-avatar.jpg";
+  const bio = userData?.profile?.bio || "";
+  const fid = userData?.fid || "";
+  const followerCount =
+    userData?.followerCount || userData?.follower_count || 0;
+  const followingCount =
+    userData?.followingCount || userData?.following_count || 0;
 
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
@@ -95,17 +102,14 @@ export default function Card() {
         metadata: {
           name: `Quote by ${username}`,
           description: quote,
-          image: userData?.pfpUrl || "/default-avatar.jpg",
+          image: pfpUrl,
         },
         owner: address,
       });
-      console.log("Coin minted:", coin);
       setMessage("Quote minted as a Zora Coin!");
-      setQuote(""); // Clear input after minting
-      // Optionally save to API as well
+      setQuote("");
       await sendQuote();
     } catch (error) {
-      console.error("Failed to mint Coin:", error);
       setMessage("Failed to mint quote: " + error.message);
     }
   };
@@ -169,14 +173,15 @@ export default function Card() {
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">
-        <img
-          src={userData?.pfpUrl || "/default-avatar.jpg"}
-          alt="Avatar"
-          className="card-avatar"
-        />
-        <h1 className="card-fullname">Welcome, {userData?.username}!</h1>
+        <img src={pfpUrl} alt="Avatar" className="card-avatar" />
+        <h1 className="card-fullname">Welcome, {username}!</h1>
+        <div className="card-bio">{bio}</div>
+        <div className="card-fid">FID: {fid}</div>
+        <div className="card-follow">
+          <span>Followers: {followerCount}</span> |{" "}
+          <span>Following: {followingCount}</span>
+        </div>
       </div>
-      {/* Wallet Connector */}
       <WalletConnector />
 
       <div className="card-main">

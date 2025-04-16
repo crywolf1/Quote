@@ -1,24 +1,22 @@
+// src/components/WagmiProviderWrapper.js
 "use client";
 
 import { WagmiProvider } from "wagmi";
 import { base } from "wagmi/chains";
 import { createConfig, http } from "wagmi";
 import { farcasterFrame } from "@farcaster/frame-wagmi-connector";
-import { injected } from "wagmi/connectors";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+// Create a QueryClient instance
 const queryClient = new QueryClient();
 
-const isFrame =
-  typeof window !== "undefined" &&
-  window?.navigator?.userAgent?.toLowerCase().includes("farcaster");
-
+// Wagmi configuration
 const config = createConfig({
   chains: [base],
   transports: {
     [base.id]: http(),
   },
-  connectors: isFrame ? [farcasterFrame()] : [injected()],
+  connectors: [farcasterFrame()],
 });
 
 export default function WagmiProviderWrapper({ children }) {
