@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { sdk } from "@farcaster/frame-sdk";
-import { useAccount } from "wagmi";
+import { useAccount } from "wagmi"; // <-- add this
 
 const FarcasterContext = createContext();
 
@@ -11,7 +11,7 @@ export function FarcasterFrameProvider({ children }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const { address: walletAddress } = useAccount();
+  const { address } = useAccount(); // <-- add this
 
   useEffect(() => {
     const initializeSDK = async () => {
@@ -19,53 +19,34 @@ export function FarcasterFrameProvider({ children }) {
         await sdk.actions.ready();
         setIsInitialized(true);
 
+        // Log SDK object to inspect available methods
+        console.log("SDK object:", sdk);
+        console.log("SDK actions:", sdk.actions);
+
+        // Replace getFrameContext with the correct method or fallback
         const context = sdk.actions.getContext
           ? await sdk.actions.getContext()
           : {};
-
         console.log("Frame context:", context);
 
-        const fid = context?.fid;
-        const address = context?.address || walletAddress;
+        const userAddress = context?.address || address;
+        console.log("Using address for lookup:", userAddress);
 
-        console.log("Looking up with FID:", fid);
-        console.log("Or with address:", address);
-
-        let userRes;
-        if (fid) {
-          userRes = await fetch(`/api/neynar?fid=${fid}`);
-        } else if (address) {
-          userRes = await fetch(`/api/neynar?address=${address}`);
-        }
-
-        const result = await userRes.json();
-
-        if (!userRes.ok || !result.users || !result.users.length) {
-          throw new Error("User not found");
-        }
-
-        const user = result.users[0];
-
-        setUserData({
-          username: user.username,
-          displayName: user.display_name,
-          pfpUrl: user.pfp.url,
-          fid: user.fid,
-        });
-      } catch (err) {
-        console.error("Error fetching user data:", err);
+        // Fetch user data logic...
+      } catch (error) {
+        console.error("Farcaster SDK initialization error:", error);
         setUserData({
           username: "Guest",
           pfpUrl: "/default-avatar.jpg",
         });
-        setError("Could not fetch user data");
+        setError("Failed to initialize Farcaster SDK.");
       } finally {
         setLoading(false);
       }
     };
 
     initializeSDK();
-  }, [walletAddress]);
+  }, [address]);
 
   return (
     <FarcasterContext.Provider
@@ -75,7 +56,6 @@ export function FarcasterFrameProvider({ children }) {
     </FarcasterContext.Provider>
   );
 }
-
 export function useFarcaster() {
   return useContext(FarcasterContext);
 }
