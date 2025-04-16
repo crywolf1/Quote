@@ -19,7 +19,7 @@ export function FarcasterFrameProvider({ children }) {
         await sdk.actions.ready();
         setIsInitialized(true);
 
-        const context = await sdk.actions.getFrameContext();
+        const context = await sdk.actions.ready();
         console.log("Frame context:", context);
         console.log("Wallet address from wagmi:", address);
 
