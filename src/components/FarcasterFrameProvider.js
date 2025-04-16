@@ -70,6 +70,7 @@ export function FarcasterFrameProvider({ children }) {
           });
         }
       } catch (error) {
+        console.error("Farcaster SDK initialization error:", error);
         setUserData({
           username: "Guest",
           pfpUrl: "/default-avatar.jpg",
