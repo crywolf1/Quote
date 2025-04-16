@@ -12,7 +12,6 @@ export default function Card() {
   const { userData } = useFarcaster();
   const { address } = useAccount();
 
-<<<<<<< HEAD
   // Use fallback values if userData is not loaded yet
   const username = userData?.username || userData?.display_name || "Guest";
   const pfpUrl = userData?.pfpUrl || userData?.pfp_url || "/default-avatar.jpg";
@@ -22,10 +21,6 @@ export default function Card() {
     userData?.followerCount || userData?.follower_count || 0;
   const followingCount =
     userData?.followingCount || userData?.following_count || 0;
-=======
-  const username = userData?.username || "Guest";
-const pfp_Url = userData?.pfpUrl || "/default-avatar.jpg";
->>>>>>> 6dc8b554356b6fab4e306f5f295421b471a117c4
 
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
@@ -178,7 +173,6 @@ const pfp_Url = userData?.pfpUrl || "/default-avatar.jpg";
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">
-<<<<<<< HEAD
         <img src={pfpUrl} alt="Avatar" className="card-avatar" />
         <h1 className="card-fullname">Welcome, {username}!</h1>
         <div className="card-bio">{bio}</div>
@@ -187,14 +181,6 @@ const pfp_Url = userData?.pfpUrl || "/default-avatar.jpg";
           <span>Followers: {followerCount}</span> |{" "}
           <span>Following: {followingCount}</span>
         </div>
-=======
-        <img
-  src={pfp_Url}
-  alt="Avatar"
-  className="card-avatar"
-/>
-<h1 className="card-fullname">Welcome, {username}!</h1>
->>>>>>> 6dc8b554356b6fab4e306f5f295421b471a117c4
       </div>
       <WalletConnector />
 

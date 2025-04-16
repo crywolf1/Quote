@@ -2,31 +2,19 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { sdk } from "@farcaster/frame-sdk";
-import { useSearchParams } from "next/navigation";
 
 const FarcasterContext = createContext();
 
-export const useFarcaster = () => useContext(FarcasterContext);
-
-export const FarcasterFrameProvider = ({ children }) => {
+export function FarcasterFrameProvider({ children }) {
   const [userData, setUserData] = useState(null);
-<<<<<<< HEAD
   const [isInitialized, setIsInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-=======
-  const [loading, setLoading] = useState(true);
-  const searchParams = useSearchParams();
->>>>>>> 6dc8b554356b6fab4e306f5f295421b471a117c4
 
   useEffect(() => {
-    const initFarcaster = async () => {
+    const initializeSDK = async () => {
       try {
-        
-
-        // Always call .ready() to allow the mini app to work inside Farcaster
         await sdk.actions.ready();
-<<<<<<< HEAD
         setIsInitialized(true);
 
         const context = await sdk.actions.getFrameContext();
@@ -86,61 +74,35 @@ export const FarcasterFrameProvider = ({ children }) => {
             });
             setError("Failed to fetch user data from Neynar.");
           }
-=======
-
-        const frameContext = await sdk.getFrameContext();
-
-        const fid = frameContext?.message?.cast?.fid;
-        if (!fid) {
-          console.warn("FID not found in frame context");
-          setUserData(null);
-          setLoading(false);
-          return;
-        }
-
-        // Fetch user data from backend Neynar proxy API
-        const res = await fetch(`/api/neynar?fid=${fid}`);
-        const data = await res.json();
-
-        if (!res.ok) {
-          console.error("Failed to fetch user from Neynar:", data.error);
-          setUserData(null);
->>>>>>> 6dc8b554356b6fab4e306f5f295421b471a117c4
         } else {
           setUserData({
-            username: data.username,
-            pfpUrl: data.pfp_url, // Make sure this key exists
+            username: "Guest",
+            pfpUrl: "/default-avatar.jpg",
           });
         }
-<<<<<<< HEAD
       } catch (error) {
         setUserData({
           username: "Guest",
           pfpUrl: "/default-avatar.jpg",
         });
         setError("Failed to initialize Farcaster SDK.");
-=======
-      } catch (err) {
-        console.error("Farcaster SDK init error:", err);
-        setUserData(null);
->>>>>>> 6dc8b554356b6fab4e306f5f295421b471a117c4
       } finally {
         setLoading(false);
       }
     };
 
-    initFarcaster();
+    initializeSDK();
   }, []);
 
   return (
-<<<<<<< HEAD
     <FarcasterContext.Provider
       value={{ userData, isInitialized, loading, error }}
     >
-=======
-    <FarcasterContext.Provider value={{ userData, loading }}>
->>>>>>> 6dc8b554356b6fab4e306f5f295421b471a117c4
       {children}
     </FarcasterContext.Provider>
   );
-};
+}
+
+export function useFarcaster() {
+  return useContext(FarcasterContext);
+}
