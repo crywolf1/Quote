@@ -48,17 +48,16 @@ export function FarcasterFrameProvider({ children }) {
             const userRes = await fetch(`/api/neynar?fid=${fid}`);
             const result = await userRes.json();
 
-            // Debug the response structure
             console.log("API response for FID:", result);
 
             if (userRes.ok && result.users && result.users.length) {
               const user = result.users[0];
 
-              // Create userData with safe property access
+              // Use the correct property names from the API
               setUserData({
                 username: user.username || "Anonymous",
                 displayName: user.display_name || user.username || "Anonymous",
-                pfpUrl: user.pfp?.url || "/default-avatar.jpg",
+                pfpUrl: user.pfp_url || "/default-avatar.jpg", // Use pfp_url instead of pfp.url
                 fid: user.fid,
               });
               return; // Exit early if successfully fetched with FID
@@ -77,17 +76,16 @@ export function FarcasterFrameProvider({ children }) {
             const userRes = await fetch(`/api/neynar?address=${userAddress}`);
             const result = await userRes.json();
 
-            // Debug the response structure
             console.log("API response for address:", result);
 
             if (userRes.ok && result.users && result.users.length) {
               const user = result.users[0];
 
-              // Create userData with safe property access
+              // Use the correct property names from the API
               setUserData({
                 username: user.username || "Anonymous",
                 displayName: user.display_name || user.username || "Anonymous",
-                pfpUrl: user.pfp?.url || "/default-avatar.jpg",
+                pfpUrl: user.pfp_url || "/default-avatar.jpg", // Use pfp_url instead of pfp.url
                 fid: user.fid,
               });
               return; // Exit early if successfully fetched with address
