@@ -1,16 +1,16 @@
 {
   "accountAssociation": {
     "header": "eyJmaWQiOjM0NDIwMywidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDUyMjAyODE2QUNGMWY2RGVjMTZGMzkxZDkxY2NhYUQ2QTI2MkY1NUQifQ",
-    "payload": "eyJkb21haW4iOiJxdW90ZS1wcm9kdWN0aW9uLTY3OWEudXAucmFpbHdheS5hcHAifQ",
-    "signature": "MHhmY2VmNzVhMjNkYTg3NTk3YWZhODJiMjVmMGRiZmQxNzQ4NTMyMDk1YjczYzM0NWE2NGJhNWRlOGE2YzVhZjhkMjk0NGVmNWIyMjdmZmFhMThhNmI5OWI5OTc2NzhjMzA4NTQ4NzRiMmQ4MzBjMmVmZmYzMjZjYzUzMTMxNThiNTFj"
+    "payload": "eyJkb21haW4iOiJxdW90ZS1vZzAyZHFyNngtY3J5d29sZjFzLXByb2plY3RzLnZlcmNlbC5hcHAifQ",
+    "signature": "MHg2YmU5OTZlNjliZWM1YTU4OTQ0MzE0YzA3N2M1ZDBiYjU0NjFhNTlhMmY1N2Q2NGI1OGEwODU3NDI1MmNlMzc3NTM0M2QwNjAyZmQ1YzQwOGUwM2M3MTg5MWE1NzNhOTE0ZDhiNDgwMDY2NTM1NTk4MjIxYTRkYjZjYjNmZWVjNjFj"
   },
   "frame": {
     "version": "1",
-    "name": "Quote",
+    "name": "Example Frame",
     "iconUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app/assets/icon.png",
     "homeUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app",
     "imageUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app/assets/icon.png",
-    "buttonTitle": "Quote",
+    "buttonTitle": "Check this out",
     "splashImageUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app/assets/icon.png",
     "splashBackgroundColor": "#eeccff",
     "webhookUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app/api/webhook"
