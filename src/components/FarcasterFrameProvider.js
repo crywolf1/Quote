@@ -1,3 +1,4 @@
+"use client";
 import { createContext, useContext, useEffect, useState } from "react";
 import { sdk } from "@farcaster/frame-sdk";
 import { useAccount } from "wagmi"; // <-- add this
