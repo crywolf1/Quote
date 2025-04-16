@@ -1,18 +1,18 @@
 {
   "accountAssociation": {
     "header": "eyJmaWQiOjM0NDIwMywidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDUyMjAyODE2QUNGMWY2RGVjMTZGMzkxZDkxY2NhYUQ2QTI2MkY1NUQifQ",
-    "payload": "eyJkb21haW4iOiJxdW90ZS1vZzAyZHFyNngtY3J5d29sZjFzLXByb2plY3RzLnZlcmNlbC5hcHAifQ",
-    "signature": "MHg2YmU5OTZlNjliZWM1YTU4OTQ0MzE0YzA3N2M1ZDBiYjU0NjFhNTlhMmY1N2Q2NGI1OGEwODU3NDI1MmNlMzc3NTM0M2QwNjAyZmQ1YzQwOGUwM2M3MTg5MWE1NzNhOTE0ZDhiNDgwMDY2NTM1NTk4MjIxYTRkYjZjYjNmZWVjNjFj"
+    "payload": "eyJkb21haW4iOiJxdW90ZS1kdXNreS52ZXJjZWwuYXBwIn0",
+    "signature": "MHg5OTU5MjY3YThlM2Q0N2I4Mjk0NmJiM2EwMTVhYjk2ODBlNTZiNzAzOWJmZjQ2NTFlNzQ2Y2FlNGYxYWI4M2Q1NjllMjUzMGZhNTBkZmJlMTZkOWUxOGQzNzk5M2UzYTYxZjE5YTE3ODEyYTE3NTk5MmM0NTdhZDRiNDEwMGM1OTFj"
   },
   "frame": {
     "version": "1",
     "name": "Example Frame",
-    "iconUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app/assets/icon.png",
-    "homeUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app",
-    "imageUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app/assets/icon.png",
+    "iconUrl": "https://quote-dusky.vercel.app/assets/icon.png",
+    "homeUrl": "https://quote-dusky.vercel.app",
+    "imageUrl": "https://quote-dusky.vercel.app/assets/icon.png",
     "buttonTitle": "Check this out",
-    "splashImageUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app/assets/icon.png",
+    "splashImageUrl": "https://quote-dusky.vercel.app/assets/icon.png",
     "splashBackgroundColor": "#eeccff",
-    "webhookUrl": "https://quote-og02dqr6x-crywolf1s-projects.vercel.app/api/webhook"
+    "webhookUrl": "https://quote-dusky.vercel.app/api/webhook"
   }
 }
