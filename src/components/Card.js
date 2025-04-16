@@ -171,6 +171,9 @@ export default function Card() {
     setActiveSection(section);
   };
 
+  if (loading) return <div>Loading user data...</div>;
+  if (error) return <div>Error: {error}</div>;
+
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">

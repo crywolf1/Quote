@@ -44,6 +44,15 @@ export function FarcasterFrameProvider({ children }) {
                 profile: user.profile,
                 verifiedAddresses: user.verified_addresses,
               });
+              console.log("Set userData:", {
+                username: user.display_name || user.username,
+                pfpUrl: user.pfp_url,
+                fid: user.fid,
+                followerCount: user.follower_count,
+                followingCount: user.following_count,
+                profile: user.profile,
+                verifiedAddresses: user.verified_addresses,
+              });
             } else {
               throw new Error("Invalid user data from Neynar");
             }
