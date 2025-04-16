@@ -2,8 +2,7 @@ import { Suspense } from "react";
 import Card from "@/components/Card";
 import CanvasBackground from "../components/CanvasBackground";
 import "../styles/globals.css";
-import WalletConnector from "@/components/WalletConnector";
-import { NeynarAuthButton, useNeynarContext } from "@neynar/react";
+
 
 export default function Home() {
   return (

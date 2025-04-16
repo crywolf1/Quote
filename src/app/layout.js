@@ -1,6 +1,6 @@
 import { FarcasterFrameProvider } from "../components/FarcasterFrameProvider";
 import WagmiProviderWrapper from "../components/WagmiProviderWrapper";
-import { NeynarContextProvider } from "@neynar/react";
+
 export const metadata = {
   title: "Quote Card",
   description: "A simple quote card app",
@@ -33,11 +33,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <WagmiProviderWrapper>
-          <FarcasterFrameProvider>
-            <NeynarContextProvider clientId={process.env.NEYNAR_API_KEY}>
-              {children}
-            </NeynarContextProvider>
-          </FarcasterFrameProvider>
+          <FarcasterFrameProvider>{children}</FarcasterFrameProvider>
         </WagmiProviderWrapper>
       </body>
     </html>
