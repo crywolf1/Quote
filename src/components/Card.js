@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { createCoin } from "@zoralabs/coins-sdk";
 import WalletConnector from "./WalletConnector";
+import ConnectWallet from "./ConnectWallet";
 import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
@@ -187,7 +188,7 @@ export default function Card() {
         </div>
       </div>
       <WalletConnector />
-
+      <ConnectWallet />
       <div className="card-main">
         {/* Quote Display Section */}
         <div
