@@ -25,9 +25,14 @@ export function FarcasterFrameProvider({ children }) {
         console.log("SDK actions:", sdk.actions);
 
         // Get context from SDK or use fallback
-        const context = sdk.actions.getContext
-          ? await sdk.actions.getContext()
-          : {};
+        let context = {};
+        try {
+          if (sdk.actions.getContext) {
+            context = await sdk.actions.getContext();
+          }
+        } catch (contextError) {
+          console.warn("Error getting frame context:", contextError);
+        }
 
         console.log("Frame context:", context);
 
@@ -37,38 +42,62 @@ export function FarcasterFrameProvider({ children }) {
         console.log("Using address for lookup:", userAddress);
 
         // Fetch user data from the API
-        let userRes;
         if (fid) {
           console.log("Fetching data using FID:", fid);
-          userRes = await fetch(`/api/neynar?fid=${fid}`);
-        } else if (userAddress) {
+          try {
+            const userRes = await fetch(`/api/neynar?fid=${fid}`);
+            const result = await userRes.json();
+
+            if (userRes.ok && result.users && result.users.length) {
+              const user = result.users[0];
+              setUserData({
+                username: user.username,
+                displayName: user.display_name,
+                pfpUrl: user.pfp.url,
+                fid: user.fid,
+              });
+              return; // Exit early if successfully fetched with FID
+            }
+          } catch (fidError) {
+            console.warn(
+              "Failed to fetch with FID, trying address...",
+              fidError
+            );
+          }
+        }
+
+        if (userAddress) {
           console.log("Fetching data using address:", userAddress);
-          userRes = await fetch(`/api/neynar?address=${userAddress}`);
+          try {
+            const userRes = await fetch(`/api/neynar?address=${userAddress}`);
+            const result = await userRes.json();
+
+            if (userRes.ok && result.users && result.users.length) {
+              const user = result.users[0];
+              setUserData({
+                username: user.username,
+                displayName: user.display_name,
+                pfpUrl: user.pfp.url,
+                fid: user.fid,
+              });
+              return; // Exit early if successfully fetched with address
+            } else {
+              throw new Error("User not found with address");
+            }
+          } catch (addressError) {
+            console.error("Error fetching with address:", addressError);
+            throw new Error("Could not fetch user with address");
+          }
+        } else {
+          throw new Error("No FID or wallet address available");
         }
-
-        const result = await userRes.json();
-
-        // Check if response is valid
-        if (!userRes.ok || !result.users || !result.users.length) {
-          throw new Error("User not found");
-        }
-
-        // Set user data
-        const user = result.users[0];
-
-        setUserData({
-          username: user.username,
-          displayName: user.display_name,
-          pfpUrl: user.pfp.url,
-          fid: user.fid,
-        });
       } catch (err) {
-        console.error("Error fetching user data:", err);
+        console.error("Error in Farcaster initialization:", err);
         setUserData({
           username: "Guest",
           pfpUrl: "/default-avatar.jpg",
         });
-        setError("Could not fetch user data");
+        setError(err.message || "Could not fetch user data");
       } finally {
         setLoading(false);
       }
