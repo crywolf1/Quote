@@ -10,6 +10,7 @@ import { FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
 export default function Card() {
   const { userData } = useFarcaster();
+  console.log("Card userData:", userData, "loading:", loading, "error:", error);
   const { address } = useAccount();
 
   // Use fallback values if userData is not loaded yet

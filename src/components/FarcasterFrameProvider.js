@@ -20,15 +20,18 @@ export function FarcasterFrameProvider({ children }) {
         setIsInitialized(true);
 
         const context = await sdk.actions.getFrameContext();
+        console.log("Frame context:", context);
+        console.log("Wallet address from wagmi:", address);
 
         if (context?.fid) {
           // ...existing FID logic...
         } else if (context?.address || address) {
-          // <-- use address from wagmi if context.address is not set
           const userAddress = context?.address || address;
+          console.log("Using address for lookup:", userAddress);
           try {
             const response = await fetch(`/api/neynar?address=${userAddress}`);
             const result = await response.json();
+            console.log("Neynar API result:", result);
 
             if (response.ok && result.users?.[0]) {
               const user = result.users[0];
@@ -69,7 +72,7 @@ export function FarcasterFrameProvider({ children }) {
     };
 
     initializeSDK();
-  }, [address]); // <-- add address here
+  }, [address]);
 
   return (
     <FarcasterContext.Provider
