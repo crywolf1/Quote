@@ -19,47 +19,89 @@ export async function GET(request) {
   console.log("address:", address);
 
   if (fid) {
-    const res = await fetch(
-      `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
-      {
-        method: "GET",
-        headers: {
-          "x-api-key": apiKey,
-        },
+    try {
+      const res = await fetch(
+        `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
+        {
+          method: "GET",
+          headers: {
+            "x-api-key": apiKey,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`Neynar API error for FID ${fid}:`, errorText);
+        return NextResponse.json(
+          { error: "API request failed", status: res.status },
+          { status: res.status }
+        );
       }
-    );
-    const data = await res.json();
-    if (!data.users || !data.users.length) {
-      console.warn("User not found for fid:", fid);
+
+      const data = await res.json();
+      console.log("Neynar API response for FID:", data);
+
+      if (!data.users || !data.users.length) {
+        console.warn("User not found for fid:", fid);
+        return NextResponse.json(
+          { error: "User not found", raw: data },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({ users: data.users });
+    } catch (error) {
+      console.error("Error fetching user by FID:", error);
       return NextResponse.json(
-        { error: "User not found", raw: data },
-        { status: 404 }
+        { error: "Failed to fetch user data" },
+        { status: 500 }
       );
     }
-    return NextResponse.json({ users: data.users });
   }
 
   if (address) {
-    const lower = address.toLowerCase();
-    const res = await fetch(
-      `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${lower}`,
-      {
-        method: "GET",
-        headers: {
-          "x-api-key": apiKey,
-        },
+    try {
+      const lower = address.toLowerCase();
+      const res = await fetch(
+        `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${lower}`,
+        {
+          method: "GET",
+          headers: {
+            "x-api-key": apiKey,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`Neynar API error for address ${lower}:`, errorText);
+        return NextResponse.json(
+          { error: "API request failed", status: res.status },
+          { status: res.status }
+        );
       }
-    );
-    const data = await res.json();
-    const users = data[lower] || [];
-    if (!users.length) {
-      console.warn("User not found for address:", lower);
+
+      const data = await res.json();
+      console.log("Neynar API response for address:", data);
+
+      const users = data[lower] || [];
+      if (!users.length) {
+        console.warn("User not found for address:", lower);
+        return NextResponse.json(
+          { error: "User not found", raw: data },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({ users });
+    } catch (error) {
+      console.error("Error fetching user by address:", error);
       return NextResponse.json(
-        { error: "User not found", raw: data },
-        { status: 404 }
+        { error: "Failed to fetch user data" },
+        { status: 500 }
       );
     }
-    return NextResponse.json({ users });
   }
 
   return NextResponse.json(

@@ -48,12 +48,17 @@ export function FarcasterFrameProvider({ children }) {
             const userRes = await fetch(`/api/neynar?fid=${fid}`);
             const result = await userRes.json();
 
+            // Debug the response structure
+            console.log("API response for FID:", result);
+
             if (userRes.ok && result.users && result.users.length) {
               const user = result.users[0];
+
+              // Create userData with safe property access
               setUserData({
-                username: user.username,
-                displayName: user.display_name,
-                pfpUrl: user.pfp.url,
+                username: user.username || "Anonymous",
+                displayName: user.display_name || user.username || "Anonymous",
+                pfpUrl: user.pfp?.url || "/default-avatar.jpg",
                 fid: user.fid,
               });
               return; // Exit early if successfully fetched with FID
@@ -72,12 +77,17 @@ export function FarcasterFrameProvider({ children }) {
             const userRes = await fetch(`/api/neynar?address=${userAddress}`);
             const result = await userRes.json();
 
+            // Debug the response structure
+            console.log("API response for address:", result);
+
             if (userRes.ok && result.users && result.users.length) {
               const user = result.users[0];
+
+              // Create userData with safe property access
               setUserData({
-                username: user.username,
-                displayName: user.display_name,
-                pfpUrl: user.pfp.url,
+                username: user.username || "Anonymous",
+                displayName: user.display_name || user.username || "Anonymous",
+                pfpUrl: user.pfp?.url || "/default-avatar.jpg",
                 fid: user.fid,
               });
               return; // Exit early if successfully fetched with address
@@ -86,7 +96,9 @@ export function FarcasterFrameProvider({ children }) {
             }
           } catch (addressError) {
             console.error("Error fetching with address:", addressError);
-            throw new Error("Could not fetch user with address");
+            throw new Error(
+              "No Farcaster account found for this wallet address"
+            );
           }
         } else {
           throw new Error("No FID or wallet address available");
