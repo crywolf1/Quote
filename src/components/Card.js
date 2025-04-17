@@ -332,10 +332,10 @@ export default function Card() {
                   <button className="contact-me" onClick={sendQuote}>
                     Save Quote
                   </button>
-                  <button className="contact-me" onClick={mintQuote}>
+
+                  {/* <button className="contact-me" onClick={mintQuote}>
                     Mint as Zora Coin
-                  </button>
-                  
+                  </button>   */}
                 </div>
                 {message && <p className="message">{message}</p>}
               </div>
