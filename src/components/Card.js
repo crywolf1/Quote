@@ -4,7 +4,7 @@ import { useFarcaster } from "./FarcasterFrameProvider";
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { createCoin } from "@zoralabs/coins-sdk";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import "../styles/style.css";
 import {
   FaEdit,
@@ -338,7 +338,17 @@ export default function Card() {
           </div>
         </div>
       ) : (
-        <ConnectButton />
+        <div className="connection-error">
+          <h2>Connection Required</h2>
+          <p>Please connect your wallet to access your data.</p>
+          <button
+            className="connect-button"
+            onClick={handleConnectWallet}
+            disabled={isConnecting}
+          >
+            <FaWallet /> {isConnecting ? "Connecting..." : "Connect Wallet"}
+          </button>
+        </div>
       )}
     </div>
   );
