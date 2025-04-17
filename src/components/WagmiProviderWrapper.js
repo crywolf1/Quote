@@ -2,11 +2,9 @@
 "use client";
 
 import { WagmiProvider, configureChains, createConfig } from "wagmi";
-import { base } from "wagmi/chains";
-import { http } from "wagmi";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { farcasterFrame } from "@farcaster/frame-wagmi-connector";
-import { metaMask, walletConnect } from "wagmi/connectors";
 import { wagmiConfig } from "./wagmiConfig";
 // QueryClient instance
 const queryClient = new QueryClient();

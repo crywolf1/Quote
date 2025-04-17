@@ -1,5 +1,7 @@
 // wagmiConfig.js
+import "@rainbow-me/rainbowkit/styles.css";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+
 import { base } from "wagmi/chains";
 
 export const wagmiConfig = getDefaultConfig({

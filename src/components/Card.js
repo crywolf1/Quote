@@ -4,7 +4,7 @@ import { useFarcaster } from "./FarcasterFrameProvider";
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { createCoin } from "@zoralabs/coins-sdk";
-
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 import "../styles/style.css";
 import {
   FaEdit,
@@ -25,8 +25,7 @@ export default function Card() {
   const pfpUrl = userData?.pfpUrl || "/default-avatar.jpg";
   const bio = userData?.profile?.bio || "";
   const fid = userData?.fid || "";
-  const followerCount = userData?.followerCount || 0;
-  const followingCount = userData?.followingCount || 0;
+  const displayName = userData?.display_name || 0;
 
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
@@ -199,13 +198,7 @@ export default function Card() {
     <div className="card" data-state={activeSection}>
       <div className="card-header">
         <img src={pfpUrl} alt="Avatar" className="card-avatar" />
-        <h1 className="card-fullname">Welcome, {username}!</h1>
-        <div className="card-bio">{bio}</div>
-        <div className="card-fid">FID: {fid}</div>
-        <div className="card-follow">
-          <span>Followers: {followerCount}</span> |{" "}
-          <span>Following: {followingCount}</span>
-        </div>
+        <h1 className="card-fullname">{displayName}!</h1>
       </div>
       {isConnected ? (
         <div className="card-main">
@@ -345,17 +338,7 @@ export default function Card() {
           </div>
         </div>
       ) : (
-        <div className="connection-error">
-          <h2>Connection Required</h2>
-          <p>Please connect your wallet to access your data.</p>
-          <button
-            className="connect-button"
-            onClick={handleConnectWallet}
-            disabled={isConnecting}
-          >
-            <FaWallet /> {isConnecting ? "Connecting..." : "Connect Wallet"}
-          </button>
-        </div>
+        <ConnectButton />
       )}
     </div>
   );
