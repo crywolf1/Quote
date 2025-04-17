@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { InjectedConnector } from "wagmi/connectors/injected";
+import { injected } from "wagmi/connectors";
 
 const FarcasterContext = createContext();
 
@@ -15,7 +15,7 @@ export function FarcasterFrameProvider({ children }) {
 
   const { address, isConnected } = useAccount();
   const { connect } = useConnect({
-    connector: new InjectedConnector(),
+    connector: new injected(),
   });
   const { disconnect } = useDisconnect();
 
