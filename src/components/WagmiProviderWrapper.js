@@ -1,13 +1,14 @@
 // src/components/WagmiProviderWrapper.js
 "use client";
 
-import { WagmiProvider } from "wagmi";
+import { WagmiProvider, configureChains, createConfig } from "wagmi";
 import { base } from "wagmi/chains";
-import { createConfig, http } from "wagmi";
-import { farcasterFrame } from "@farcaster/frame-wagmi-connector";
+import { http } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { farcasterFrame } from "@farcaster/frame-wagmi-connector";
+import { metaMask, walletConnect } from "wagmi/connectors";
 
-// Create a QueryClient instance
+// QueryClient instance
 const queryClient = new QueryClient();
 
 // Wagmi configuration
@@ -16,7 +17,11 @@ const config = createConfig({
   transports: {
     [base.id]: http(),
   },
-  connectors: [farcasterFrame()],
+  connectors: [
+    farcasterFrame(), // for Farcaster frame-based context
+    metaMask(), // for MetaMask browser extension
+    walletConnect({ projectId: "YOUR_WALLETCONNECT_PROJECT_ID" }), // get this from WalletConnect dashboard
+  ],
 });
 
 export default function WagmiProviderWrapper({ children }) {

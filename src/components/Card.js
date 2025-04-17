@@ -4,7 +4,7 @@ import { useFarcaster } from "./FarcasterFrameProvider";
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { createCoin } from "@zoralabs/coins-sdk";
-
+import WalletConnector from "./WalletConnector";
 import "../styles/style.css";
 import {
   FaEdit,
@@ -221,7 +221,7 @@ export default function Card() {
           <span>Following: {followingCount}</span>
         </div>
       </div>
-
+      <WalletConnector />
       <div className="card-main">
         {/* Quote Display Section */}
         <div
