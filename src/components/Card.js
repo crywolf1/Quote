@@ -198,7 +198,7 @@ export default function Card() {
     <div className="card" data-state={activeSection}>
       <div className="card-header">
         <img src={pfpUrl} alt="Avatar" className="card-avatar" />
-        <h1 className="card-fullname">{display_name}!</h1>
+        <h1 className="card-fullname">{display_name}</h1>
       </div>
       {isConnected ? (
         <div className="card-main">
