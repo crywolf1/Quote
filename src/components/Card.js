@@ -25,7 +25,7 @@ export default function Card() {
   const pfpUrl = userData?.pfpUrl || "/default-avatar.jpg";
   const bio = userData?.profile?.bio || "";
   const fid = userData?.fid || "";
-  const display_name = userData?.display_name || 0;
+  const displayName = userData?.displayName || 0;
 
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
@@ -199,10 +199,10 @@ export default function Card() {
       <div className="card-header">
         <div
           className="card-cover"
-          style={{ backgroundImage: { pfpUrl } }}
+          style={{ backgroundImage: `url(${pfpUrl})` }}
         ></div>
         <img src={pfpUrl} alt="Avatar" className="card-avatar" />
-        <h1 className="card-fullname">{display_name}</h1>
+        <h1 className="card-fullname">{displayName}</h1>
       </div>
       {isConnected ? (
         <div className="card-main">
