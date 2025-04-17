@@ -318,6 +318,7 @@ export default function Card() {
                     sign out
                   </button>
                 </div>
+
                 <div className="card-contact-wrapper">
                   <div className="card-contact">
                     <textarea
@@ -334,6 +335,7 @@ export default function Card() {
                   <button className="contact-me" onClick={mintQuote}>
                     Mint as Zora Coin
                   </button>
+                  
                 </div>
                 {message && <p className="message">{message}</p>}
               </div>

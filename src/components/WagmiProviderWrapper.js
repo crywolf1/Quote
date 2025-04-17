@@ -20,6 +20,7 @@ export default function WagmiProviderWrapper({ children }) {
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
+          modalSize="compact"
           theme={darkTheme({
             accentColor: "#7b3fe4",
             accentColorForeground: "white",
