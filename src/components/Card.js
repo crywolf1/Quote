@@ -197,6 +197,10 @@ export default function Card() {
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">
+        <div
+          className="card-cover"
+          style={{ backgroundImage: { pfpUrl } }}
+        ></div>
         <img src={pfpUrl} alt="Avatar" className="card-avatar" />
         <h1 className="card-fullname">{display_name}</h1>
       </div>
