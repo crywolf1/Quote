@@ -4,7 +4,7 @@ import { useFarcaster } from "./FarcasterFrameProvider";
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { createCoin } from "@zoralabs/coins-sdk";
-import { InjectedConnector } from "wagmi/connectors/injected";
+
 import "../styles/style.css";
 import {
   FaEdit,
