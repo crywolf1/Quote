@@ -193,7 +193,7 @@ export default function Card() {
   if (loading)
     return <div className="loading-container">Loading user data...</div>;
 
-  if (error && !isConnected) {
+  /* if (error && !isConnected) {
     return (
       <div className="connection-error">
         <h2>Connection Required</h2>
@@ -207,7 +207,7 @@ export default function Card() {
         </button>
       </div>
     );
-  }
+  } */
 
   return (
     <div className="card" data-state={activeSection}>
