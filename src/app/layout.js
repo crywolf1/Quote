@@ -34,6 +34,7 @@ export default function RootLayout({ children }) {
       <body>
         <WagmiProviderWrapper>
           <FarcasterFrameProvider>{children}</FarcasterFrameProvider>
+          
         </WagmiProviderWrapper>
       </body>
     </html>

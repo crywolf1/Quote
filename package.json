@@ -35,6 +35,8 @@
     "react": "18",
     "react-dom": "18",
     "react-icons": "^5.5.0",
+    "react-toastify": "^11.0.5",
+    "sonner": "^2.0.3",
     "threejs-components": "^0.0.17",
     "viem": "^2.26.3",
     "wagmi": "^2.14.16"

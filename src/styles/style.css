@@ -517,7 +517,7 @@
   font-weight: bold;
   font-family: "Lucida Sans", "Lucida Sans Regular", "Lucida Grande",
     "Lucida Sans Unicode", Geneva, Verdana, sans-serif;
-  color: #7b3fe4;
+  color: #6c3fbb;
 }
 
 .connect-button {
@@ -563,6 +563,5 @@
 
 .profile-wrapper-logout {
   display: flex;
-
   justify-content: space-between;
 }

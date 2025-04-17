@@ -10,6 +10,7 @@ export default function Home() {
       <CanvasBackground />
       <div className="relative z-10">
         <Suspense fallback={<div>Loading...</div>}>
+         
           <Card />
         </Suspense>
       </div>

@@ -303,7 +303,7 @@ export default function Card() {
                   <h1 className="card-fullname">{displayName}</h1>
                 </div>
 
-                <div className="profile-wrapper-logout">
+                <div className="profile-wrapper-logout ">
                   <div>
                     <div className="card-subtitle">Write Your Quote</div>
                     <p className="char-count">
