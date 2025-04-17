@@ -5,11 +5,11 @@ import Quote from "../../../lib/models/Quote";
 export async function POST(req) {
   try {
     await dbConnect();
-    const { text } = await req.json();
-    if (!text) {
+    const { text, creatorAddress } = await req.json();
+    if (!text || !creatorAddress) {
       return NextResponse.json({ error: "Quote is required" }, { status: 400 });
     }
-    const newQuote = new Quote({ text });
+    const newQuote = new Quote({ text, creatorAddress });
     await newQuote.save();
     return NextResponse.json(
       { message: "Quote saved successfully!" },
@@ -25,14 +25,23 @@ export async function POST(req) {
 }
 
 export async function GET(req) {
+  await dbConnect();
+
+  const { searchParams } = new URL(req.url);
+  const creatorAddress = searchParams.get("creatorAddress");
+
   try {
-    await dbConnect();
-    const quotes = await Quote.find();
-    return NextResponse.json({ quotes });
+    let quotes;
+    if (creatorAddress) {
+      quotes = await Quote.find({ creatorAddress });
+    } else {
+      quotes = await Quote.find({});
+    }
+
+    return NextResponse.json({ quotes }, { status: 200 });
   } catch (error) {
-    console.error("❌ Error fetching quotes:", error);
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { error: "Failed to fetch quotes" },
       { status: 500 }
     );
   }

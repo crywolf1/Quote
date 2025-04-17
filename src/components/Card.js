@@ -35,9 +35,12 @@ export default function Card() {
   const [isConnecting, setIsConnecting] = useState(false);
 
   // Fetch quotes from API
+  const { address: userWalletAddress } = useAccount();
   const fetchQuotes = async () => {
+    if (!userWalletAddress) return;
+
     try {
-      const res = await fetch("/api/quote");
+      const res = await fetch(`/api/quote?creatorAddress=${userWalletAddress}`);
       const data = await res.json();
       if (res.ok) {
         setQuotes(data.quotes);
@@ -53,8 +56,10 @@ export default function Card() {
   };
 
   useEffect(() => {
-    fetchQuotes();
-  }, []);
+    if (userWalletAddress) {
+      fetchQuotes();
+    }
+  }, [userWalletAddress]);
 
   // Handle wallet connection
   const handleConnectWallet = async () => {
@@ -81,22 +86,31 @@ export default function Card() {
   };
 
   // Save quote to API
+  console.log("address", address);
+
   const sendQuote = async () => {
     if (!quote.trim()) {
       setMessage("Quote cannot be empty!");
       return;
     }
+
+    // Assuming `userWalletAddress` contains the current user's wallet address
+    const userWalletAddress = address; // Replace with actual user's wallet address
+
     try {
       const res = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: quote }),
+        body: JSON.stringify({
+          text: quote,
+          creatorAddress: userWalletAddress,
+        }), // send creatorAddress
       });
       const data = await res.json();
       if (res.ok) {
         setMessage("Quote saved successfully!");
         setQuote("");
-        fetchQuotes();
+        fetchQuotes(); // Fetch the updated list of quotes
       } else {
         setMessage(data.error || "Failed to save quote.");
       }
