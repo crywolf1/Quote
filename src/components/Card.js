@@ -2,7 +2,7 @@
 
 import { useFarcaster } from "./FarcasterFrameProvider";
 import { useState, useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useDisconnect } from "wagmi";
 import { createCoin } from "@zoralabs/coins-sdk";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import "../styles/style.css";
@@ -16,9 +16,9 @@ import {
 
 export default function Card() {
   const { userData, loading, error, connectWallet } = useFarcaster();
-  const { isConnected } = useAccount();
+  const { isConnected, isDisconnected, status, address } = useAccount();
   console.log("Card userData:", userData, "loading:", loading, "error:", error);
-  const { address } = useAccount();
+  const { disconnect } = useDisconnect();
 
   // Use fallback values if userData is not loaded yet
   const username = userData?.username || userData?.displayName || "Guest";
@@ -33,6 +33,7 @@ export default function Card() {
   const [editedText, setEditedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [ready, setReady] = useState(false);
 
   // Fetch quotes from API
   const { address: userWalletAddress } = useAccount();
@@ -60,6 +61,10 @@ export default function Card() {
       fetchQuotes();
     }
   }, [userWalletAddress]);
+
+  useEffect(() => {
+    setReady(true);
+  }, []);
 
   // Handle wallet connection
   const handleConnectWallet = async () => {
@@ -204,20 +209,14 @@ export default function Card() {
   };
 
   if (loading)
+    return <div className="loading-container">Loading user app...</div>;
+  if (!ready || status === "loading") {
     return <div className="loading-container">Loading user data...</div>;
-
+  }
   return (
     <div className={isConnected ? "card" : ""} data-state={activeSection}>
       {isConnected ? (
         <>
-          <div className="card-header">
-            <div
-              className="card-cover"
-              style={{ backgroundImage: `url(${pfpUrl})` }}
-            ></div>
-            <img src={pfpUrl} alt="Avatar" className="card-avatar" />
-            <h1 className="card-fullname">{displayName}</h1>
-          </div>
           <div className="card-main">
             {/* Quote Display Section */}
             <div
@@ -294,11 +293,31 @@ export default function Card() {
               }`}
               id="contact"
             >
-              <div className="card-content">
-                <div className="card-subtitle">Write Your Quote</div>
-                <p className="char-count">
-                  {240 - quote.length} characters remaining
-                </p>
+              <div className="card-content showProfileHere">
+                <div className="card-header">
+                  <div
+                    className="card-cover"
+                    style={{ backgroundImage: `url(${pfpUrl})` }}
+                  ></div>
+                  <img src={pfpUrl} alt="Avatar" className="card-avatar" />
+                  <h1 className="card-fullname">{displayName}</h1>
+                </div>
+
+                <div className="profile-wrapper-logout">
+                  <div>
+                    <div className="card-subtitle">Write Your Quote</div>
+                    <p className="char-count">
+                      {240 - quote.length} characters remaining
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => disconnect()}
+                    className="disconnect-btn"
+                    style={{}}
+                  >
+                    sign out
+                  </button>
+                </div>
                 <div className="card-contact-wrapper">
                   <div className="card-contact">
                     <textarea
@@ -356,10 +375,12 @@ export default function Card() {
           </div>
         </>
       ) : (
-        <div className="connection-error">
-          <p>Sign in with your wallet to continue</p>
-          <ConnectButton label="sign in" />
-        </div>
+        isDisconnected && (
+          <div className="connection-error">
+            <p>Sign in with your wallet to continue</p>
+            <ConnectButton label="sign in" />
+          </div>
+        )
       )}
     </div>
   );
