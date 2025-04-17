@@ -1,39 +1,17 @@
-// src/components/WalletConnector.js
+// components/WalletConnector.js
 "use client";
+import { useAccount } from "wagmi";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useEffect } from "react";
 
-import { useAccount, useConnect, useDisconnect } from "wagmi";
-
-export default function WalletConnector() {
+export default function WalletConnector({ setWalletAddress }) {
   const { address, isConnected } = useAccount();
-  const { connect, connectors, error, isLoading, pendingConnector } =
-    useConnect();
-  const { disconnect } = useDisconnect();
 
-  if (isConnected) {
-    return (
-      <div>
-        <div>Connected as {address}</div>
-        <button onClick={() => disconnect()}>Disconnect</button>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (isConnected && address) {
+      setWalletAddress(address);
+    }
+  }, [address, isConnected, setWalletAddress]);
 
-  return (
-    <div>
-      {connectors.map((connector) => (
-        <button
-          key={connector.id}
-          onClick={() => connect({ connector })}
-          disabled={!connector.ready}
-        >
-          Connect with {connector.name}
-          {isLoading &&
-            pendingConnector?.id === connector.id &&
-            " (connecting...)"}
-        </button>
-      ))}
-
-      {error && <div style={{ color: "red" }}>{error.message}</div>}
-    </div>
-  );
+  return <ConnectButton />;
 }

@@ -4,7 +4,7 @@ import { useFarcaster } from "./FarcasterFrameProvider";
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { createCoin } from "@zoralabs/coins-sdk";
-import WalletConnector from "./WalletConnector";
+import { InjectedConnector } from "wagmi/connectors/injected";
 import "../styles/style.css";
 import {
   FaEdit,
@@ -47,6 +47,8 @@ export default function Card() {
         if (data.quotes.length > 0) {
           setCurrentIndex(Math.floor(Math.random() * data.quotes.length));
         }
+      } else {
+        setMessage("Failed to fetch quotes.");
       }
     } catch (error) {
       setMessage("Failed to fetch quotes.");
@@ -193,22 +195,6 @@ export default function Card() {
   if (loading)
     return <div className="loading-container">Loading user data...</div>;
 
-  /* if (error && !isConnected) {
-    return (
-      <div className="connection-error">
-        <h2>Connection Required</h2>
-        <p>{error}</p>
-        <button
-          className="connect-button"
-          onClick={handleConnectWallet}
-          disabled={isConnecting}
-        >
-          <FaWallet /> {isConnecting ? "Connecting..." : "Connect Wallet"}
-        </button>
-      </div>
-    );
-  } */
-
   return (
     <div className="card" data-state={activeSection}>
       <div className="card-header">
@@ -221,143 +207,156 @@ export default function Card() {
           <span>Following: {followingCount}</span>
         </div>
       </div>
-      <WalletConnector />
-      <div className="card-main">
-        {/* Quote Display Section */}
-        <div
-          className={`card-section ${
-            activeSection === "#about" ? "is-active" : ""
-          }`}
-          id="about"
-        >
-          <div className="card-content">
-            <div className="card-subtitle">Quote</div>
-            <p className="card-desc">
-              {quotes[currentIndex]?.text || "No quotes yet."}
-            </p>
+      {isConnected ? (
+        <div className="card-main">
+          {/* Quote Display Section */}
+          <div
+            className={`card-section ${
+              activeSection === "#about" ? "is-active" : ""
+            }`}
+            id="about"
+          >
+            <div className="card-content">
+              <div className="card-subtitle">Quote</div>
+              <p className="card-desc">
+                {quotes[currentIndex]?.text || "No quotes yet."}
+              </p>
+            </div>
           </div>
-        </div>
 
-        {/* All Quotes Section */}
-        <div
-          className={`card-section ${
-            activeSection === "#experience" ? "is-active" : ""
-          }`}
-          id="experience"
-        >
-          <div className="card-content">
-            <div className="card-subtitle">All Quotes</div>
-            <div className="quotes-list">
-              {quotes.length > 0 ? (
-                quotes.map((quote, index) => (
-                  <div key={quote._id} className="quote-item">
-                    {editIndex === index ? (
-                      <div>
-                        <textarea
-                          value={editedText}
-                          className="text-area1"
-                          onChange={(e) => {
-                            if (e.target.value.length <= 240) {
-                              setEditedText(e.target.value);
-                            }
-                          }}
-                          maxLength={240}
-                        />
-                        <button onClick={handleUpdateQuote}>Save</button>
+          {/* All Quotes Section */}
+          <div
+            className={`card-section ${
+              activeSection === "#experience" ? "is-active" : ""
+            }`}
+            id="experience"
+          >
+            <div className="card-content">
+              <div className="card-subtitle">All Quotes</div>
+              <div className="quotes-list">
+                {quotes.length > 0 ? (
+                  quotes.map((quote, index) => (
+                    <div key={quote._id} className="quote-item">
+                      {editIndex === index ? (
+                        <div>
+                          <textarea
+                            value={editedText}
+                            className="text-area1"
+                            onChange={(e) => {
+                              if (e.target.value.length <= 240) {
+                                setEditedText(e.target.value);
+                              }
+                            }}
+                            maxLength={240}
+                          />
+                          <button onClick={handleUpdateQuote}>Save</button>
+                        </div>
+                      ) : (
+                        <p>{quote.text}</p>
+                      )}
+                      <div className="quote-actions">
+                        <button
+                          className="edit-btn"
+                          onClick={() => handleEdit(index)}
+                        >
+                          <FaEdit />
+                        </button>
+                        <button
+                          className="delete-btn"
+                          onClick={() => handleDelete(index)}
+                        >
+                          <FaTrashAlt />
+                        </button>
                       </div>
-                    ) : (
-                      <p>{quote.text}</p>
-                    )}
-                    <div className="quote-actions">
-                      <button
-                        className="edit-btn"
-                        onClick={() => handleEdit(index)}
-                      >
-                        <FaEdit />
-                      </button>
-                      <button
-                        className="delete-btn"
-                        onClick={() => handleDelete(index)}
-                      >
-                        <FaTrashAlt />
-                      </button>
                     </div>
-                  </div>
-                ))
-              ) : (
-                <p>No quotes available.</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Write Quote Section */}
-        <div
-          className={`card-section ${
-            activeSection === "#contact" ? "is-active" : ""
-          }`}
-          id="contact"
-        >
-          <div className="card-content">
-            <div className="card-subtitle">Write Your Quote</div>
-            <p className="char-count">
-              {240 - quote.length} characters remaining
-            </p>
-            <div className="card-contact-wrapper">
-              <div className="card-contact">
-                <textarea
-                  placeholder="Write your quote here..."
-                  className="text-area"
-                  maxLength={240}
-                  value={quote}
-                  onChange={(e) => setQuote(e.target.value)}
-                />
+                  ))
+                ) : (
+                  <p>No quotes available.</p>
+                )}
               </div>
-              <button className="contact-me" onClick={sendQuote}>
-                Save Quote
-              </button>
-              <button className="contact-me" onClick={mintQuote}>
-                Mint as Zora Coin
-              </button>
             </div>
-            {message && <p className="message">{message}</p>}
           </div>
-        </div>
 
-        {/* Navigation */}
-        <div className="card-container2">
-          {activeSection === "#about" && (
-            <div className="card-buttons1">
-              <button className="nav-btn left" onClick={handleLeftClick}>
-                <FaArrowLeft size={30} />
+          {/* Write Quote Section */}
+          <div
+            className={`card-section ${
+              activeSection === "#contact" ? "is-active" : ""
+            }`}
+            id="contact"
+          >
+            <div className="card-content">
+              <div className="card-subtitle">Write Your Quote</div>
+              <p className="char-count">
+                {240 - quote.length} characters remaining
+              </p>
+              <div className="card-contact-wrapper">
+                <div className="card-contact">
+                  <textarea
+                    placeholder="Write your quote here..."
+                    className="text-area"
+                    maxLength={240}
+                    value={quote}
+                    onChange={(e) => setQuote(e.target.value)}
+                  />
+                </div>
+                <button className="contact-me" onClick={sendQuote}>
+                  Save Quote
+                </button>
+                <button className="contact-me" onClick={mintQuote}>
+                  Mint as Zora Coin
+                </button>
+              </div>
+              {message && <p className="message">{message}</p>}
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <div className="card-container2">
+            {activeSection === "#about" && (
+              <div className="card-buttons1">
+                <button className="nav-btn left" onClick={handleLeftClick}>
+                  <FaArrowLeft size={30} />
+                </button>
+                <button className="nav-btn right" onClick={handleRightClick}>
+                  <FaArrowRight size={30} />
+                </button>
+              </div>
+            )}
+            <div className="card-buttons">
+              <button
+                className={activeSection === "#about" ? "is-active" : ""}
+                onClick={() => handleSectionChange("#about")}
+              >
+                Quote
               </button>
-              <button className="nav-btn right" onClick={handleRightClick}>
-                <FaArrowRight size={30} />
+              <button
+                className={activeSection === "#experience" ? "is-active" : ""}
+                onClick={() => handleSectionChange("#experience")}
+              >
+                All Quotes
+              </button>
+              <button
+                className={activeSection === "#contact" ? "is-active" : ""}
+                onClick={() => handleSectionChange("#contact")}
+              >
+                Add
               </button>
             </div>
-          )}
-          <div className="card-buttons">
-            <button
-              className={activeSection === "#about" ? "is-active" : ""}
-              onClick={() => handleSectionChange("#about")}
-            >
-              Quote
-            </button>
-            <button
-              className={activeSection === "#experience" ? "is-active" : ""}
-              onClick={() => handleSectionChange("#experience")}
-            >
-              All Quotes
-            </button>
-            <button
-              className={activeSection === "#contact" ? "is-active" : ""}
-              onClick={() => handleSectionChange("#contact")}
-            >
-              Add
-            </button>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="connection-error">
+          <h2>Connection Required</h2>
+          <p>Please connect your wallet to access your data.</p>
+          <button
+            className="connect-button"
+            onClick={handleConnectWallet}
+            disabled={isConnecting}
+          >
+            <FaWallet /> {isConnecting ? "Connecting..." : "Connect Wallet"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

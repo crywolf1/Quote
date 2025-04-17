@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { injected } from "wagmi/connectors";
+import { InjectedConnector } from "wagmi/connectors/injected";
 
 const FarcasterContext = createContext();
 
@@ -14,23 +14,27 @@ export function FarcasterFrameProvider({ children }) {
   const [error, setError] = useState("");
 
   const { address, isConnected } = useAccount();
-  const { connect } = useConnect({ connector: injected() });
+  const { connect } = useConnect({
+    connector: new InjectedConnector(),
+  });
   const { disconnect } = useDisconnect();
 
-  // Dynamically import Farcaster SDK on client side
   useEffect(() => {
     async function loadSdk() {
       if (typeof window !== "undefined") {
         try {
           const module = await import("@farcaster/frame-sdk");
           setSdk(module.sdk);
+          await sdk.actions.ready({ disableNativeGestures: true }); // Call ready as soon as SDK is loaded
+          setIsInitialized(true);
+          setLoading(false); // Set loading to false once ready is called
         } catch (err) {
           console.error("Failed to load Farcaster SDK:", err);
         }
       }
     }
     loadSdk();
-  }, []);
+  }, [sdk]);
 
   const connectWallet = async () => {
     try {
@@ -50,10 +54,6 @@ export function FarcasterFrameProvider({ children }) {
     setError("");
 
     try {
-      await sdk.actions.ready();
-      setIsInitialized(true);
-      console.log("SDK initialized");
-
       let fid = null;
       let userAddress = null;
 
@@ -68,7 +68,6 @@ export function FarcasterFrameProvider({ children }) {
         console.warn("Error getting frame context:", contextError);
       }
 
-      // Try by FID
       if (fid) {
         console.log("Fetching user data by FID:", fid);
         const fidRes = await fetch(`/api/neynar?fid=${fid}`);
@@ -89,7 +88,6 @@ export function FarcasterFrameProvider({ children }) {
         }
       }
 
-      // Try by wallet address
       if (address) {
         const userAddress = address.toLowerCase();
         console.log("Fetching user data by wallet:", userAddress);
@@ -128,14 +126,12 @@ export function FarcasterFrameProvider({ children }) {
     }
   };
 
-  // Fetch user data once SDK is ready
   useEffect(() => {
     if (sdk) {
       tryGetUserData();
     }
   }, [sdk]);
 
-  // Re-fetch user data on wallet change
   useEffect(() => {
     if (isConnected && address && sdk) {
       tryGetUserData();
