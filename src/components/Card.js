@@ -15,17 +15,15 @@ import {
 } from "react-icons/fa";
 
 export default function Card() {
-  const { userData, loading, error, connectWallet, isConnected } =
-    useFarcaster();
+  const { userData, loading, error, connectWallet } = useFarcaster();
+  const { isConnected } = useAccount();
   console.log("Card userData:", userData, "loading:", loading, "error:", error);
   const { address } = useAccount();
 
   // Use fallback values if userData is not loaded yet
   const username = userData?.username || userData?.displayName || "Guest";
-  const pfpUrl = userData?.pfpUrl || "/default-avatar.jpg";
-  const bio = userData?.profile?.bio || "";
-  const fid = userData?.fid || "";
-  const displayName = userData?.displayName || 0;
+  const pfpUrl = userData?.pfpUrl || "/assets/icon.png";
+  const displayName = userData?.displayName || username;
 
   const [activeSection, setActiveSection] = useState("#about");
   const [quote, setQuote] = useState("");
@@ -343,9 +341,8 @@ export default function Card() {
         </div>
       ) : (
         <div className="connection-error">
-          <h2>Connection Required</h2>
-          <p>Please connect your wallet to access your data.</p>
-          <ConnectButton />
+          <p>Sign in with your wallet to continue</p>
+          <ConnectButton label="sign in" />
         </div>
       )}
     </div>

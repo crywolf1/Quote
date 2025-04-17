@@ -78,7 +78,7 @@ export function FarcasterFrameProvider({ children }) {
           setUserData({
             username: user.username || "Anonymous",
             displayName: user.display_name || user.username || "Anonymous",
-            pfpUrl: user.pfp_url || "/default-avatar.jpg",
+            pfpUrl: user.pfp_url || "/assets/icon.png",
             fid: user.fid,
             followerCount: user.follower_count || 0,
             followingCount: user.following_count || 0,
