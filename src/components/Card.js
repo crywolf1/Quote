@@ -92,61 +92,7 @@ export default function Card() {
   };
 
   // Cast the current quote to Farcaster
-  const handleCastQuote = async () => {
-    if (!isConnected) {
-      setMessage("Please connect your wallet first.");
-      return;
-    }
-
-    if (!userData || !userData.fid) {
-      setMessage(
-        "No Farcaster account connected. Please connect your Farcaster account."
-      );
-      return;
-    }
-
-    const currentQuote = quotes[currentIndex];
-    if (!currentQuote) {
-      setMessage("No quote to cast.");
-      return;
-    }
-
-    try {
-      setIsCasting(true);
-      setMessage("Casting to Farcaster...");
-
-      console.log("Casting with FID:", userData.fid);
-
-      const response = await fetch("/api/farcaster/cast", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fid: userData.fid,
-          text: currentQuote.text,
-        }),
-      });
-
-      // Handle non-OK responses with better error messages
-      if (!response.ok) {
-        let errorMessage;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || `Error ${response.status}`;
-        } catch (e) {
-          errorMessage = `Error ${response.status}`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const result = await response.json();
-      setMessage("Quote cast successfully on Farcaster!");
-    } catch (error) {
-      console.error("Error casting quote:", error);
-      setMessage(`Failed to cast: ${error.message}`);
-    } finally {
-      setIsCasting(false);
-    }
-  };
+ 
   // Save quote to API
   const sendQuote = async () => {
     if (!quote.trim()) {
@@ -295,6 +241,7 @@ export default function Card() {
                     onClick={handleCastQuote}
                     disabled={isCasting}
                   >
+                    <FaShareSquare />{" "}
                     {isCasting ? "Casting..." : "Cast to Farcaster"}
                   </button>
                 )}
