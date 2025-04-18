@@ -14,6 +14,7 @@ import {
   FaArrowRight,
   FaWallet,
 } from "react-icons/fa";
+import NeynarLogin from "./NeynarLogin";
 
 export default function Card() {
   const { userData, loading, error, connectWallet } = useFarcaster();
@@ -403,6 +404,7 @@ export default function Card() {
                   </button>
                   <button onClick={castQuote}>Cast Quote</button>
                   {message && <p>{message}</p>}
+                  <NeynarLogin />
 
                   <button className="nav-btn right" onClick={handleRightClick}>
                     <FaArrowRight size={30} />
