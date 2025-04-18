@@ -91,7 +91,6 @@ export default function Card() {
   };
 
   // Save quote to API
-  console.log("address", address);
 
   const sendQuote = async () => {
     if (!quote.trim()) {
@@ -149,6 +148,30 @@ export default function Card() {
       await sendQuote();
     } catch (error) {
       setMessage("Failed to mint quote: " + error.message);
+    }
+  };
+
+  const castQuote = async (quoteText) => {
+    try {
+      setMessage("Casting...");
+
+      const res = await fetch("/api/cast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: quoteText }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setMessage("✅ Quote successfully casted!");
+      } else {
+        setMessage(`❌ Failed to cast: ${data.error || "Unknown error"}`);
+      }
+    } catch (err) {
+      setMessage("❌ Error casting quote");
+    } finally {
+      setTimeout(() => setMessage(""), 3000); // auto-clear after 3s
     }
   };
 
@@ -348,6 +371,10 @@ export default function Card() {
                   <button className="nav-btn left" onClick={handleLeftClick}>
                     <FaArrowLeft size={30} />
                   </button>
+                  <p>{quote}</p>
+                  <button onClick={() => castQuote(quote)}>Cast</button>
+                  {message && <p className="message">{message}</p>}
+
                   <button className="nav-btn right" onClick={handleRightClick}>
                     <FaArrowRight size={30} />
                   </button>
