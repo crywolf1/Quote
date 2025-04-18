@@ -1,13 +1,12 @@
 // pages/api/farcaster/cast.js
 import { NeynarAPIClient } from "@neynar/nodejs-sdk";
-import { dbConnect } from "../../../lib/db"; // Adjust path as needed
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { fid, text, quoteId } = req.body;
+  const { fid, text } = req.body;
 
   if (!fid || !text) {
     return res.status(400).json({ error: "Missing required parameters" });
@@ -17,32 +16,24 @@ export default async function handler(req, res) {
     // Initialize Neynar client
     const neynarClient = new NeynarAPIClient(process.env.NEYNAR_API_KEY);
 
-    // Optional: Track the cast in your MongoDB if needed
-    if (quoteId) {
-      const { db } = await dbConnect();
-      await db.collection("quotes").updateOne(
-        { _id: quoteId },
-        {
-          $inc: { castCount: 1 },
-          $push: {
-            casts: {
-              fid: fid,
-              timestamp: new Date(),
-            },
-          },
-        }
-      );
+    // Get the signer UUID for this FID
+    const userResponse = await neynarClient.lookupUserByFid(fid);
+
+    if (!userResponse?.data?.user?.verified_addresses?.length) {
+      return res
+        .status(404)
+        .json({ error: "No verified addresses found for this FID" });
     }
 
-    // Get the signer for this FID
-    const signerResponse = await neynarClient.lookupUserByfid(fid);
-    const signerUuid = signerResponse.data.user.signerUuid;
+    // Create a signer for this user if one doesn't exist
+    const signerResponse = await neynarClient.createSigner({
+      fid: fid,
+      app_fid: parseInt(process.env.NEYNAR_APP_FID || "1"), // Your app's FID
+    });
 
-    if (!signerUuid) {
-      return res.status(404).json({ error: "Signer not found for this user" });
-    }
+    const signerUuid = signerResponse.data.signer.signer_uuid;
 
-    // Publish the cast using Neynar
+    // Publish the cast
     const castResponse = await neynarClient.publishCast({
       signer_uuid: signerUuid,
       text: text,

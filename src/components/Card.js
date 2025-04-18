@@ -18,7 +18,6 @@ import {
 export default function Card() {
   const { userData, loading, error, connectWallet } = useFarcaster();
   const { isConnected, isDisconnected, status, address } = useAccount();
-  
 
   const { disconnect } = useDisconnect();
 
@@ -94,8 +93,15 @@ export default function Card() {
 
   // Cast the current quote to Farcaster
   const handleCastQuote = async () => {
-    if (!isConnected || !userData) {
-      setMessage("Please connect your wallet and Farcaster account first.");
+    if (!isConnected) {
+      setMessage("Please connect your wallet first.");
+      return;
+    }
+
+    if (!userData || !userData.fid) {
+      setMessage(
+        "No Farcaster account connected. Please connect your Farcaster account."
+      );
       return;
     }
 
@@ -109,31 +115,38 @@ export default function Card() {
       setIsCasting(true);
       setMessage("Casting to Farcaster...");
 
+      console.log("Casting with FID:", userData.fid);
+
       const response = await fetch("/api/farcaster/cast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fid: userData.fid,
           text: currentQuote.text,
-          quoteId: currentQuote._id,
         }),
       });
 
-      const result = await response.json();
-
-      if (response.ok) {
-        setMessage("Quote cast successfully on Farcaster!");
-      } else {
-        setMessage(`Failed to cast quote: ${result.error}`);
+      // Handle non-OK responses with better error messages
+      if (!response.ok) {
+        let errorMessage;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || `Error ${response.status}`;
+        } catch (e) {
+          errorMessage = `Error ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
+
+      const result = await response.json();
+      setMessage("Quote cast successfully on Farcaster!");
     } catch (error) {
       console.error("Error casting quote:", error);
-      setMessage("An error occurred while casting the quote");
+      setMessage(`Failed to cast: ${error.message}`);
     } finally {
       setIsCasting(false);
     }
   };
-
   // Save quote to API
   const sendQuote = async () => {
     if (!quote.trim()) {
@@ -282,7 +295,6 @@ export default function Card() {
                     onClick={handleCastQuote}
                     disabled={isCasting}
                   >
-                    <FaShareSquare />{" "}
                     {isCasting ? "Casting..." : "Cast to Farcaster"}
                   </button>
                 )}
