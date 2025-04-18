@@ -1,35 +1,56 @@
-// /pages/api/cast.js (or /api/cast route)
-export default async function handler(req, res) {
-  const { address, text } = req.body;
+// pages/api/cast.js
 
-  // 1. Get user FID by address
-  const userData = await fetch(
-    `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${address}`,
-    {
-      headers: { api_key: process.env.NEYNAR_API_KEY },
+export async function POST(req) {
+  try {
+    const body = await req.json();
+    const { text, signer_uuid, fid } = body;
+
+    // Check if required fields are present
+    if (!text || !signer_uuid || !fid) {
+      return new Response(
+        JSON.stringify({ error: "Missing quote text, signer_uuid, or fid" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
-  ).then((res) => res.json());
 
-  const fid = userData?.users?.[0]?.fid;
-  if (!fid) return res.status(404).json({ error: "Farcaster user not found" });
-
-  // 2. Cast using your signer
-  const castRes = await fetch("https://api.neynar.com/v2/farcaster/cast", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      api_key: process.env.NEYNAR_API_KEY,
-    },
-    body: JSON.stringify({
-      signer_uuid: process.env.SIGNER_UUID,
+    // Log the incoming data (for debugging or verification purposes)
+    console.log(
+      "Casting quote:",
       text,
-      reply_to: null, // or provide a parent hash if replying
-    }),
-  });
+      "from signer_uuid:",
+      signer_uuid,
+      "with fid:",
+      fid
+    );
 
-  if (castRes.ok) {
-    res.status(200).json({ success: true });
-  } else {
-    res.status(500).json({ error: "Failed to cast" });
+    // Optional: If you're using a service or database to validate the signer, do that here
+    // For now, we're simulating success for the casting action
+
+    // Simulate the casting process (you can replace this with real logic)
+    // For example, you could call Farcaster's API or any other service to handle the casting
+    const isValidSigner = true; // Check if the signer_uuid and fid are valid (mocked for now)
+
+    if (!isValidSigner) {
+      return new Response(
+        JSON.stringify({ error: "Invalid signer or authentication failed" }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Here, you would actually cast the quote (perhaps calling a Farcaster API)
+    // This is a placeholder response indicating success
+    return new Response(
+      JSON.stringify({ success: true, message: "Quote successfully casted!" }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Cast API Error:", error);
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

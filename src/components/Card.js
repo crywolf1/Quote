@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useAccount, useDisconnect } from "wagmi";
 import { createCoin } from "@zoralabs/coins-sdk";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+
 import "../styles/style.css";
 import {
   FaEdit,
@@ -34,14 +35,15 @@ export default function Card() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isConnecting, setIsConnecting] = useState(false);
   const [ready, setReady] = useState(false);
+  const [signerUuid, setSignerUuid] = useState(null);
 
   // Fetch quotes from API
-  const { address: userWalletAddress } = useAccount();
+
   const fetchQuotes = async () => {
-    if (!userWalletAddress) return;
+    if (!address) return;
 
     try {
-      const res = await fetch(`/api/quote?creatorAddress=${userWalletAddress}`);
+      const res = await fetch(`/api/quote?creatorAddress=${address}`);
       const data = await res.json();
       if (res.ok) {
         setQuotes(data.quotes);
@@ -57,15 +59,60 @@ export default function Card() {
   };
 
   useEffect(() => {
-    if (userWalletAddress) {
+    if (address) {
       fetchQuotes();
     }
-  }, [userWalletAddress]);
+  }, [address]);
 
   useEffect(() => {
     setReady(true);
   }, []);
 
+  useEffect(() => {
+    // Retrieve and store signer_uuid (you can also fetch it from backend if needed)
+    const savedSignerUuid = localStorage.getItem("signer_uuid");
+    if (savedSignerUuid) {
+      setSignerUuid(savedSignerUuid);
+    }
+  }, []);
+
+  const castQuote = async () => {
+    if (!signerUuid || !address) {
+      setMessage("Please log in with your wallet and sign in with Neynar.");
+      return;
+    }
+
+    if (!quote.trim()) {
+      setMessage("Quote cannot be empty.");
+      return;
+    }
+
+    try {
+      setMessage("Casting your quote...");
+
+      // Send the casting request to your backend with signer_uuid and quote
+      const res = await fetch("/api/cast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signer_uuid: signerUuid, // pass the signer_uuid from localStorage or context
+          fid: address, // Use the wallet address as fid (or get fid from SIWN)
+          text: quote, // The quote text to be cast
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setMessage("✅ Quote successfully casted!");
+        router.push("/success"); // Optionally redirect to a success page
+      } else {
+        setMessage(`❌ Failed to cast: ${data.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      setMessage("❌ Error casting quote");
+    }
+  };
   // Handle wallet connection
   const handleConnectWallet = async () => {
     setIsConnecting(true);
@@ -93,13 +140,13 @@ export default function Card() {
   // Save quote to API
 
   const sendQuote = async () => {
-    if (!quote.trim()) {
-      setMessage("Quote cannot be empty!");
+    if (!quote.trim() || quote.trim().length < 4) {
+      setMessage("Quote must be at least 4 characters long.");
       return;
     }
 
     // Assuming `userWalletAddress` contains the current user's wallet address
-    const userWalletAddress = address; // Replace with actual user's wallet address
+    const address = address; // Replace with actual user's wallet address
 
     try {
       const res = await fetch("/api/quote", {
@@ -107,7 +154,7 @@ export default function Card() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: quote,
-          creatorAddress: userWalletAddress,
+          creatorAddress: address,
         }), // send creatorAddress
       });
       const data = await res.json();
@@ -148,30 +195,6 @@ export default function Card() {
       await sendQuote();
     } catch (error) {
       setMessage("Failed to mint quote: " + error.message);
-    }
-  };
-
-  const castQuote = async (quoteText) => {
-    try {
-      setMessage("Casting...");
-
-      const res = await fetch("/api/cast", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: quoteText }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setMessage("✅ Quote successfully casted!");
-      } else {
-        setMessage(`❌ Failed to cast: ${data.error || "Unknown error"}`);
-      }
-    } catch (err) {
-      setMessage("❌ Error casting quote");
-    } finally {
-      setTimeout(() => setMessage(""), 3000); // auto-clear after 3s
     }
   };
 
@@ -282,6 +305,9 @@ export default function Card() {
                               maxLength={240}
                             />
                             <button onClick={handleUpdateQuote}>Save</button>
+                            <button onClick={() => setEditIndex(null)}>
+                              Cancel
+                            </button>
                           </div>
                         ) : (
                           <p>{quote.text}</p>
@@ -322,7 +348,12 @@ export default function Card() {
                     className="card-cover"
                     style={{ backgroundImage: `url(${pfpUrl})` }}
                   ></div>
-                  <img src={pfpUrl} alt="Avatar" className="card-avatar" />
+                  <img
+                    src={pfpUrl}
+                    alt="Avatar"
+                    className="card-avatar"
+                    loading="lazy"
+                  />
                   <h1 className="card-fullname">{displayName}</h1>
                 </div>
 
@@ -336,7 +367,6 @@ export default function Card() {
                   <button
                     onClick={() => disconnect()}
                     className="disconnect-btn"
-                    style={{}}
                   >
                     sign out
                   </button>
@@ -371,9 +401,8 @@ export default function Card() {
                   <button className="nav-btn left" onClick={handleLeftClick}>
                     <FaArrowLeft size={30} />
                   </button>
-                  <p>{quote}</p>
-                  <button onClick={() => castQuote(quote)}>Cast</button>
-                  {message && <p className="message">{message}</p>}
+                  <button onClick={castQuote}>Cast Quote</button>
+                  {message && <p>{message}</p>}
 
                   <button className="nav-btn right" onClick={handleRightClick}>
                     <FaArrowRight size={30} />
