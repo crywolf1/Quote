@@ -1,6 +1,6 @@
 // pages/api/farcaster/cast.js
 import { NeynarAPIClient } from "@neynar/nodejs-sdk";
-import { connectToDatabase } from "../../../lib/mongodb"; // Adjust path as needed
+import { dbConnect } from "../../../lib/db"; // Adjust path as needed
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
     // Optional: Track the cast in your MongoDB if needed
     if (quoteId) {
-      const { db } = await connectToDatabase();
+      const { db } = await dbConnect();
       await db.collection("quotes").updateOne(
         { _id: quoteId },
         {
