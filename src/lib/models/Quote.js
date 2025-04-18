@@ -1,17 +1,24 @@
+// models/Quote.js
 import mongoose from "mongoose";
 
 const quoteSchema = new mongoose.Schema(
   {
-    text: {
-      type: String,
-      required: true,
-      maxLength: 320,
-    },
+    text: { type: String, required: true },
     creatorAddress: { type: String, required: true },
+    fid: Number,
+    username: String,
+    displayName: String,
+    pfpUrl: String,
+    verifiedAddresses: {
+      eth_addresses: [String],
+      sol_addresses: [String],
+      primary: {
+        eth_address: String,
+        sol_address: String,
+      },
+    },
   },
   { timestamps: true }
 );
 
-const Quote = mongoose.models.Quote || mongoose.model("Quote", quoteSchema);
-
-export default Quote;
+export default mongoose.models.Quote || mongoose.model("Quote", quoteSchema);

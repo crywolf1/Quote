@@ -82,6 +82,7 @@ export function FarcasterFrameProvider({ children }) {
             fid: user.fid,
             followerCount: user.follower_count || 0,
             followingCount: user.following_count || 0,
+            verifiedAddresses: user.verified_addresses || {},
           });
           setLoading(false);
           return true;

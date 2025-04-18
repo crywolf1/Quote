@@ -5,11 +5,34 @@ import Quote from "../../../lib/models/Quote";
 export async function POST(req) {
   try {
     await dbConnect();
-    const { text, creatorAddress } = await req.json();
-    if (!text || !creatorAddress) {
-      return NextResponse.json({ error: "Quote is required" }, { status: 400 });
+    const {
+      text,
+      creatorAddress,
+      fid,
+      username,
+      displayName,
+      pfpUrl,
+      verifiedAddresses,
+    } = await req.json();
+
+    if (!text || !creatorAddress || !fid) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
     }
-    const newQuote = new Quote({ text, creatorAddress });
+
+    const newQuote = new Quote({
+      text,
+      creatorAddress,
+      fid,
+      username,
+      displayName,
+      pfpUrl,
+      verifiedAddresses,
+    });
+
+    
     await newQuote.save();
     return NextResponse.json(
       { message: "Quote saved successfully!" },
