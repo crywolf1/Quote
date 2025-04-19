@@ -18,20 +18,7 @@ const queryClient = new QueryClient();
 export default function WagmiProviderWrapper({ children }) {
   return (
     <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider
-          modalSize="compact"
-          theme={darkTheme({
-            accentColor: "#7b3fe4",
-            accentColorForeground: "white",
-            borderRadius: "small",
-            fontStack: "system",
-            overlayBlur: "none",
-          })}
-        >
-          {children}
-        </RainbowKitProvider>
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </WagmiProvider>
   );
 }

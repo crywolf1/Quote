@@ -1,10 +1,9 @@
+"use client";
+
 import { FarcasterFrameProvider } from "../components/FarcasterFrameProvider";
 import WagmiProviderWrapper from "../components/WagmiProviderWrapper";
-
-export const metadata = {
-  title: "Quote Card",
-  description: "A simple quote card app",
-};
+import { NeynarContextProvider, Theme } from "@neynar/react";
+import "@neynar/react/dist/style.css";
 
 export default function RootLayout({ children }) {
   return (
@@ -33,8 +32,20 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <WagmiProviderWrapper>
-          <FarcasterFrameProvider>{children}</FarcasterFrameProvider>
-          
+          <FarcasterFrameProvider>
+            <NeynarContextProvider
+              settings={{
+                clientId: process.env.NEXT_PUBLIC_NEYNAR_CLIENT_ID || "",
+                defaultTheme: Theme.Light,
+                eventsCallbacks: {
+                  onAuthSuccess: () => console.log("Authentication successful"),
+                  onSignout: () => console.log("Signed out"),
+                },
+              }}
+            >
+              {children}
+            </NeynarContextProvider>
+          </FarcasterFrameProvider>
         </WagmiProviderWrapper>
       </body>
     </html>

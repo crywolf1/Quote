@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useAccount, useDisconnect } from "wagmi";
 import { createCoin } from "@zoralabs/coins-sdk";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { NeynarAuthButton } from "@neynar/react";
 import "../styles/style.css";
 import {
   FaEdit,
@@ -92,7 +93,7 @@ export default function Card() {
   };
 
   // Cast the current quote to Farcaster
- 
+
   // Save quote to API
   const sendQuote = async () => {
     if (!quote.trim()) {
@@ -235,19 +236,6 @@ export default function Card() {
                 <p className="card-desc">
                   {quotes[currentIndex]?.text || "No quotes yet."}
                 </p>
-                {quotes.length > 0 && (
-                  <button
-                    className="cast-button"
-                    onClick={handleCastQuote}
-                    disabled={isCasting}
-                  >
-                    <FaShareSquare />{" "}
-                    {isCasting ? "Casting..." : "Cast to Farcaster"}
-                  </button>
-                )}
-                {message && activeSection === "#about" && (
-                  <p className="message">{message}</p>
-                )}
               </div>
             </div>
             {/* All Quotes Section */}
@@ -333,6 +321,7 @@ export default function Card() {
                   >
                     sign out
                   </button>
+                  <NeynarAuthButton />
                 </div>
 
                 <div className="card-contact-wrapper">
