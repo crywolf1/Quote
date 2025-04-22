@@ -1,102 +1,91 @@
-// app/api/cast/route.js
 import { NeynarAPIClient, Configuration } from "@neynar/nodejs-sdk";
 
-const neynarClient = new NeynarAPIClient(
+// Initialize the Neynar client
+const neynarApiKey = process.env.NEYNAR_API_KEY;
+if (!neynarApiKey) {
+  console.error("Missing NEYNAR_API_KEY environment variable");
+}
+
+const client = new NeynarAPIClient(
   new Configuration({
-    apiKey: process.env.NEYNAR_API_KEY,
+    apiKey: neynarApiKey,
   })
 );
 
 export async function POST(req) {
+  console.log("Cast API route called");
+
   try {
-    const { text, signerUuid, fid } = await req.json();
+    const body = await req.json();
+    console.log("Request body:", body);
+
+    const { text, signerUuid } = body;
 
     if (!text) {
-      return new Response(
-        JSON.stringify({ error: "Text content is required" }),
-        {
-          status: 400,
-        }
-      );
-    }
-
-    if (!signerUuid) {
-      return new Response(
-        JSON.stringify({ error: "Signer UUID is required" }),
-        {
-          status: 400,
-        }
-      );
-    }
-
-    if (!fid) {
-      return new Response(JSON.stringify({ error: "FID is required" }), {
+      console.log("Missing text");
+      return new Response(JSON.stringify({ error: "Missing quote text" }), {
         status: 400,
+        headers: { "Content-Type": "application/json" },
       });
     }
 
-    // First check if the signer is valid
-    try {
-      const signerInfo = await neynarClient.signer.getInfo(signerUuid);
-
-      if (signerInfo.status !== "approved") {
-        return new Response(
-          JSON.stringify({
-            error:
-              "Signer is not authorized. Current status: " + signerInfo.status,
-          }),
-          { status: 403 }
-        );
-      }
-
-      if (signerInfo.fid !== fid) {
-        return new Response(
-          JSON.stringify({
-            error: "Signer FID does not match the provided FID",
-          }),
-          { status: 403 }
-        );
-      }
-    } catch (signerError) {
-      console.error("Error checking signer:", signerError);
+    if (!signerUuid) {
+      console.log("Missing signerUuid");
       return new Response(
         JSON.stringify({
-          error: "Failed to validate signer",
-          details: signerError.message,
+          error: "Missing signer UUID. Please sign in with Farcaster.",
         }),
-        { status: 500 }
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
       );
     }
 
-    // Now attempt to publish the cast
-    try {
-      const castResult = await neynarClient.publishCast(signerUuid, { text });
+    console.log("Publishing cast with:", { signerUuid, text });
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          cast: castResult,
-        }),
-        { status: 200 }
-      );
-    } catch (castError) {
-      console.error("Error publishing cast:", castError);
-      return new Response(
-        JSON.stringify({
-          error: "Failed to publish cast",
-          details: castError.message,
-        }),
-        { status: 500 }
-      );
-    }
-  } catch (error) {
-    console.error("Cast API error:", error);
+    // Call the Neynar API to publish the cast
+    const result = await client.cast.publishCast(signerUuid, { text });
+    console.log("Cast published successfully:", result);
+
     return new Response(
       JSON.stringify({
-        error: "Server error",
-        details: error.message,
+        success: true,
+        message: "Cast published successfully",
+        hash: result.hash,
       }),
-      { status: 500 }
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  } catch (error) {
+    console.error("Cast error:", error);
+
+    let errorMessage = "Failed to cast";
+    let statusCode = 500;
+
+    // Try to extract more detailed error information
+    if (error.response) {
+      try {
+        const errorData = error.response.data;
+        errorMessage = errorData.message || "API error";
+        statusCode = error.response.status;
+        console.error("API error details:", errorData);
+      } catch (e) {
+        console.error("Error parsing API error:", e);
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        error: errorMessage,
+        details: error.message || error.toString(),
+      }),
+      {
+        status: statusCode,
+        headers: { "Content-Type": "application/json" },
+      }
     );
   }
 }

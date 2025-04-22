@@ -567,38 +567,72 @@
 }
 
 /* Add these to your styles.css file */
+/* Add these styles to your CSS file */
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
 
 .cast-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background-color: #8a46ff;
+  gap: 8px;
+  background-color: #6c5ce7;
   color: white;
   border: none;
   border-radius: 4px;
+  padding: 8px 16px;
   cursor: pointer;
-  font-weight: 600;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.3s;
 }
 
 .cast-btn:hover {
-  background-color: #7838e0;
+  background-color: #5548c7;
 }
 
 .cast-btn:disabled {
-  background-color: #cccccc;
+  background-color: #a29bda;
   cursor: not-allowed;
 }
 
-.cast-btn-small {
+.cast-btn.is-casting {
+  background-color: #a29bda;
+  cursor: wait;
+}
+
+.farcaster-auth-section {
+  margin-top: 8px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+}
+
+.farcaster-connected {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 4px;
-  padding: 4px 8px;
-  background-color: #8a46ff;
-  color: white;
-  border: none;
+}
+
+.farcaster-connected p {
+  margin: 0;
+  color: #6c5ce7;
+  font-weight: bold;
+}
+
+/* Show error messages in red */
+.message {
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 4px;
 }
