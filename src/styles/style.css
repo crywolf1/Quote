@@ -565,3 +565,40 @@
   display: flex;
   justify-content: space-between;
 }
+
+/* Add these to your styles.css file */
+
+.cast-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background-color: #8a46ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.cast-btn:hover {
+  background-color: #7838e0;
+}
+
+.cast-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.cast-btn-small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background-color: #8a46ff;
+  color: white;
+  border: none;
+}

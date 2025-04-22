@@ -12,7 +12,7 @@ export function FarcasterFrameProvider({ children }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [signerUuid, setSignerUuid] = useState(null);
+  const [neynarAuthData, setNeynarAuthData] = useState(null);
 
   const { address, isConnected } = useAccount();
   const { connect } = useConnect({
@@ -26,7 +26,7 @@ export function FarcasterFrameProvider({ children }) {
         try {
           const module = await import("@farcaster/frame-sdk");
           setSdk(module.sdk);
-          await sdk.actions.ready({ disableNativeGestures: true }); // Call ready as soon as SDK is loaded
+          await module.sdk.actions.ready({ disableNativeGestures: true }); // Call ready as soon as SDK is loaded
           setIsInitialized(true);
           setLoading(false); // Set loading to false once ready is called
         } catch (err) {
@@ -35,7 +35,7 @@ export function FarcasterFrameProvider({ children }) {
       }
     }
     loadSdk();
-  }, [sdk]);
+  }, []);
 
   const connectWallet = async () => {
     try {
@@ -111,6 +111,33 @@ export function FarcasterFrameProvider({ children }) {
         }
       }
 
+      // If we still don't have user data, check if there's a signerUuid in localStorage
+      const signerUuid = localStorage.getItem("signerUuid");
+      if (signerUuid) {
+        try {
+          const signerRes = await fetch(
+            `/api/neynar/signer?signerUuid=${signerUuid}`
+          );
+          const signerData = await signerRes.json();
+
+          if (signerRes.ok && signerData.user) {
+            const user = signerData.user;
+            setUserData({
+              username: user.username || "Anonymous",
+              displayName: user.display_name || user.username || "Anonymous",
+              pfpUrl: user.pfp_url || "/default-avatar.jpg",
+              fid: user.fid,
+              followerCount: user.follower_count || 0,
+              followingCount: user.following_count || 0,
+            });
+            setLoading(false);
+            return true;
+          }
+        } catch (signerError) {
+          console.error("Error fetching signer data:", signerError);
+        }
+      }
+
       throw new Error("No Farcaster account found");
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -126,22 +153,6 @@ export function FarcasterFrameProvider({ children }) {
       setLoading(false);
       return false;
     }
-  };
-
-  const setNeynarAuthData = (data) => {
-    const { user, signer_uuid, fid } = data;
-
-    setSignerUuid(signer_uuid);
-
-    // You can optionally override userData here too, if Neynar's `user` has more info
-    setUserData({
-      username: user.username || "Anonymous",
-      displayName: user.display_name || user.username || "Anonymous",
-      pfpUrl: user.pfp_url || "/default-avatar.jpg",
-      fid,
-      followerCount: user.follower_count || 0,
-      followingCount: user.following_count || 0,
-    });
   };
 
   useEffect(() => {
@@ -160,15 +171,15 @@ export function FarcasterFrameProvider({ children }) {
     <FarcasterContext.Provider
       value={{
         userData,
-        signerUuid, // <-- add this
         isInitialized,
         loading,
         error,
         connectWallet,
         disconnect,
         tryGetUserData,
-        setNeynarAuthData, // <-- and this
         isConnected,
+        setNeynarAuthData,
+        neynarAuthData,
       }}
     >
       {children}

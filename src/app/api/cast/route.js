@@ -1,6 +1,7 @@
+// app/api/cast/route.js
 import { NeynarAPIClient, Configuration } from "@neynar/nodejs-sdk";
 
-const client = new NeynarAPIClient(
+const neynarClient = new NeynarAPIClient(
   new Configuration({
     apiKey: process.env.NEYNAR_API_KEY,
   })
@@ -10,19 +11,92 @@ export async function POST(req) {
   try {
     const { text, signerUuid, fid } = await req.json();
 
-    if (!text || !signerUuid || !fid) {
-      return new Response(JSON.stringify({ error: "Missing fields" }), {
+    if (!text) {
+      return new Response(
+        JSON.stringify({ error: "Text content is required" }),
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (!signerUuid) {
+      return new Response(
+        JSON.stringify({ error: "Signer UUID is required" }),
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (!fid) {
+      return new Response(JSON.stringify({ error: "FID is required" }), {
         status: 400,
       });
     }
 
-    const result = await client.cast.publishCast(signerUuid, { text });
+    // First check if the signer is valid
+    try {
+      const signerInfo = await neynarClient.signer.getInfo(signerUuid);
 
-    return new Response(JSON.stringify({ cast: result }), { status: 200 });
+      if (signerInfo.status !== "approved") {
+        return new Response(
+          JSON.stringify({
+            error:
+              "Signer is not authorized. Current status: " + signerInfo.status,
+          }),
+          { status: 403 }
+        );
+      }
+
+      if (signerInfo.fid !== fid) {
+        return new Response(
+          JSON.stringify({
+            error: "Signer FID does not match the provided FID",
+          }),
+          { status: 403 }
+        );
+      }
+    } catch (signerError) {
+      console.error("Error checking signer:", signerError);
+      return new Response(
+        JSON.stringify({
+          error: "Failed to validate signer",
+          details: signerError.message,
+        }),
+        { status: 500 }
+      );
+    }
+
+    // Now attempt to publish the cast
+    try {
+      const castResult = await neynarClient.publishCast(signerUuid, { text });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          cast: castResult,
+        }),
+        { status: 200 }
+      );
+    } catch (castError) {
+      console.error("Error publishing cast:", castError);
+      return new Response(
+        JSON.stringify({
+          error: "Failed to publish cast",
+          details: castError.message,
+        }),
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error("Cast error:", error);
-    return new Response(JSON.stringify({ error: "Failed to cast" }), {
-      status: 500,
-    });
+    console.error("Cast API error:", error);
+    return new Response(
+      JSON.stringify({
+        error: "Server error",
+        details: error.message,
+      }),
+      { status: 500 }
+    );
   }
 }
