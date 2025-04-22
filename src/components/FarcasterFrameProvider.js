@@ -12,6 +12,7 @@ export function FarcasterFrameProvider({ children }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [signerUuid, setSignerUuid] = useState(null);
 
   const { address, isConnected } = useAccount();
   const { connect } = useConnect({
@@ -127,6 +128,22 @@ export function FarcasterFrameProvider({ children }) {
     }
   };
 
+  const setNeynarAuthData = (data) => {
+    const { user, signer_uuid, fid } = data;
+
+    setSignerUuid(signer_uuid);
+
+    // You can optionally override userData here too, if Neynar's `user` has more info
+    setUserData({
+      username: user.username || "Anonymous",
+      displayName: user.display_name || user.username || "Anonymous",
+      pfpUrl: user.pfp_url || "/default-avatar.jpg",
+      fid,
+      followerCount: user.follower_count || 0,
+      followingCount: user.following_count || 0,
+    });
+  };
+
   useEffect(() => {
     if (sdk) {
       tryGetUserData();
@@ -143,12 +160,14 @@ export function FarcasterFrameProvider({ children }) {
     <FarcasterContext.Provider
       value={{
         userData,
+        signerUuid, // <-- add this
         isInitialized,
         loading,
         error,
         connectWallet,
         disconnect,
         tryGetUserData,
+        setNeynarAuthData, // <-- and this
         isConnected,
       }}
     >
