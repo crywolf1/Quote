@@ -1,27 +1,28 @@
-// pages/api/cast.js
-import { NeynarAPIClient, createConfiguration } from "@neynar/nodejs-sdk";
+import { NeynarAPIClient, Configuration } from "@neynar/nodejs-sdk";
 
-const config = createConfiguration({
-  apiKey: process.env.NEYNAR_API_KEY, // This should be a valid string like "NEYNAR_API_DOCS"
-});
-const client = new NeynarAPIClient(config);
+const client = new NeynarAPIClient(
+  new Configuration({
+    apiKey: process.env.NEYNAR_API_KEY,
+  })
+);
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const { text, signerUuid, fid } = req.body;
-
-  if (!text || !signerUuid || !fid) {
-    return res.status(400).json({ error: "Missing required fields" });
-  }
-
+export async function POST(req) {
   try {
+    const { text, signerUuid, fid } = await req.json();
+
+    if (!text || !signerUuid || !fid) {
+      return new Response(JSON.stringify({ error: "Missing fields" }), {
+        status: 400,
+      });
+    }
+
     const result = await client.cast.publishCast(signerUuid, { text });
-    return res.status(200).json({ cast: result });
+
+    return new Response(JSON.stringify({ cast: result }), { status: 200 });
   } catch (error) {
-    console.error("Cast error:", error.response?.data || error.message);
-    return res.status(500).json({ error: "Failed to cast quote." });
+    console.error("Cast error:", error);
+    return new Response(JSON.stringify({ error: "Failed to cast" }), {
+      status: 500,
+    });
   }
 }
