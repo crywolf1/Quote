@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import CardContent from "../../components/CardContent"; // New component
+import Card from "../../components/Card"; // New component
 import CanvasBackground from "../../components/CanvasBackground";
 
 export default function FrameUIPage() {
@@ -10,7 +10,7 @@ export default function FrameUIPage() {
       <CanvasBackground />
       <div className="relative z-10">
         <Suspense fallback={<div>Loading...</div>}>
-          <CardContent />
+          <Card />
         </Suspense>
       </div>
     </div>
