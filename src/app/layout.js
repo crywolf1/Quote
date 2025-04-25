@@ -4,6 +4,7 @@ import { FarcasterFrameProvider } from "../components/FarcasterFrameProvider";
 import WagmiProviderWrapper from "../components/WagmiProviderWrapper";
 import { NeynarContextProvider, Theme } from "@neynar/react";
 import "@neynar/react/dist/style.css";
+import { AuthKitProvider } from "@farcaster/auth-kit";
 
 export default function RootLayout({ children }) {
   return (
@@ -43,7 +44,7 @@ export default function RootLayout({ children }) {
                 },
               }}
             >
-              {children}
+              <AuthKitProvider>{children}</AuthKitProvider>
             </NeynarContextProvider>
           </FarcasterFrameProvider>
         </WagmiProviderWrapper>

@@ -4,8 +4,9 @@ import { useFarcaster } from "./FarcasterFrameProvider";
 import { useState, useEffect } from "react";
 import { useAccount, useDisconnect } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { NeynarAuthButton } from "@neynar/react";
-
+import { SignInButton } from "@farcaster/auth-kit";
+import { useProfile } from "@farcaster/auth-kit";
+import { sdk } from "@farcaster/frame-sdk";
 import "../styles/style.css";
 import {
   FaEdit,
@@ -21,7 +22,7 @@ export default function Card() {
   const { userData, loading, error, connectWallet } = useFarcaster();
   const { isConnected, isDisconnected, status, address } = useAccount();
   const { disconnect } = useDisconnect();
-
+  const { profile, isLoading } = useProfile();
   // Use fallback values if userData is not loaded yet
   const username = userData?.username || userData?.displayName || "Guest";
   const pfpUrl = userData?.pfpUrl || "/assets/icon.png";
@@ -66,6 +67,16 @@ export default function Card() {
     setReady(true);
   }, []);
 
+  const handleCast = async () => {
+    if (!profile) {
+      alert("Please sign in to Farcaster first");
+      return;
+    }
+
+    await sdk.actions.composeCast({
+      text: quotes[currentIndex]?.text,
+    });
+  };
   // Handle wallet connection
 
   // Get signer UUID from localStorage on component mount
@@ -325,6 +336,20 @@ export default function Card() {
                     )}
                   </button> */}
 
+                  {profile ? (
+                    <div className="profile-info">
+                      <button
+                        onClick={() => handleCast(quotes[currentIndex]?.text)}
+                      >
+                        sign in
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="connect-btn">
+                      <SignInButton />
+                    </div>
+                  )}
+
                   <button className="nav-btn right" onClick={handleRightClick}>
                     <FaArrowRight size={30} />
                   </button>
@@ -354,6 +379,9 @@ export default function Card() {
           </div>
 
           {/* Debugging info - remove in production */}
+          {/* {message && activeSection === "#about" && (
+            <p className="message">{message}</p>
+          )} */}
         </>
       ) : (
         isDisconnected && (
