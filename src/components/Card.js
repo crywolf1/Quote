@@ -341,7 +341,7 @@ export default function Card() {
                       <button
                         onClick={() => handleCast(quotes[currentIndex]?.text)}
                       >
-                        sign in
+                        cast this
                       </button>
                     </div>
                   ) : (
