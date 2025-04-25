@@ -34,11 +34,7 @@ export default function Card() {
   const [editIndex, setEditIndex] = useState(null);
   const [editedText, setEditedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isConnecting, setIsConnecting] = useState(false);
   const [ready, setReady] = useState(false);
-  const [isCasting, setIsCasting] = useState(false);
-  const [signerUuid, setSignerUuid] = useState(null);
-  const [debugInfo, setDebugInfo] = useState({});
 
   // Fetch quotes from API
   const fetchQuotes = async () => {
@@ -71,86 +67,8 @@ export default function Card() {
   }, []);
 
   // Handle wallet connection
-  const handleConnectWallet = async () => {
-    setIsConnecting(true);
-    try {
-      await connectWallet();
-      setMessage("Wallet connected. Retrieving Farcaster data...");
-    } catch (err) {
-      setMessage("Failed to connect wallet: " + err.message);
-    } finally {
-      setIsConnecting(false);
-    }
-  };
 
   // Get signer UUID from localStorage on component mount
-  useEffect(() => {
-    const storedSignerUuid = localStorage.getItem("signerUuid");
-    console.log("Retrieved signerUuid from localStorage:", storedSignerUuid);
-    if (storedSignerUuid) {
-      setSignerUuid(storedSignerUuid);
-    }
-  }, []);
-
-  // Handle Neynar authentication success
-  const handleNeynarAuthSuccess = (response) => {
-    console.log("Neynar Auth Success:", response);
-    const { signer_uuid } = response;
-    localStorage.setItem("signerUuid", signer_uuid);
-    setSignerUuid(signer_uuid);
-    setMessage("Farcaster connected successfully!");
-  };
-
-  // Cast the current quote to Farcaster
-  const handleCast = async (quoteText) => {
-    console.log("Cast button clicked", { quoteText, signerUuid, userData });
-
-    if (!quoteText) {
-      console.log("No quote to cast");
-      setMessage("No quote to cast!");
-      return;
-    }
-
-    if (!signerUuid) {
-      console.log("No signer UUID");
-      setMessage("Please sign in with Neynar to cast.");
-      return;
-    }
-
-    setIsCasting(true);
-    setMessage("Casting to Farcaster...");
-
-    try {
-      console.log("Making cast API call with:", {
-        text: quoteText,
-        signerUuid,
-      });
-
-      const res = await fetch("/api/cast", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: quoteText,
-          signerUuid: signerUuid,
-        }),
-      });
-
-      console.log("API response status:", res.status);
-      const data = await res.json();
-      console.log("API response data:", data);
-
-      if (res.ok) {
-        setMessage("Successfully casted to Farcaster!");
-      } else {
-        setMessage(data.error || "Failed to cast. Please try again.");
-      }
-    } catch (err) {
-      console.error("Cast error:", err);
-      setMessage("Error casting: " + (err.message || "Unknown error"));
-    } finally {
-      setIsCasting(false);
-    }
-  };
 
   // Navigation for quote carousel
   const handleLeftClick = () => {
@@ -360,39 +278,8 @@ export default function Card() {
                     onClick={() => disconnect()}
                     className="disconnect-btn"
                   >
-                    Sign Out Wallet
+                    Sign Out
                   </button>
-
-                  {/* Farcaster Auth Section */}
-                  <div className="farcaster-auth-section">
-                    {!signerUuid ? (
-                      <NeynarAuthButton
-                        onSuccess={handleNeynarAuthSuccess}
-                        onError={(err) => {
-                          console.error("Neynar Auth error:", err);
-                          setMessage(
-                            "Farcaster auth failed: " +
-                              (err.message || "Unknown error")
-                          );
-                        }}
-                        appId={process.env.NEXT_PUBLIC_NEYNAR_CLIENT_ID}
-                      />
-                    ) : (
-                      <div className="farcaster-connected">
-                        <p>Farcaster Connected ✓</p>
-                        <button
-                          className="disconnect-btn"
-                          onClick={() => {
-                            localStorage.removeItem("signerUuid");
-                            setSignerUuid(null);
-                            setMessage("Farcaster disconnected");
-                          }}
-                        >
-                          Disconnect Farcaster
-                        </button>
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 <div className="card-contact-wrapper">
@@ -421,7 +308,8 @@ export default function Card() {
                   <button className="nav-btn left" onClick={handleLeftClick}>
                     <FaArrowLeft size={30} />
                   </button>
-                  <button
+
+                  {/* <button
                     className={`cast-btn ${isCasting ? "is-casting" : ""}`}
                     onClick={() => handleCast(quotes[currentIndex]?.text)}
                     disabled={isCasting || !signerUuid || !quotes[currentIndex]}
@@ -435,7 +323,8 @@ export default function Card() {
                         <FaShareSquare /> Cast This
                       </>
                     )}
-                  </button>
+                  </button> */}
+
                   <button className="nav-btn right" onClick={handleRightClick}>
                     <FaArrowRight size={30} />
                   </button>
@@ -465,9 +354,6 @@ export default function Card() {
           </div>
 
           {/* Debugging info - remove in production */}
-          {message && activeSection === "#about" && (
-            <p className="message">{message}</p>
-          )}
         </>
       ) : (
         isDisconnected && (
