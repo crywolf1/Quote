@@ -336,19 +336,13 @@ export default function Card() {
                     )}
                   </button> */}
 
-                  {profile ? (
-                    <div className="profile-info">
-                      <button
-                        onClick={() => handleCast(quotes[currentIndex]?.text)}
-                      >
-                        cast this
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="connect-btn">
-                      <SignInButton />
-                    </div>
-                  )}
+                  <div className="profile-info">
+                    <button
+                      onClick={() => handleCast(quotes[currentIndex]?.text)}
+                    >
+                      cast
+                    </button>
+                  </div>
 
                   <button className="nav-btn right" onClick={handleRightClick}>
                     <FaArrowRight size={30} />
