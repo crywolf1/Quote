@@ -36,6 +36,7 @@ export default function Card() {
   const [editedText, setEditedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [ready, setReady] = useState(false);
+  const [quoteOfTheDay, setQuoteOfTheDay] = useState(null);
 
   // Fetch quotes from API
   const fetchQuotes = async () => {
@@ -82,7 +83,7 @@ export default function Card() {
   // Get signer UUID from localStorage on component mount
 
   // Navigation for quote carousel
-  const handleLeftClick = () => {
+  /*   const handleLeftClick = () => {
     setCurrentIndex(
       (prevIndex) => (prevIndex - 1 + quotes.length) % quotes.length
     );
@@ -91,7 +92,7 @@ export default function Card() {
   const handleRightClick = () => {
     setCurrentIndex((prevIndex) => (prevIndex + 1) % quotes.length);
   };
-
+ */
   // Save quote to API
   const sendQuote = async () => {
     if (!quote.trim()) {
@@ -127,6 +128,22 @@ export default function Card() {
       setMessage(data.error || "Failed to save quote.");
     }
   };
+
+  const fetchQuoteOfTheDay = async () => {
+    try {
+      const res = await fetch("/api/quote-of-the-day");
+      const data = await res.json();
+      if (res.ok) {
+        setQuoteOfTheDay(data.quote);
+      }
+    } catch (error) {
+      console.error("Failed to fetch quote of the day");
+    }
+  };
+
+  useEffect(() => {
+    fetchQuoteOfTheDay();
+  }, []);
 
   // Edit quote
   const handleEdit = (index) => {
@@ -189,6 +206,7 @@ export default function Card() {
   if (!ready || status === "loading") {
     return <div className="loading-container">Loading user data...</div>;
   }
+  const arthur = "danny";
 
   return (
     <div className={isConnected ? "card" : ""} data-state={activeSection}>
@@ -202,10 +220,36 @@ export default function Card() {
               }`}
               id="about"
             >
-              <div className="card-content">
-                <div className="card-subtitle">Quote</div>
+              <div className="quote-display">
+                <div className="card-header">
+                  <div
+                    className="card-cover"
+                    style={{ backgroundImage: `url(${pfpUrl})` }}
+                  ></div>
+                  <img src={pfpUrl} alt="Avatar" className="card-avatar" />
+                  <h1 className="card-fullname">{displayName}</h1>
+                </div>
+
                 <p className="card-desc">
-                  {quotes[currentIndex]?.text || "No quotes yet."}
+                  {/*  {quotes[currentIndex]?.text || "No quotes yet."} */}
+                  {quoteOfTheDay ? (
+                    <div className="quote-of-the-day">
+                      <h2>🌟 Quote of the Day</h2>
+                      <p className="quote-text">"{quoteOfTheDay.text}"</p>
+                      <div className="quote-author">
+                        —{" "}
+                        {quoteOfTheDay.displayName ||
+                          quoteOfTheDay.username ||
+                          "Unknown Author"}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="quote-of-the-day">
+                      <h2>🌟 Quote of the Day</h2>
+                      <p className="quote-text">No quote today.</p>
+                    </div>
+                  )}
+                  {/*   <small>— {quoteOfTheDay.displayName || "Anonymous"}</small> */}
                 </p>
               </div>
             </div>
@@ -277,48 +321,49 @@ export default function Card() {
                   <img src={pfpUrl} alt="Avatar" className="card-avatar" />
                   <h1 className="card-fullname">{displayName}</h1>
                 </div>
-
-                <div className="profile-wrapper-logout ">
-                  <div>
-                    <div className="card-subtitle">Write Your Quote</div>
-                    <p className="char-count">
-                      {240 - quote.length} characters remaining
-                    </p>
+                <div>
+                  <div className="profile-wrapper-logout ">
+                    <div>
+                      <div className="card-subtitle">Write Your Quote</div>
+                      <p className="char-count">
+                        {240 - quote.length} characters remaining
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => disconnect()}
+                      className="disconnect-btn"
+                    >
+                      Sign Out
+                    </button>
                   </div>
-                  <button
-                    onClick={() => disconnect()}
-                    className="disconnect-btn"
-                  >
-                    Sign Out
-                  </button>
-                </div>
 
-                <div className="card-contact-wrapper">
-                  <div className="card-contact">
-                    <textarea
-                      placeholder="Write your quote here..."
-                      className="text-area"
-                      maxLength={240}
-                      value={quote}
-                      onChange={(e) => setQuote(e.target.value)}
-                    />
+                  <div className="card-contact-wrapper">
+                    <div className="card-contact">
+                      <textarea
+                        placeholder="Write your quote here..."
+                        className="text-area"
+                        maxLength={240}
+                        value={quote}
+                        onChange={(e) => setQuote(e.target.value)}
+                      />
+                    </div>
+                    <button className="contact-me" onClick={sendQuote}>
+                      Save Quote
+                    </button>
                   </div>
-                  <button className="contact-me" onClick={sendQuote}>
-                    Save Quote
-                  </button>
+                  {/*  {message && activeSection === "#contact" && (
+                    <p className="message">{message}</p>
+                  )} */}
                 </div>
-                {message && activeSection === "#contact" && (
-                  <p className="message">{message}</p>
-                )}
               </div>
             </div>
             {/* Navigation */}
             <div className="card-container2">
               {activeSection === "#about" && (
                 <div className="card-buttons1">
-                  <button className="nav-btn left" onClick={handleLeftClick}>
+                  {/* <button className="nav-btn left" onClick={handleLeftClick}>
                     <FaArrowLeft size={30} />
-                  </button>
+                  </button> */}
 
                   {/* <button
                     className={`cast-btn ${isCasting ? "is-casting" : ""}`}
@@ -336,17 +381,18 @@ export default function Card() {
                     )}
                   </button> */}
 
+                  {/* <button className="nav-btn right" onClick={handleRightClick}>
+                    <FaArrowRight size={30} />
+                  </button> */}
                   <div className="profile-info">
                     <button
+                      className="cast-btn custom-btn"
+                      disabled={!quotes[currentIndex] || isLoading}
                       onClick={() => handleCast(quotes[currentIndex]?.text)}
                     >
-                      cast
+                      Cast
                     </button>
                   </div>
-
-                  <button className="nav-btn right" onClick={handleRightClick}>
-                    <FaArrowRight size={30} />
-                  </button>
                 </div>
               )}
               <div className="card-buttons">
