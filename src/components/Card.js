@@ -230,10 +230,22 @@ export default function Card() {
                 <div className="card-header">
                   <div
                     className="card-cover"
-                    style={{ backgroundImage: `url(${pfpUrl})` }}
+                    style={{
+                      backgroundImage: `url(${
+                        quoteOfTheDay?.pfpUrl || "/assets/icon.png"
+                      })`,
+                    }}
                   ></div>
-                  <img src={pfpUrl} alt="Avatar" className="card-avatar" />
-                  <h1 className="card-fullname">{displayName}</h1>
+                  <img
+                    src={quoteOfTheDay?.pfpUrl || "/assets/icon.png"}
+                    alt="Avatar"
+                    className="card-avatar"
+                  />
+                  <h1 className="card-fullname">
+                    {quoteOfTheDay?.displayName ||
+                      quoteOfTheDay?.username ||
+                      "Unknown"}
+                  </h1>
                 </div>
 
                 <div>
