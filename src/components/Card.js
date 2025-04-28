@@ -260,8 +260,21 @@ export default function Card() {
                   {quoteOfTheDay ? (
                     <div>
                       <p className="quote-text">{quoteOfTheDay.text}</p>
-                      <span>
-                        - {quoteOfTheDay.username || "Unknown Author"}
+                      <span
+                        style={{
+                          cursor: quoteOfTheDay?.fid ? "pointer" : "default",
+                          color: quoteOfTheDay?.fid ? "#5b5bff" : "inherit",
+                          textDecoration: quoteOfTheDay?.fid
+                            ? "underline"
+                            : "none",
+                        }}
+                        onClick={() => {
+                          if (quoteOfTheDay?.fid) {
+                            sdk.actions.viewProfile({ fid: quoteOfTheDay.fid });
+                          }
+                        }}
+                      >
+                        {quoteOfTheDay.username || "Unknown Author"}
                       </span>
                     </div>
                   ) : (
