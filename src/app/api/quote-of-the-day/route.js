@@ -1,10 +1,7 @@
 import Quote from "../../../lib/models/Quote";
+import QuoteOfTheDayCache from "../../../lib/models/QuoteOfTheDayCache";
 import dbConnect from "../../../lib/db";
 import { NextResponse } from "next/server";
-import mongoose from "mongoose";
-
-// Simple in-memory cache for demo (replace with Redis or DB for production)
-const quoteCache = {};
 
 function get12hKey(address) {
   const now = new Date();
@@ -30,9 +27,10 @@ export async function GET(request) {
 
   const key = get12hKey(userAddress);
 
-  // Check cache first
-  if (quoteCache[key]) {
-    return NextResponse.json({ quote: quoteCache[key] });
+  // Check persistent cache first
+  let cache = await QuoteOfTheDayCache.findOne({ key }).populate("quoteId");
+  if (cache && cache.quoteId) {
+    return NextResponse.json({ quote: cache.quoteId });
   }
 
   // Get all quotes
@@ -44,8 +42,8 @@ export async function GET(request) {
   const randomIndex = Math.floor(Math.random() * quotes.length);
   const quote = quotes[randomIndex];
 
-  // Store in cache for this 12h window
-  quoteCache[key] = quote;
+  // Store in persistent cache for this 12h window
+  await QuoteOfTheDayCache.create({ key, quoteId: quote._id });
 
   return NextResponse.json({ quote });
 }
