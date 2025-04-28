@@ -96,11 +96,9 @@ export default function Card() {
 
     if (!quoteOfTheDay) return;
 
-    const owner =
-      quoteOfTheDay.displayName ||
-      quoteOfTheDay.username ||
-      quoteOfTheDay.creatorAddress?.slice(0, 8) ||
-      "Unknown";
+    const owner = quoteOfTheDay.username
+      ? `@${quoteOfTheDay.username}`
+      : quoteOfTheDay.creatorAddress?.slice(0, 8) || "Unknown";
 
     await sdk.actions.composeCast({
       text: `"${quoteOfTheDay.text}" — ${owner}`,
