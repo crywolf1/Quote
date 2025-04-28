@@ -1,19 +1,17 @@
-// /app/api/quote-of-the-day/route.js
-import dbConnect from "../../../lib/db"; // your MongoDB connection function
-import Quote from "../../../lib/models/Quote"; // your Quote model
+import dbConnect from "../../../lib/db"; // Your MongoDB connection function
+import Quote from "../../../lib/models/Quote"; // Your Quote model
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 
 // Schema for cached daily quote
-const quoteOfTheDaySchema = new mongoose.Schema({
+const dailyQuoteSchema = new mongoose.Schema({
   dateKey: { type: String, required: true, unique: true },
   quote: { type: Object, required: true },
   createdAt: { type: Date, default: Date.now },
 });
 
-const QuoteOfTheDay =
-  mongoose.models.QuoteOfTheDay ||
-  mongoose.model("QuoteOfTheDay", quoteOfTheDaySchema);
+const DailyQuote =
+  mongoose.models.DailyQuote || mongoose.model("DailyQuote", dailyQuoteSchema);
 
 export async function GET() {
   try {
@@ -23,8 +21,8 @@ export async function GET() {
     const today = new Date();
     const dateKey = today.toISOString().slice(0, 10);
 
-    // Check if already picked for today
-    const existing = await QuoteOfTheDay.findOne({ dateKey });
+    // Check if quote already picked for today
+    const existing = await DailyQuote.findOne({ dateKey });
     if (existing) {
       return NextResponse.json({ quote: existing.quote });
     }
@@ -38,7 +36,7 @@ export async function GET() {
     const selectedQuote = randomQuote[0];
 
     // Save it for today
-    const newQuoteOfTheDay = new QuoteOfTheDay({
+    const newQuoteOfTheDay = new DailyQuote({
       dateKey,
       quote: selectedQuote,
     });

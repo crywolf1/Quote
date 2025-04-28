@@ -39,6 +39,24 @@ export default function Card() {
   const [quoteOfTheDay, setQuoteOfTheDay] = useState(null);
 
   // Fetch quotes from API
+  const fetchQuoteOfTheDay = async () => {
+    try {
+      const res = await fetch("/api/quote-of-the-day");
+      const data = await res.json();
+      if (res.ok) {
+        setQuoteOfTheDay(data.quote);
+      } else {
+        setMessage("Failed to fetch quote of the day.");
+      }
+    } catch (error) {
+      setMessage("Error fetching quote of the day.");
+    }
+  };
+
+  useEffect(() => {
+    fetchQuoteOfTheDay();
+  }, []); // Only run once on component mount
+
   const fetchQuotes = async () => {
     if (!address) return;
 
@@ -129,22 +147,6 @@ export default function Card() {
     }
   };
 
-  const fetchQuoteOfTheDay = async () => {
-    try {
-      const res = await fetch("/api/quote-of-the-day");
-      const data = await res.json();
-      if (res.ok) {
-        setQuoteOfTheDay(data.quote);
-      }
-    } catch (error) {
-      console.error("Failed to fetch quote of the day");
-    }
-  };
-
-  useEffect(() => {
-    fetchQuoteOfTheDay();
-  }, []);
-
   // Edit quote
   const handleEdit = (index) => {
     setEditIndex(index);
@@ -206,7 +208,6 @@ export default function Card() {
   if (!ready || status === "loading") {
     return <div className="loading-container">Loading user data...</div>;
   }
-  const arthur = "danny";
 
   return (
     <div className={isConnected ? "card" : ""} data-state={activeSection}>
@@ -230,27 +231,18 @@ export default function Card() {
                   <h1 className="card-fullname">{displayName}</h1>
                 </div>
 
-                <p className="card-desc">
-                  {/*  {quotes[currentIndex]?.text || "No quotes yet."} */}
+                <div>
                   {quoteOfTheDay ? (
-                    <div className="quote-of-the-day">
-                      <h2>🌟 Quote of the Day</h2>
-                      <p className="quote-text">"{quoteOfTheDay.text}"</p>
-                      <div className="quote-author">
-                        —{" "}
-                        {quoteOfTheDay.displayName ||
-                          quoteOfTheDay.username ||
-                          "Unknown Author"}
-                      </div>
+                    <div>
+                      <p className="quote-text">{quoteOfTheDay.text}</p>
+                      <span>
+                        - {quoteOfTheDay.username || "Unknown Author"}
+                      </span>
                     </div>
                   ) : (
-                    <div className="quote-of-the-day">
-                      <h2>🌟 Quote of the Day</h2>
-                      <p className="quote-text">No quote today.</p>
-                    </div>
+                    <p>{message || "Loading quote of the day..."}</p>
                   )}
-                  {/*   <small>— {quoteOfTheDay.displayName || "Anonymous"}</small> */}
-                </p>
+                </div>
               </div>
             </div>
             {/* All Quotes Section */}
@@ -361,29 +353,6 @@ export default function Card() {
             <div className="card-container2">
               {activeSection === "#about" && (
                 <div className="card-buttons1">
-                  {/* <button className="nav-btn left" onClick={handleLeftClick}>
-                    <FaArrowLeft size={30} />
-                  </button> */}
-
-                  {/* <button
-                    className={`cast-btn ${isCasting ? "is-casting" : ""}`}
-                    onClick={() => handleCast(quotes[currentIndex]?.text)}
-                    disabled={isCasting || !signerUuid || !quotes[currentIndex]}
-                  >
-                    {isCasting ? (
-                      <>
-                        Casting... <FaSpinner className="spinner" />
-                      </>
-                    ) : (
-                      <>
-                        <FaShareSquare /> Cast This
-                      </>
-                    )}
-                  </button> */}
-
-                  {/* <button className="nav-btn right" onClick={handleRightClick}>
-                    <FaArrowRight size={30} />
-                  </button> */}
                   <div className="profile-info">
                     <button
                       className="cast-btn custom-btn"
