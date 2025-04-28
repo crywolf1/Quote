@@ -125,6 +125,8 @@ export default function Card() {
       return;
     }
 
+    const dateKey = `${address}_${new Date().toISOString().slice(0, 10)}`; // e.g. "0x1234_2025-04-28" // Unique per user per day // Add this line
+
     const res = await fetch("/api/quote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -136,6 +138,7 @@ export default function Card() {
         displayName: userData.displayName,
         pfpUrl: userData.pfpUrl,
         verifiedAddresses: userData.verifiedAddresses,
+        dateKey, // Add this line
       }),
     });
 
