@@ -40,13 +40,15 @@ export default function Card() {
 
   // Fetch quotes from API
   const fetchQuoteOfTheDay = async () => {
+    if (!address) return;
+
     try {
-      const res = await fetch("/api/quote-of-the-day");
+      const res = await fetch(`/api/quote-of-the-day?userAddress=${address}`);
       const data = await res.json();
       if (res.ok) {
         setQuoteOfTheDay(data.quote);
       } else {
-        setMessage("Failed to fetch quote of the day.");
+        setMessage(data.error || "Failed to fetch quote of the day.");
       }
     } catch (error) {
       setMessage("Error fetching quote of the day.");
@@ -55,7 +57,7 @@ export default function Card() {
 
   useEffect(() => {
     fetchQuoteOfTheDay();
-  }, []); // Only run once on component mount
+  }, [address]); // Fetch quote when address changes
 
   const fetchQuotes = async () => {
     if (!address) return;

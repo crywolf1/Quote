@@ -1,52 +1,32 @@
-import dbConnect from "../../../lib/db"; // Your MongoDB connection function
-import Quote from "../../../lib/models/Quote"; // Your Quote model
+import Quote from "../../../lib/models/Quote";
+import dbConnect from "../../../lib/db";
 import { NextResponse } from "next/server";
-import mongoose from "mongoose";
 
-// Schema for cached daily quote
-const dailyQuoteSchema = new mongoose.Schema({
-  dateKey: { type: String, required: true, unique: true },
-  quote: { type: Object, required: true },
-  createdAt: { type: Date, default: Date.now },
-});
+export async function GET(request) {
+  await dbConnect();
 
-const DailyQuote =
-  mongoose.models.DailyQuote || mongoose.model("DailyQuote", dailyQuoteSchema);
-
-export async function GET() {
-  try {
-    await dbConnect();
-
-    // Get today's date key (e.g., 2025-04-28)
-    const today = new Date();
-    const dateKey = today.toISOString().slice(0, 10);
-
-    // Check if quote already picked for today
-    const existing = await DailyQuote.findOne({ dateKey });
-    if (existing) {
-      return NextResponse.json({ quote: existing.quote });
-    }
-
-    // Pick a random quote
-    const randomQuote = await Quote.aggregate([{ $sample: { size: 1 } }]);
-    if (!randomQuote || randomQuote.length === 0) {
-      return NextResponse.json({ quote: null });
-    }
-
-    const selectedQuote = randomQuote[0];
-
-    // Save it for today
-    const newQuoteOfTheDay = new DailyQuote({
-      dateKey,
-      quote: selectedQuote,
-    });
-    await newQuoteOfTheDay.save();
-
-    return NextResponse.json({ quote: selectedQuote });
-  } catch (error) {
-    console.error(error);
+  const { searchParams } = new URL(request.url);
+  const userAddress = searchParams.get("userAddress");
+  if (!userAddress) {
     return NextResponse.json(
-      { error: "Something went wrong." },
+      { error: "Missing user address" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    // Get all quotes (optionally filter by user, or not)
+    const quotes = await Quote.find({});
+    if (!quotes.length) {
+      return NextResponse.json({ error: "No quotes found" }, { status: 404 });
+    }
+    // Pick a random quote
+    const randomIndex = Math.floor(Math.random() * quotes.length);
+    const quote = quotes[randomIndex];
+    return NextResponse.json({ quote });
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Failed to fetch quote of the day" },
       { status: 500 }
     );
   }
