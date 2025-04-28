@@ -240,6 +240,14 @@ export default function Card() {
                     src={quoteOfTheDay?.pfpUrl || "/assets/icon.png"}
                     alt="Avatar"
                     className="card-avatar"
+                    style={{
+                      cursor: quoteOfTheDay?.fid ? "pointer" : "default",
+                    }}
+                    onClick={() => {
+                      if (quoteOfTheDay?.fid) {
+                        sdk.actions.viewProfile({ fid: quoteOfTheDay.fid });
+                      }
+                    }}
                   />
                   <h1 className="card-fullname">
                     {quoteOfTheDay?.displayName ||
