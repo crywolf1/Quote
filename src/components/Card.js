@@ -88,24 +88,22 @@ export default function Card() {
     setReady(true);
   }, []);
 
-  const handleCast = async () => {
+  const handleCastQuoteOfTheDay = async () => {
     if (!profile) {
       alert("Please sign in to Farcaster first");
       return;
     }
 
-    const quote = quotes[currentIndex];
-    if (!quote) return;
+    if (!quoteOfTheDay) return;
 
-    // Include quote owner in the cast text
     const owner =
-      quote.displayName ||
-      quote.username ||
-      quote.creatorAddress?.slice(0, 8) ||
+      quoteOfTheDay.displayName ||
+      quoteOfTheDay.username ||
+      quoteOfTheDay.creatorAddress?.slice(0, 8) ||
       "Unknown";
 
     await sdk.actions.composeCast({
-      text: `"${quote.text}" — ${owner}`,
+      text: `"${quoteOfTheDay.text}" — ${owner}`,
     });
   };
   // Handle wallet connection
@@ -404,8 +402,8 @@ export default function Card() {
                   <div className="profile-info">
                     <button
                       className="cast-btn custom-btn"
-                      disabled={!quotes[currentIndex] || isLoading}
-                      onClick={() => handleCast(quotes[currentIndex]?.text)}
+                      disabled={!quoteOfTheDay || isLoading}
+                      onClick={handleCastQuoteOfTheDay}
                     >
                       Cast
                     </button>
