@@ -94,8 +94,18 @@ export default function Card() {
       return;
     }
 
+    const quote = quotes[currentIndex];
+    if (!quote) return;
+
+    // Include quote owner in the cast text
+    const owner =
+      quote.displayName ||
+      quote.username ||
+      quote.creatorAddress?.slice(0, 8) ||
+      "Unknown";
+
     await sdk.actions.composeCast({
-      text: quotes[currentIndex]?.text,
+      text: `"${quote.text}" — ${owner}`,
     });
   };
   // Handle wallet connection
