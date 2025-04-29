@@ -480,7 +480,7 @@ export default function Card() {
           position: "absolute",
           left: "-9999px",
           top: "-9999px",
-          width: 400,
+          width: 401,
           height: 200,
           background: "#fff",
           color: "#222",
