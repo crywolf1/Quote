@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Quote from "@/lib/models/Quote";
-import { unlink, writeFile } from "fs/promises";
-import path from "path";
+import cloudinary from "cloudinary";
 import { v4 as uuidv4 } from "uuid";
+cloudinary.v2.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function PUT(req, { params }) {
   await dbConnect();
@@ -14,39 +18,32 @@ export async function PUT(req, { params }) {
       return NextResponse.json({ error: "Text is required" }, { status: 400 });
     }
 
-    // Get old image path
+    // Find old quote
     const oldQuote = await Quote.findById(id);
-    let oldImagePath = null;
-    if (oldQuote && oldQuote.image && oldQuote.image.startsWith("/quotes/")) {
-      oldImagePath = path.join(process.cwd(), "public", oldQuote.image);
-    }
+    let imageUrl = oldQuote.image;
 
-    let imageUrl = undefined;
+    // If new image provided, upload to Cloudinary
     if (image && image.startsWith("data:image")) {
-      // Save new image file
-      const base64Data = image.split(",")[1];
-      const filename = `${uuidv4()}.png`;
-      const filePath = path.join(process.cwd(), "public", "quotes", filename);
-      await writeFile(filePath, Buffer.from(base64Data, "base64"));
-      imageUrl = `/quotes/${filename}`;
-    }
-
-    const updateFields = { text };
-    if (imageUrl) updateFields.image = imageUrl;
-
-    const updatedQuote = await Quote.findByIdAndUpdate(id, updateFields, {
-      new: true,
-    });
-
-    // Delete old image if a new one was saved
-    if (imageUrl && oldImagePath) {
-      try {
-        await unlink(oldImagePath);
-      } catch (e) {
-        // Ignore if file doesn't exist
+      // Optionally delete old image from Cloudinary
+      if (imageUrl && imageUrl.includes("cloudinary.com")) {
+        // Extract public_id from URL
+        const publicId = imageUrl.split("/").slice(-1)[0].split(".")[0];
+        await cloudinary.v2.uploader.destroy(`quotes/${publicId}`);
       }
+      // Upload new image
+      const uploadRes = await cloudinary.v2.uploader.upload(image, {
+        folder: "quotes",
+        public_id: uuidv4(),
+        overwrite: true,
+      });
+      imageUrl = uploadRes.secure_url;
     }
 
+    const updatedQuote = await Quote.findByIdAndUpdate(
+      id,
+      { text, image: imageUrl },
+      { new: true }
+    );
     if (!updatedQuote) {
       return NextResponse.json({ error: "Quote not found" }, { status: 404 });
     }
@@ -58,7 +55,6 @@ export async function PUT(req, { params }) {
     );
   }
 }
-
 export async function DELETE(req, { params }) {
   await dbConnect();
   try {
@@ -68,14 +64,10 @@ export async function DELETE(req, { params }) {
       return NextResponse.json({ error: "Quote not found" }, { status: 404 });
     }
 
-    // Delete image file if it exists
-    if (deletedQuote.image && deletedQuote.image.startsWith("/quotes/")) {
-      const imagePath = path.join(process.cwd(), "public", deletedQuote.image);
-      try {
-        await unlink(imagePath);
-      } catch (e) {
-        // Ignore if file doesn't exist
-      }
+    // Delete image from Cloudinary if it exists
+    if (deletedQuote.image && deletedQuote.image.includes("cloudinary.com")) {
+      const publicId = deletedQuote.image.split("/").slice(-1)[0].split(".")[0];
+      await cloudinary.v2.uploader.destroy(`quotes/${publicId}`);
     }
 
     return NextResponse.json(

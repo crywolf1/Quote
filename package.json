@@ -29,6 +29,7 @@
     "@zoralabs/coins-sdk": "^0.0.5",
     "@zoralabs/protocol-sdk": "^0.13.5",
     "axios": "^1.8.4",
+    "cloudinary": "^2.6.0",
     "dotenv": "^16.4.7",
     "ethers": "^6.13.7",
     "hls.js": "^1.6.2",

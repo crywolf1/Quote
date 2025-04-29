@@ -4,7 +4,13 @@ import { v4 as uuidv4 } from "uuid";
 import { NextResponse } from "next/server";
 import dbConnect from "../../../lib/db";
 import Quote from "../../../lib/models/Quote";
+import cloudinary from "cloudinary";
 
+cloudinary.v2.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 export async function POST(req) {
   try {
     await dbConnect();
@@ -23,16 +29,13 @@ export async function POST(req) {
 
     let imageUrl = "";
     if (image && image.startsWith("data:image")) {
-      // Extract base64 data
-      const base64Data = image.split(",")[1];
-      // Generate a unique filename
-      const filename = `${uuidv4()}.png`;
-      // Path to save the image
-      const filePath = path.join(process.cwd(), "public", "quotes", filename);
-      // Save the file
-      await writeFile(filePath, Buffer.from(base64Data, "base64"));
-      // Public URL to access the image
-      imageUrl = `/quotes/${filename}`;
+      // Upload to Cloudinary
+      const uploadRes = await cloudinary.v2.uploader.upload(image, {
+        folder: "quotes",
+        public_id: uuidv4(),
+        overwrite: true,
+      });
+      imageUrl = uploadRes.secure_url;
     }
 
     const newQuote = new Quote({
@@ -44,7 +47,7 @@ export async function POST(req) {
       pfpUrl,
       verifiedAddresses,
       dateKey,
-      image: imageUrl, // Save the URL, not the base64
+      image: imageUrl, // Save the Cloudinary URL
     });
 
     await newQuote.save();
