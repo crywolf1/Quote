@@ -59,19 +59,29 @@ export async function DELETE(req, { params }) {
   await dbConnect();
   try {
     const { id } = params;
-    const deletedQuote = await Quote.findByIdAndDelete(id);
-    if (!deletedQuote) {
+    const quote = await Quote.findById(id);
+    if (!quote) {
       return NextResponse.json({ error: "Quote not found" }, { status: 404 });
     }
 
     // Delete image from Cloudinary if it exists
-    if (deletedQuote.image && deletedQuote.image.includes("cloudinary.com")) {
-      const publicId = deletedQuote.image.split("/").slice(-1)[0].split(".")[0];
-      await cloudinary.v2.uploader.destroy(`quotes/${publicId}`);
+    if (quote.image && quote.image.includes("cloudinary.com")) {
+      // Remove query params if any
+      const url = quote.image.split("?")[0];
+      // Remove extension
+      const urlNoExt = url.replace(/\.[^/.]+$/, "");
+      // Find '/upload/' and get everything after it
+      const uploadIndex = urlNoExt.indexOf("/upload/");
+      let publicId = urlNoExt.substring(uploadIndex + 8); // 8 = length of "/upload/"
+      // Remove version if present (e.g. v1234567890/)
+      publicId = publicId.replace(/^v\d+\//, "");
+      await cloudinary.v2.uploader.destroy(publicId);
     }
 
+    await Quote.findByIdAndDelete(id);
+
     return NextResponse.json(
-      { message: "Quote deleted successfully" },
+      { message: "Quote and image deleted successfully" },
       { status: 200 }
     );
   } catch (error) {
