@@ -1,3 +1,6 @@
+import { writeFile } from "fs/promises";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
 import { NextResponse } from "next/server";
 import dbConnect from "../../../lib/db";
 import Quote from "../../../lib/models/Quote";
@@ -5,7 +8,7 @@ import Quote from "../../../lib/models/Quote";
 export async function POST(req) {
   try {
     await dbConnect();
-
+    const body = await req.json();
     const {
       text,
       creatorAddress,
@@ -14,17 +17,24 @@ export async function POST(req) {
       displayName,
       pfpUrl,
       verifiedAddresses,
-      dateKey, // Accept from client or generate if you want
-    } = await req.json();
+      dateKey,
+      image, // data URL
+    } = body;
 
-    if (!text || !creatorAddress || !fid) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+    let imageUrl = "";
+    if (image && image.startsWith("data:image")) {
+      // Extract base64 data
+      const base64Data = image.split(",")[1];
+      // Generate a unique filename
+      const filename = `${uuidv4()}.png`;
+      // Path to save the image
+      const filePath = path.join(process.cwd(), "public", "quotes", filename);
+      // Save the file
+      await writeFile(filePath, Buffer.from(base64Data, "base64"));
+      // Public URL to access the image
+      imageUrl = `/quotes/${filename}`;
     }
 
-    // Create a new Quote instance (dateKey can be optional or just today's date)
     const newQuote = new Quote({
       text,
       creatorAddress,
@@ -33,7 +43,8 @@ export async function POST(req) {
       displayName,
       pfpUrl,
       verifiedAddresses,
-      dateKey: dateKey || new Date().toISOString(), // or remove if not needed
+      dateKey,
+      image: imageUrl, // Save the URL, not the base64
     });
 
     await newQuote.save();

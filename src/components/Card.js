@@ -7,6 +7,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { SignInButton } from "@farcaster/auth-kit";
 import { useProfile } from "@farcaster/auth-kit";
 import { sdk } from "@farcaster/frame-sdk";
+import html2canvas from "html2canvas";
 import "../styles/style.css";
 import {
   FaEdit,
@@ -37,7 +38,7 @@ export default function Card() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [ready, setReady] = useState(false);
   const [quoteOfTheDay, setQuoteOfTheDay] = useState(null);
-
+  const [imagePreview, setImagePreview] = useState(null);
   // Fetch quotes from API
   const fetchQuoteOfTheDay = async () => {
     if (!address) return;
@@ -131,8 +132,17 @@ export default function Card() {
       return;
     }
 
-    const dateKey = `${address}_${new Date().toISOString().slice(0, 10)}`; // e.g. "0x1234_2025-04-28" // Unique per user per day // Add this line
+    // 1. Generate image from quote
+    const node = document.getElementById("quote-image-preview");
+    let imageDataUrl = "";
+    if (node) {
+      const canvas = await html2canvas(node);
+      imageDataUrl = canvas.toDataURL("image/png");
+      setImagePreview(imageDataUrl); // Show preview in UI
+    }
 
+    // 2. Send imageDataUrl to backend
+    const dateKey = `${address}_${new Date().toISOString().slice(0, 10)}`;
     const res = await fetch("/api/quote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -144,7 +154,8 @@ export default function Card() {
         displayName: userData.displayName,
         pfpUrl: userData.pfpUrl,
         verifiedAddresses: userData.verifiedAddresses,
-        dateKey, // Add this line
+        dateKey,
+        image: imageDataUrl, // <-- Add this line
       }),
     });
 
@@ -152,12 +163,11 @@ export default function Card() {
     if (res.ok) {
       setMessage("Quote saved successfully!");
       setQuote("");
-      fetchQuotes(); // refresh
+      fetchQuotes();
     } else {
       setMessage(data.error || "Failed to save quote.");
     }
   };
-
   // Edit quote
   const handleEdit = (index) => {
     setEditIndex(index);
@@ -169,11 +179,31 @@ export default function Card() {
       setMessage("Quote cannot be empty!");
       return;
     }
+
+    // 1. Temporarily update the preview div with the edited text
+    const previewNode = document.getElementById("quote-image-preview");
+    const originalText = quote; // Save the current quote
+    setQuote(editedText); // Temporarily set to edited text
+
+    // Wait for the DOM to update
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // 2. Generate new image
+    let imageDataUrl = "";
+    if (previewNode) {
+      const canvas = await html2canvas(previewNode);
+      imageDataUrl = canvas.toDataURL("image/png");
+    }
+
+    // Restore the original quote in state
+    setQuote(originalText);
+
+    // 3. Send updated text and image to backend
     try {
       const res = await fetch(`/api/quote/${quotes[editIndex]._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: editedText }),
+        body: JSON.stringify({ text: editedText, image: imageDataUrl }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -444,6 +474,28 @@ export default function Card() {
           </div>
         )
       )}
+      <div
+        id="quote-image-preview"
+        style={{
+          position: "absolute",
+          left: "-9999px",
+          top: "-9999px",
+          width: 400,
+          height: 200,
+          background: "#fff",
+          color: "#222",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 24,
+          textAlign: "center",
+          padding: 20,
+          borderRadius: 16,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        }}
+      >
+        "{quote}" — {username}
+      </div>
     </div>
   );
 }

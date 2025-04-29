@@ -17,7 +17,8 @@ const quoteSchema = new mongoose.Schema(
         sol_address: String,
       },
     },
-    dateKey: { type: String, required: true }, // Add the dateKey field to avoid duplicate entries
+    dateKey: { type: String, required: true },
+    image: String, // <-- Add this line to store the image data URL
   },
   { timestamps: true }
 );
