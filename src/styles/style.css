@@ -781,12 +781,13 @@
   text-align: center; /* Center all lines */
   text-align-last: center; /* Center the last line */
 }
-.quote-wrapper{
+.quote-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
   flex-direction: column;
   width: 100%;
+  min-height: 120px;
   height: 100%;
   margin-bottom: 8px;
 }
