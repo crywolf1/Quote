@@ -306,7 +306,7 @@ export default function Card() {
 
                 <div>
                   {quoteOfTheDay ? (
-                    <div>
+                    <div className="quote-wrapper">
                       <p className="quote-text">{quoteOfTheDay.text}</p>
                       <span
                         style={{
