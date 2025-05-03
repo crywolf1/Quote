@@ -7,7 +7,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { SignInButton } from "@farcaster/auth-kit";
 import { useProfile } from "@farcaster/auth-kit";
 import { sdk } from "@farcaster/frame-sdk";
-import html2canvas from "html2canvas";
+
 import "../styles/style.css";
 import {
   FaEdit,
@@ -41,7 +41,9 @@ export default function Card() {
   const [imagePreview, setImagePreview] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isPreviewImgLoaded, setIsPreviewImgLoaded] = useState(false);
   // Fetch quotes from API
+
   const fetchQuoteOfTheDay = async () => {
     if (!address) return;
 
@@ -140,13 +142,17 @@ export default function Card() {
     }
 
     // 1. Generate image from quote
-    const node = document.getElementById("quote-image-preview");
-    let imageDataUrl = "";
-    if (node) {
-      const canvas = await html2canvas(node);
-      imageDataUrl = canvas.toDataURL("image/png");
-      setImagePreview(imageDataUrl); // Show preview in UI
-    }
+    const ogUrl = `/api/og?quote=${encodeURIComponent(
+      quote
+    )}&username=${encodeURIComponent(
+      username
+    )}&displayName=${encodeURIComponent(
+      displayName
+    )}&pfpUrl=${encodeURIComponent(pfpUrl)}`;
+    const response = await fetch(ogUrl);
+    const blob = await response.blob();
+    const imageDataUrl = URL.createObjectURL(blob);
+    setImagePreview(imageDataUrl);
 
     // 2. Send imageDataUrl to backend
     const dateKey = `${address}_${new Date().toISOString().slice(0, 10)}`;
@@ -200,11 +206,16 @@ export default function Card() {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     // 2. Generate new image
-    let imageDataUrl = "";
-    if (previewNode) {
-      const canvas = await html2canvas(previewNode);
-      imageDataUrl = canvas.toDataURL("image/png");
-    }
+    const ogUrl = `/api/og?quote=${encodeURIComponent(
+      editedText
+    )}&username=${encodeURIComponent(
+      username
+    )}&displayName=${encodeURIComponent(
+      displayName
+    )}&pfpUrl=${encodeURIComponent(pfpUrl)}`;
+    const response = await fetch(ogUrl);
+    const blob = await response.blob();
+    const imageDataUrl = URL.createObjectURL(blob);
 
     // Restore the original quote in state
     setQuote(originalText);
@@ -501,28 +512,6 @@ export default function Card() {
           </div>
         )
       )}
-      <div
-        id="quote-image-preview"
-        style={{
-          position: "absolute",
-          left: "-9999px",
-          top: "-9999px",
-          width: 401,
-          height: 200,
-          background: "#fff",
-          color: "#222",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 24,
-          textAlign: "center",
-          padding: 20,
-          borderRadius: 16,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        }}
-      >
-        "{quote}" — {username}
-      </div>
     </div>
   );
 }
