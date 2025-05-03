@@ -41,7 +41,7 @@ export default function Card() {
   const [imagePreview, setImagePreview] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isPreviewImgLoaded, setIsPreviewImgLoaded] = useState(false);
+
   // Fetch quotes from API
 
   const fetchQuoteOfTheDay = async () => {
@@ -207,7 +207,7 @@ export default function Card() {
       return;
     }
     // 1. Temporarily update the preview div with the edited text
- 
+
     const originalText = quote; // Save the current quote
     setQuote(editedText); // Temporarily set to edited text
 
