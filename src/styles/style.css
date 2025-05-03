@@ -1,4 +1,6 @@
 /* Subscribe to Programmer Cloud :-) */
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap");
+
 @import url("https://fonts.googleapis.com/css?family=DM+Sans:400,500|Jost:400,500,600&display=swap");
 * {
   box-sizing: border-box;
@@ -148,7 +150,7 @@
   text-align: center; /* Center the text */
 }
 
-.profile-info{
+.profile-info {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -280,9 +282,10 @@
   transition: 0.3s;
   padding-right: 12px;
 }
-.contact-me {
+.send-quote-btn {
   border: 0;
   outline: none;
+  padding: 5px 5px;
   background: linear-gradient(
     to right,
     rgba(83, 200, 239, 0.8) 0%,
@@ -306,20 +309,40 @@
 .text-area {
   width: 300px; /* Makes the text area take up the full width of the parent */
   height: 100px; /* Makes the text area take up the full height of the parent */
-  border: 1px solid #ccc; /* Adds a border for better appearance */
-  padding: 10px; /* Adds some padding for better readability */
-  resize: none; /* Prevents resizing the text area */
-  box-sizing: border-box; /* Ensures padding doesn't affect the element's size */
-  font-size: 16px; /* Increases the font size for readability */
+  border: 2px solid #ccc; /* Light gray border */
+  border-radius: 8px; /* Rounded corners */
+  background-color: #f9f9f9; /* Light background color */
+  transition: border-color 0.3s ease; /* Smooth transition for border color */
+  resize: vertical; /* Allow vertical resizing only */
+  font-family: "Roboto", sans-serif; /* Apply the custom font */
+  font-size: 16px; /* Set a comfortable font size */
+  line-height: 1.5; /* Add line height for better readability */
+  padding: 12px; /* Add padding for better spacing */
+}
+
+.text-area:focus {
+  border-color: #8c00ff; /* Change border color on focus */
+  outline: none; /* Remove default outline */
+  background-color: #ffffff; /* Light background on focus */
 }
 .text-area1 {
   width: 100%; /* Makes the text area take up the full width of the parent */
   height: 100px; /* Makes the text area take up the full height of the parent */
-  border: 1px solid #ccc; /* Adds a border for better appearance */
-  padding: 10px; /* Adds some padding for better readability */
-  resize: none; /* Prevents resizing the text area */
-  box-sizing: border-box; /* Ensures padding doesn't affect the element's size */
-  font-size: 16px; /* Increases the font size for readability */
+  border: 2px solid #ccc; /* Light gray border */
+  border-radius: 8px; /* Rounded corners */
+  background-color: #f9f9f9; /* Light background color */
+  transition: border-color 0.3s ease; /* Smooth transition for border color */
+  resize: vertical; /* Allow vertical resizing only */
+  font-family: "Roboto", sans-serif; /* Apply the custom font */
+  font-size: 16px; /* Set a comfortable font size */
+  line-height: 1.5; /* Add line height for better readability */
+  padding: 12px; /* Add padding for better spacing */
+}
+
+.text-area1:focus {
+  border-color: #0044ff; /* Change border color on focus */
+  outline: none; /* Remove default outline */
+  background-color: #ffffff; /* Light background on focus */
 }
 .quotes-list {
   max-height: 401px; /* Adjust as needed */
@@ -330,6 +353,7 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   margin-top: 5px;
 }
+
 
 .quote-item {
   padding: 15px;
@@ -734,5 +758,14 @@
   100% {
     transform: scale(50) rotate(45deg);
     opacity: 0;
+  }
+}
+.spin {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
   }
 }

@@ -39,6 +39,8 @@ export default function Card() {
   const [ready, setReady] = useState(false);
   const [quoteOfTheDay, setQuoteOfTheDay] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   // Fetch quotes from API
   const fetchQuoteOfTheDay = async () => {
     if (!address) return;
@@ -122,13 +124,18 @@ export default function Card() {
  */
   // Save quote to API
   const sendQuote = async () => {
+    if (isSaving) return; // Prevent double click
+    setIsSaving(true);
+
     if (!quote.trim()) {
       setMessage("Quote cannot be empty!");
+      setIsSaving(false);
       return;
     }
 
     if (!userData) {
       setMessage("User data not available");
+      setIsSaving(false);
       return;
     }
 
@@ -155,7 +162,7 @@ export default function Card() {
         pfpUrl: userData.pfpUrl,
         verifiedAddresses: userData.verifiedAddresses,
         dateKey,
-        image: imageDataUrl, // <-- Add this line
+        image: imageDataUrl,
       }),
     });
 
@@ -167,6 +174,7 @@ export default function Card() {
     } else {
       setMessage(data.error || "Failed to save quote.");
     }
+    setIsSaving(false);
   };
   // Edit quote
   const handleEdit = (index) => {
@@ -175,11 +183,14 @@ export default function Card() {
   };
 
   const handleUpdateQuote = async () => {
+    if (isUpdating) return; // Prevent double click
+    setIsUpdating(true);
+
     if (!editedText.trim()) {
       setMessage("Quote cannot be empty!");
+      setIsUpdating(false);
       return;
     }
-
     // 1. Temporarily update the preview div with the edited text
     const previewNode = document.getElementById("quote-image-preview");
     const originalText = quote; // Save the current quote
@@ -216,6 +227,7 @@ export default function Card() {
     } catch (error) {
       setMessage("Something went wrong. Try again.");
     }
+    setIsUpdating(false);
   };
 
   // Delete quote
@@ -344,7 +356,16 @@ export default function Card() {
                               }}
                               maxLength={240}
                             />
-                            <button onClick={handleUpdateQuote}>Save</button>
+                            <button
+                              onClick={handleUpdateQuote}
+                              disabled={isUpdating}
+                            >
+                              {isUpdating ? (
+                                <FaSpinner className="spin" />
+                              ) : (
+                                "Save"
+                              )}
+                            </button>
                           </div>
                         ) : (
                           <p>{quote.text}</p>
@@ -390,7 +411,9 @@ export default function Card() {
                 <div>
                   <div className="profile-wrapper-logout ">
                     <div>
-                      <div className="card-subtitle">Write Your Quote</div>
+                      <div className="card-subtitle">
+                        Share your thoughts...
+                      </div>
                       <p className="char-count">
                         {240 - quote.length} characters remaining
                       </p>
@@ -406,15 +429,19 @@ export default function Card() {
                   <div className="card-contact-wrapper">
                     <div className="card-contact">
                       <textarea
-                        placeholder="Write your quote here..."
+                        placeholder="What's your thought for today?"
                         className="text-area"
                         maxLength={240}
                         value={quote}
                         onChange={(e) => setQuote(e.target.value)}
                       />
                     </div>
-                    <button className="contact-me" onClick={sendQuote}>
-                      Save Quote
+                    <button
+                      className="send-quote-btn"
+                      onClick={sendQuote}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? <FaSpinner className="spin" /> : "Let It Fly"}
                     </button>
                   </div>
                   {/*  {message && activeSection === "#contact" && (
@@ -443,19 +470,19 @@ export default function Card() {
                   className={activeSection === "#about" ? "is-active" : ""}
                   onClick={() => handleSectionChange("#about")}
                 >
-                  Quote
+                  Daily Drip
                 </button>
                 <button
                   className={activeSection === "#experience" ? "is-active" : ""}
                   onClick={() => handleSectionChange("#experience")}
                 >
-                  All Quotes
+                  My Vibes
                 </button>
                 <button
                   className={activeSection === "#contact" ? "is-active" : ""}
                   onClick={() => handleSectionChange("#contact")}
                 >
-                  Add
+                  Drop One
                 </button>
               </div>
             </div>

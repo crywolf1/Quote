@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Quote from "@/lib/models/Quote";
+import QuoteOfTheDayCache from "@/lib/models/QuoteOfTheDayCache";
 import cloudinary from "cloudinary";
 import { v4 as uuidv4 } from "uuid";
+
+import { ObjectId } from "mongodb";
 cloudinary.v2.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -66,19 +69,20 @@ export async function DELETE(req, { params }) {
 
     // Delete image from Cloudinary if it exists
     if (quote.image && quote.image.includes("cloudinary.com")) {
-      // Remove query params if any
       const url = quote.image.split("?")[0];
-      // Remove extension
       const urlNoExt = url.replace(/\.[^/.]+$/, "");
-      // Find '/upload/' and get everything after it
       const uploadIndex = urlNoExt.indexOf("/upload/");
-      let publicId = urlNoExt.substring(uploadIndex + 8); // 8 = length of "/upload/"
-      // Remove version if present (e.g. v1234567890/)
+      let publicId = urlNoExt.substring(uploadIndex + 8);
       publicId = publicId.replace(/^v\d+\//, "");
       await cloudinary.v2.uploader.destroy(publicId);
     }
 
     await Quote.findByIdAndDelete(id);
+
+    // Delete all QuoteOfTheDayCache entries that reference this quote
+    await QuoteOfTheDayCache.deleteMany({
+      quoteId: ObjectId.createFromHexString(id),
+    });
 
     return NextResponse.json(
       { message: "Quote and image deleted successfully" },
