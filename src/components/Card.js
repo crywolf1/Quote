@@ -64,6 +64,15 @@ export default function Card() {
     fetchQuoteOfTheDay();
   }, [address]); // Fetch quote when address changes
 
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
   const fetchQuotes = async () => {
     if (!address) return;
 
@@ -151,8 +160,8 @@ export default function Card() {
     )}&pfpUrl=${encodeURIComponent(pfpUrl)}`;
     const response = await fetch(ogUrl);
     const blob = await response.blob();
-    const imageDataUrl = URL.createObjectURL(blob);
-    setImagePreview(imageDataUrl);
+    const base64Image = await blobToBase64(blob);
+    setImagePreview(base64Image);
 
     // 2. Send imageDataUrl to backend
     const dateKey = `${address}_${new Date().toISOString().slice(0, 10)}`;
@@ -168,7 +177,7 @@ export default function Card() {
         pfpUrl: userData.pfpUrl,
         verifiedAddresses: userData.verifiedAddresses,
         dateKey,
-        image: imageDataUrl,
+        image: base64Image,
       }),
     });
 
