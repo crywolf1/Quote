@@ -29,11 +29,24 @@ export async function POST(req) {
 
     let imageUrl = "";
     if (image && image.startsWith("data:image")) {
-      // Upload to Cloudinary
-      const uploadRes = await cloudinary.v2.uploader.upload(image, {
-        folder: "quotes",
-        public_id: uuidv4(),
-        overwrite: true,
+      // Extract base64 string (remove "data:image/png;base64," part)
+      const base64Data = image.split(",")[1];
+      const buffer = Buffer.from(base64Data, "base64");
+
+      // Upload using upload_stream
+      const uploadRes = await new Promise((resolve, reject) => {
+        const stream = cloudinary.v2.uploader.upload_stream(
+          {
+            folder: "quotes",
+            public_id: uuidv4(),
+            overwrite: true,
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        stream.end(buffer);
       });
       imageUrl = uploadRes.secure_url;
     }
