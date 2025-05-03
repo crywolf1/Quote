@@ -8,11 +8,12 @@ export async function GET(req) {
   const username = searchParams.get("username") || "";
   const displayName = searchParams.get("displayName") || "";
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-  const pfpUrl = searchParams.get("pfpUrl")
-    ? `${baseUrl}/api/proxy?url=${encodeURIComponent(
-        searchParams.get("pfpUrl")
-      )}`
-    : "";
+  const rawPfpUrl = searchParams.get("pfpUrl") || "";
+
+  const isProd = process.env.NODE_ENV === "production";
+  const pfpUrl = isProd
+    ? rawPfpUrl
+    : `${baseUrl}/api/proxy?url=${encodeURIComponent(rawPfpUrl)}`;
 
   return new ImageResponse(
     (
