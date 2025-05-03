@@ -207,7 +207,7 @@ export default function Card() {
       return;
     }
     // 1. Temporarily update the preview div with the edited text
-    const previewNode = document.getElementById("quote-image-preview");
+ 
     const originalText = quote; // Save the current quote
     setQuote(editedText); // Temporarily set to edited text
 
@@ -224,7 +224,7 @@ export default function Card() {
     )}&pfpUrl=${encodeURIComponent(pfpUrl)}`;
     const response = await fetch(ogUrl);
     const blob = await response.blob();
-    const imageDataUrl = URL.createObjectURL(blob);
+    const base64Image = await blobToBase64(blob);
 
     // Restore the original quote in state
     setQuote(originalText);
@@ -234,7 +234,7 @@ export default function Card() {
       const res = await fetch(`/api/quote/${quotes[editIndex]._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: editedText, image: imageDataUrl }),
+        body: JSON.stringify({ text: editedText, image: base64Image }),
       });
       const data = await res.json();
       if (res.ok) {
