@@ -26,6 +26,7 @@ export async function POST(req) {
 
     const {
       text,
+      title,
       creatorAddress,
       fid,
       username,
@@ -78,6 +79,7 @@ export async function POST(req) {
     // Create new quote document
     const newQuote = new Quote({
       text,
+      title,
       creatorAddress,
       fid,
       username,

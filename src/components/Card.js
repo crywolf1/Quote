@@ -7,6 +7,10 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { SignInButton } from "@farcaster/auth-kit";
 import { useProfile } from "@farcaster/auth-kit";
 import { sdk } from "@farcaster/frame-sdk";
+import { createZoraCoin } from "@/lib/createZoraCoin";
+import { createPublicClient, createWalletClient, http } from "viem";
+import { base } from "viem/chains";
+import { useWalletClient } from "wagmi";
 
 import "../styles/style.css";
 import {
@@ -41,7 +45,7 @@ export default function Card() {
   const [imagePreview, setImagePreview] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-
+  const [title, setTitle] = useState("");
   // Fetch quotes from API
 
   const fetchQuoteOfTheDay = async () => {
@@ -118,25 +122,19 @@ export default function Card() {
       text: `"${quoteOfTheDay.text}" — ${owner}`,
     });
   };
-  // Handle wallet connection
 
-  // Get signer UUID from localStorage on component mount
+  const { data: walletClient } = useWalletClient();
 
-  // Navigation for quote carousel
-  /*   const handleLeftClick = () => {
-    setCurrentIndex(
-      (prevIndex) => (prevIndex - 1 + quotes.length) % quotes.length
-    );
-  };
-
-  const handleRightClick = () => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % quotes.length);
-  };
- */
-  // Save quote to API
   const sendQuote = async () => {
-    if (isSaving) return; // Prevent double click
+    if (isSaving) return;
     setIsSaving(true);
+
+    // Validate inputs
+    if (!title.trim()) {
+      setMessage("Please enter a title");
+      setIsSaving(false);
+      return;
+    }
 
     if (!quote.trim()) {
       setMessage("Quote cannot be empty!");
@@ -150,46 +148,96 @@ export default function Card() {
       return;
     }
 
-    // 1. Generate image from quote
-    const ogUrl = `/api/og?quote=${encodeURIComponent(
-      quote
-    )}&username=${encodeURIComponent(
-      username
-    )}&displayName=${encodeURIComponent(
-      displayName
-    )}&pfpUrl=${encodeURIComponent(pfpUrl)}`;
-    const response = await fetch(ogUrl);
-    const blob = await response.blob();
-    const base64Image = await blobToBase64(blob);
-    setImagePreview(base64Image);
+    try {
+      // 1. Generate image from quote (existing code)
+      const ogUrl = `/api/og?quote=${encodeURIComponent(
+        quote
+      )}&username=${encodeURIComponent(
+        username
+      )}&displayName=${encodeURIComponent(
+        displayName
+      )}&pfpUrl=${encodeURIComponent(pfpUrl)}`;
 
-    // 2. Send imageDataUrl to backend
-    const dateKey = `${address}_${new Date().toISOString().slice(0, 10)}`;
-    const res = await fetch("/api/quote", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: quote,
-        creatorAddress: address,
-        fid: userData.fid,
-        username: userData.username,
-        displayName: userData.displayName,
-        pfpUrl: userData.pfpUrl,
-        verifiedAddresses: userData.verifiedAddresses,
-        dateKey,
-        image: base64Image,
-      }),
-    });
+      const response = await fetch(ogUrl);
+      const blob = await response.blob();
+      const base64Image = await blobToBase64(blob);
+      setImagePreview(base64Image);
 
-    const data = await res.json();
-    if (res.ok) {
-      setMessage("Quote saved successfully!");
-      setQuote("");
-      fetchQuotes();
-    } else {
-      setMessage(data.error || "Failed to save quote.");
+      // 2. Send quote with title to backend
+      const dateKey = `${address}_${new Date().toISOString().slice(0, 10)}`;
+      const res = await fetch("/api/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(), // Add title field
+          text: quote,
+          creatorAddress: address,
+          fid: userData.fid,
+          username: userData.username,
+          displayName: userData.displayName,
+          pfpUrl: userData.pfpUrl,
+          verifiedAddresses: userData.verifiedAddresses,
+          dateKey,
+          image: base64Image,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.quote && data.quote.image) {
+        // 3. Create Zora coin if wallet client is available
+        if (walletClient) {
+          try {
+            // Set up viem clients
+            const publicClient = createPublicClient({
+              chain: base,
+              transport: http(),
+            });
+
+            // Create the coin
+            const zoraCoin = await createZoraCoin({
+              walletClient,
+              publicClient,
+              title: title.trim(),
+              imageUrl: data.quote.image, // Use the Cloudinary URL from response
+              creatorAddress: address,
+            });
+
+            // 4. Update the quote with the token address
+            if (zoraCoin && zoraCoin.address) {
+              await fetch(`/api/quote/${data.quote._id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  zoraTokenAddress: zoraCoin.address,
+                }),
+              });
+
+              setMessage(`Quote published and token created!`);
+            }
+          } catch (zoraError) {
+            console.error("Zora token creation failed:", zoraError);
+            setMessage("Quote published but token creation failed");
+          }
+        } else {
+          setMessage("Quote saved successfully!");
+        }
+
+        // Reset form fields
+        setTitle("");
+        setQuote("");
+
+        // Refresh quotes
+        fetchQuotes();
+      } else {
+        setMessage(data.error || "Failed to save quote.");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      setMessage("Failed to save quote.");
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
   // Edit quote
   const handleEdit = (index) => {
@@ -388,7 +436,33 @@ export default function Card() {
                             </button>
                           </div>
                         ) : (
-                          <p>{quote.text}</p>
+                          <>
+                            <div className="quote-header">
+                              <strong className="quote-title">
+                                {quote.title}
+                              </strong>
+                              {quote.zoraTokenAddress && (
+                                <span className="token-badge">
+                                  $
+                                  {quote.title?.toUpperCase().substring(0, 5) ||
+                                    "TOKEN"}
+                                </span>
+                              )}
+                            </div>
+                            <p className="quote-text">{quote.text}</p>
+                            {quote.zoraTokenAddress && (
+                              <div className="token-info">
+                                <a
+                                  href={`https://basescan.org/address/${quote.zoraTokenAddress}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="token-link"
+                                >
+                                  View Token
+                                </a>
+                              </div>
+                            )}
+                          </>
                         )}
                         <div className="quote-actions">
                           <button
@@ -448,6 +522,14 @@ export default function Card() {
 
                   <div className="card-contact-wrapper">
                     <div className="card-contact">
+                      <input
+                        type="text"
+                        placeholder="Title / Token Symbol"
+                        className="title-input" /* You'll need to style this */
+                        maxLength={20}
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                      />
                       <textarea
                         placeholder="What's your thought for today?"
                         className="text-area"
