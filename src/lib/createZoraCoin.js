@@ -1,5 +1,5 @@
 import { createCoin } from "@zoralabs/coins-sdk";
-
+const ZERO = "0x0000000000000000000000000000000000000000";
 export async function createZoraCoin({
   walletClient,
   publicClient,
@@ -31,8 +31,10 @@ export async function createZoraCoin({
     symbol,
     uri: metadataUrl,
     payoutRecipient: creatorAddress,
-    platformReferrer: "0x0000000000000000000000000000000000000000", // optional
-    // tickLower? and initialPurchaseWei? are omitted
+    platformReferrer: ZERO, // optional referrer
+    currency: ZERO, // force native‐ETH pool
+    tickLower: -199200, // Uniswap V3 default for ETH/WETH
+    initialPurchaseWei: 0n, // no upfront ETH purchase
   };
 
   // 4) Mint!
