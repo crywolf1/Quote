@@ -1,8 +1,10 @@
 import axios from "axios";
 
 // You must set these in your .env.local file
-const PINATA_API_KEY = process.env.NEXT_PUBLIC_PINATA_API_KEY;
-const PINATA_SECRET_API_KEY = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY;
+const NEXT_PUBLIC_PINATA_API_KEY =
+  process.env.NEXT_PUBLIC_NEXT_PUBLIC_PINATA_API_KEY;
+const NEXT_PUBLIC_PINATA_SECRET_API_KEY =
+  process.env.NEXT_PUBLIC_NEXT_PUBLIC_PINATA_SECRET_API_KEY;
 
 export async function uploadMetadataToIPFS(metadata) {
   const res = await axios.post(
@@ -11,8 +13,8 @@ export async function uploadMetadataToIPFS(metadata) {
     {
       headers: {
         "Content-Type": "application/json",
-        pinata_api_key: PINATA_API_KEY,
-        pinata_secret_api_key: PINATA_SECRET_API_KEY,
+        pinata_api_key: NEXT_PUBLIC_PINATA_API_KEY,
+        pinata_secret_api_key: NEXT_PUBLIC_PINATA_SECRET_API_KEY,
       },
     }
   );

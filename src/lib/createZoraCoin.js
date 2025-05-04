@@ -1,6 +1,14 @@
 import { createCoin } from "@zoralabs/coins-sdk";
 import { uploadMetadataToIPFS } from "./uploadToIPFS";
 
+/**
+ * Deploys a new Zora coin using IPFS-hosted metadata.
+ * @param walletClient - wagmi wallet client
+ * @param publicClient - wagmi public client
+ * @param title       - quote title (used as name & symbol)
+ * @param imageUrl    - URL of the quote image (can be HTTPS or ipfs://)
+ * @param creatorAddress - user’s wallet address
+ */
 export async function createZoraCoin({
   walletClient,
   publicClient,
@@ -8,43 +16,38 @@ export async function createZoraCoin({
   imageUrl,
   creatorAddress,
 }) {
-  try {
-    let symbol = title
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, "")
-      .substring(0, 8);
-    if (symbol.length < 3) symbol = (symbol + "QQQ").substring(0, 3);
+  // ensure symbol is 3–8 uppercase alphanumerics
+  let symbol = title
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .substring(0, 8);
+  if (symbol.length < 3) symbol = (symbol + "QQQ").substring(0, 3);
 
-    // 1. Prepare metadata
-    const metadata = {
-      name: title,
-      description: `Quote token for "${title}"`,
-      image: imageUrl, // This can be a Cloudinary HTTPS URL, but for best results, upload the image to IPFS too
-      properties: { category: "social" },
-    };
+  // build metadata JSON
+  const metadata = {
+    name: title,
+    description: `Quote token for "${title}"`,
+    image: imageUrl,
+    properties: { category: "social" },
+  };
 
-    // 2. Upload metadata to IPFS
-    const metadataUri = await uploadMetadataToIPFS(metadata);
+  // upload metadata & get ipfs:// URI
+  const uri = await uploadMetadataToIPFS(metadata);
 
-    // 3. Create coin with IPFS URI
-    const coinParams = {
-      name: title,
-      symbol,
-      uri: metadataUri, // <-- must be ipfs://...
-      payoutRecipient: creatorAddress,
-      owners: [creatorAddress],
-      tickLower: -199200,
-      initialPurchaseWei: 0n,
-    };
+  // prepare Zora createCoin args
+  const coinParams = {
+    name: title,
+    symbol,
+    uri, // ipfs://...
+    payoutRecipient: creatorAddress,
+    owners: [creatorAddress], // defaults to payoutRecipient
+    platformReferrer: "0x0000000000000000000000000000000000000000",
+    currency: "0x4200000000000000000000000000000000000006", // Base ETH
+    tickLower: -199200,
+    initialPurchaseWei: 0n,
+    orderSize: 0n,
+  };
 
-    const result = await createCoin(coinParams, walletClient, publicClient);
-
-    return {
-      address: result.address,
-      txHash: result.hash,
-    };
-  } catch (error) {
-    console.error("Error creating Zora coin:", error);
-    throw error;
-  }
+  const result = await createCoin(coinParams, walletClient, publicClient);
+  return { address: result.address, txHash: result.hash };
 }
