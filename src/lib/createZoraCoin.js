@@ -1,9 +1,5 @@
 import { createCoin } from "@zoralabs/coins-sdk";
 
-// Use a known-working example from Zora docs
-const WORKING_IPFS_URI =
-  "ipfs://bafybeigoxzqzbnxsn35vq7lls3ljxdcwjafxvbvkivprsodzrptpiguysy";
-
 export async function createZoraCoin({
   walletClient,
   publicClient,
@@ -19,29 +15,36 @@ export async function createZoraCoin({
       .substring(0, 8);
     if (symbol.length < 3) symbol = symbol.padEnd(3, "Q");
 
-    // 2. SKIP Pinata/IPFS altogether for first test
-    // Use Zora's own example URI that we know works
+    // 2. Create metadata using the imageUrl
+    const metadata = {
+      name: title,
+      description: `Quote token for "${title}"`,
+      image: imageUrl,
+      properties: {
+        category: "social",
+      },
+    };
 
-    // 3. Use exact params from docs example with correct currency
+    // 3. Upload metadata to IPFS via your server route
+    const pinRes = await fetch("/api/pin-metadata", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(metadata),
+    });
+    const { uri: ipfsUri } = await pinRes.json();
+    if (!ipfsUri) throw new Error("Failed to pin metadata");
+
+    // 4. Use the generated IPFS URI
     const coinParams = {
       name: title,
       symbol,
-      uri: WORKING_IPFS_URI,
+      uri: ipfsUri, // Use dynamically created URI
       payoutRecipient: creatorAddress,
-      // Use address(0) for ETH trading pairs per docs
-      currency: "0x0000000000000000000000000000000000000000", // Zero address for ETH
-      tickLower: -199200,
-      // Set minimal default values to avoid errors
-      initialPurchaseWei: 0n, // No initial purchase
+      platformReferrer: "0x0000000000000000000000000000000000000000",
     };
 
-    // 4. Call createCoin with minimal parameters
     const result = await createCoin(coinParams, walletClient, publicClient);
-
-    return {
-      address: result.address,
-      txHash: result.hash,
-    };
+    return { address: result.address, txHash: result.hash };
   } catch (error) {
     console.error("Coin creation error:", error);
     throw error;
