@@ -6,12 +6,8 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useProfile } from "@farcaster/auth-kit";
 import { sdk } from "@farcaster/frame-sdk";
 import { createZoraCoin } from "@/lib/createZoraCoin";
-import {
-  useAccount,
-  useWalletClient,
-  usePublicClient,
-  useDisconnect,
-} from "wagmi";
+import { useAccount, useDisconnect } from "wagmi";
+import { publicClient, getWalletClient } from "@/lib/viemConfig";
 
 import "../styles/style.css";
 import {
@@ -27,8 +23,6 @@ import {
 export default function Card() {
   const { userData, loading, error, connectWallet } = useFarcaster();
   const { isConnected, isDisconnected, status, address } = useAccount();
-  const { data: walletClient } = useWalletClient();
-  const publicClient = usePublicClient();
   const { disconnect } = useDisconnect();
   const { profile, isLoading } = useProfile();
   // Use fallback values if userData is not loaded yet
@@ -49,8 +43,8 @@ export default function Card() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [title, setTitle] = useState("");
-  // Fetch quotes from API
 
+  // Fetch quotes from API
   const fetchQuoteOfTheDay = async () => {
     if (!address) return;
 
@@ -69,7 +63,7 @@ export default function Card() {
 
   useEffect(() => {
     fetchQuoteOfTheDay();
-  }, [address]); // Fetch quote when address changes
+  }, [address]);
 
   function blobToBase64(blob) {
     return new Promise((resolve, reject) => {
@@ -130,7 +124,12 @@ export default function Card() {
     if (isSaving) return;
     setIsSaving(true);
 
-    // 1) Validate inputs
+    // Validate inputs
+    if (!isConnected || !address) {
+      setMessage("Please connect your wallet");
+      setIsSaving(false);
+      return;
+    }
     if (!title.trim()) {
       setMessage("Please enter a title");
       setIsSaving(false);
@@ -148,17 +147,23 @@ export default function Card() {
     }
 
     try {
-      // 2) Generate image for metadata
+      // Get walletClient dynamically
+      const walletClient = getWalletClient();
+
+      // Generate image for metadata
       const ogUrl =
         `/api/og?quote=${encodeURIComponent(quote)}` +
         `&username=${encodeURIComponent(username)}` +
         `&displayName=${encodeURIComponent(displayName)}` +
         `&pfpUrl=${encodeURIComponent(pfpUrl)}`;
       const ogRes = await fetch(ogUrl);
+      if (!ogRes.ok) {
+        throw new Error("Failed to generate image");
+      }
       const blob = await ogRes.blob();
       const base64Image = await blobToBase64(blob);
 
-      // 3) Save quote to backend
+      // Save quote to backend
       const dateKey = `${address}_${new Date().toISOString().slice(0, 10)}`;
       const createRes = await fetch("/api/quote", {
         method: "POST",
@@ -183,17 +188,15 @@ export default function Card() {
         return;
       }
 
-      // 4) Mint Zora coin (opens wallet)
+      // Mint Zora coin
       setMessage("Minting your token…");
-      const { address: tokenAddress } = await createZoraCoin({
-        walletClient,
-        publicClient,
+      const { address: tokenAddress, txHash } = await createZoraCoin({
         title: saved.title,
         imageUrl: saved.image,
         creatorAddress: address,
       });
 
-      // 5) Persist token address in DB
+      // Persist token address in DB
       await fetch(`/api/quote/${saved._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -201,17 +204,17 @@ export default function Card() {
       });
 
       setMessage(`🎉 Token created: ${tokenAddress}`);
-      // refresh and reset form
       fetchQuotes();
       setTitle("");
       setQuote("");
     } catch (err) {
-      console.error(err);
-      setMessage("Something went wrong during minting.");
+      console.error("Send quote error:", err);
+      setMessage(`Failed to create token: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
   };
+
   // Edit quote
   const handleEdit = (index) => {
     setEditIndex(index);
@@ -219,7 +222,7 @@ export default function Card() {
   };
 
   const handleUpdateQuote = async () => {
-    if (isUpdating) return; // Prevent double click
+    if (isUpdating) return;
     setIsUpdating(true);
 
     if (!editedText.trim()) {
@@ -227,31 +230,27 @@ export default function Card() {
       setIsUpdating(false);
       return;
     }
-    // 1. Temporarily update the preview div with the edited text
 
-    const originalText = quote; // Save the current quote
-    setQuote(editedText); // Temporarily set to edited text
+    const originalText = quote;
+    setQuote(editedText);
 
-    // Wait for the DOM to update
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    // 2. Generate new image
-    const ogUrl = `/api/og?quote=${encodeURIComponent(
-      editedText
-    )}&username=${encodeURIComponent(
-      username
-    )}&displayName=${encodeURIComponent(
-      displayName
-    )}&pfpUrl=${encodeURIComponent(pfpUrl)}`;
-    const response = await fetch(ogUrl);
-    const blob = await response.blob();
-    const base64Image = await blobToBase64(blob);
-
-    // Restore the original quote in state
-    setQuote(originalText);
-
-    // 3. Send updated text and image to backend
     try {
+      const ogUrl =
+        `/api/og?quote=${encodeURIComponent(editedText)}` +
+        `&username=${encodeURIComponent(username)}` +
+        `&displayName=${encodeURIComponent(displayName)}` +
+        `&pfpUrl=${encodeURIComponent(pfpUrl)}`;
+      const response = await fetch(ogUrl);
+      if (!response.ok) {
+        throw new Error("Failed to generate image");
+      }
+      const blob = await response.blob();
+      const base64Image = await blobToBase64(blob);
+
+      setQuote(originalText);
+
       const res = await fetch(`/api/quote/${quotes[editIndex]._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -267,8 +266,9 @@ export default function Card() {
       }
     } catch (error) {
       setMessage("Something went wrong. Try again.");
+    } finally {
+      setIsUpdating(false);
     }
-    setIsUpdating(false);
   };
 
   // Delete quote
@@ -470,6 +470,7 @@ export default function Card() {
                 <div className="card-header">
                   <div
                     className="card-cover"
+                    тация
                     style={{ backgroundImage: `url(${pfpUrl})` }}
                   ></div>
                   <img src={pfpUrl} alt="Avatar" className="card-avatar" />
@@ -498,7 +499,7 @@ export default function Card() {
                       <input
                         type="text"
                         placeholder="Title / Token Symbol"
-                        className="title-input" /* You'll need to style this */
+                        className="title-input"
                         maxLength={20}
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
@@ -514,14 +515,11 @@ export default function Card() {
                     <button
                       className="send-quote-btn"
                       onClick={sendQuote}
-                      disabled={isSaving}
+                      disabled={isSaving || !isConnected}
                     >
                       {isSaving ? <FaSpinner className="spin" /> : "Let It Fly"}
                     </button>
                   </div>
-                  {/*  {message && activeSection === "#contact" && (
-                    <p className="message">{message}</p>
-                  )} */}
                 </div>
               </div>
             </div>
@@ -562,11 +560,6 @@ export default function Card() {
               </div>
             </div>
           </div>
-
-          {/* Debugging info - remove in production */}
-          {/* {message && activeSection === "#about" && (
-            <p className="message">{message}</p>
-          )} */}
         </>
       ) : (
         isDisconnected && (
