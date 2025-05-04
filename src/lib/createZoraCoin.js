@@ -22,13 +22,17 @@ export async function createZoraCoin({
     // 2. SKIP Pinata/IPFS altogether for first test
     // Use Zora's own example URI that we know works
 
-    // 3. Use exact params from docs example
+    // 3. Use exact params from docs example with correct currency
     const coinParams = {
       name: title,
       symbol,
-      uri: WORKING_IPFS_URI, // <-- Use known working example URI
+      uri: WORKING_IPFS_URI,
       payoutRecipient: creatorAddress,
-      // Only include required params for first test
+      // Use address(0) for ETH trading pairs per docs
+      currency: "0x0000000000000000000000000000000000000000", // Zero address for ETH
+      tickLower: -199200,
+      // Set minimal default values to avoid errors
+      initialPurchaseWei: 0n, // No initial purchase
     };
 
     // 4. Call createCoin with minimal parameters
