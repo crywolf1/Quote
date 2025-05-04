@@ -155,10 +155,11 @@ export default function Card() {
     }
 
     try {
-      // Get walletClient using address and wagmiWalletClient
+      // Get walletClient
       const walletClient = getWalletClient(address, wagmiWalletClient);
 
       // Generate image for metadata
+      setMessage("Generating metadata image...");
       const ogUrl =
         `/api/og?quote=${encodeURIComponent(quote)}` +
         `&username=${encodeURIComponent(username)}` +
@@ -166,12 +167,13 @@ export default function Card() {
         `&pfpUrl=${encodeURIComponent(pfpUrl)}`;
       const ogRes = await fetch(ogUrl);
       if (!ogRes.ok) {
-        throw new Error("Failed to generate image");
+        throw new Error("Failed to generate image. Please try again.");
       }
       const blob = await ogRes.blob();
       const base64Image = await blobToBase64(blob);
 
       // Save quote to backend
+      setMessage("Saving quote...");
       const dateKey = `${address}_${new Date().toISOString().slice(0, 10)}`;
       const createRes = await fetch("/api/quote", {
         method: "POST",
@@ -197,7 +199,7 @@ export default function Card() {
       }
 
       // Mint Zora coin
-      setMessage("Minting your token…");
+      setMessage("Minting your token...");
       const { address: tokenAddress, txHash } = await createZoraCoin({
         walletClient,
         title: saved.title,
@@ -206,19 +208,32 @@ export default function Card() {
       });
 
       // Persist token address in DB
+      setMessage("Finalizing token creation...");
       await fetch(`/api/quote/${saved._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ zoraTokenAddress: tokenAddress }),
       });
 
-      setMessage(`🎉 Token created: ${tokenAddress}`);
+      setMessage(
+        `🎉 Token created: ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(
+          -4
+        )} (Tx: ${txHash.slice(0, 6)}...)`
+      );
       fetchQuotes();
       setTitle("");
       setQuote("");
     } catch (err) {
       console.error("Send quote error:", err);
-      setMessage(`Failed to create token: ${err.message}`);
+      let errorMessage = "Failed to create token: ";
+      if (err.message.includes("Insufficient ETH")) {
+        errorMessage += "Please fund your wallet with ETH on Base.";
+      } else if (err.message.includes("Metadata")) {
+        errorMessage += "Invalid metadata URL. Please try again.";
+      } else {
+        errorMessage += err.message;
+      }
+      setMessage(errorMessage);
     } finally {
       setIsSaving(false);
     }

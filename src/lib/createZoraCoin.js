@@ -1,5 +1,6 @@
 import { createCoin } from "@zoralabs/coins-sdk";
 import { publicClient } from "./viemConfig";
+
 const ZERO = "0x0000000000000000000000000000000000000000";
 const ZORA_CURRENCY = "0x1111111111166b7FE7bd91427724B487980aFc69"; // $ZORA on Base
 
@@ -10,14 +11,18 @@ export async function createZoraCoin({
   creatorAddress,
 }) {
   try {
-    // Validate walletClient
+    // Validate inputs
     if (!walletClient) {
       throw new Error("Wallet client not provided.");
     }
-
-    // Validate creatorAddress
     if (!creatorAddress || creatorAddress === ZERO) {
       throw new Error("Invalid creator address.");
+    }
+    if (!title || typeof title !== "string") {
+      throw new Error("Title must be a non-empty string.");
+    }
+    if (!imageUrl || typeof imageUrl !== "string") {
+      throw new Error("Image URL must be a non-empty string.");
     }
 
     // Build symbol: Convert title to uppercase, remove non-alphanumeric, limit to 8 chars
@@ -60,16 +65,16 @@ export async function createZoraCoin({
       );
     }
 
-    // Define coin parameters per Zora Coins SDK CreateCoinArgs
+    // Define coin parameters with explicit type handling
     const coinParams = {
-      name: title,
-      symbol,
-      uri: metadataUrl,
-      payoutRecipient: creatorAddress,
-      platformReferrer: ZERO,
-      tickLower: -199200, // Uniswap v3 default lower tick
-      initialPurchaseWei: 0n, // No initial ETH purchase
-      currency: ZORA_CURRENCY, // Explicitly set $ZORA
+      name: String(title),
+      symbol: String(symbol),
+      uri: String(metadataUrl),
+      payoutRecipient: String(creatorAddress),
+      platformReferrer: String(ZERO),
+      tickLower: Number(-199200), // Ensure number for int24
+      initialPurchaseWei: "0", // Use string for uint256 to avoid BigInt issues
+      currency: String(ZORA_CURRENCY),
     };
 
     // Log parameters for debugging
