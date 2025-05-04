@@ -15,34 +15,20 @@ export async function createZoraCoin({
       .substring(0, 8);
     if (symbol.length < 3) symbol = symbol.padEnd(3, "Q");
 
-    // 2. Create metadata using the imageUrl
-    const metadata = {
-      name: title,
-      description: `Quote token for "${title}"`,
-      image: imageUrl,
-      properties: {
-        category: "social",
-      },
-    };
+    // 2. Use a stable, direct HTTPS URL for metadata
+    // This skips IPFS pinning/propagation issues
+    const metadataUrl = "https://quote-dusky.vercel.app/metadata.json";
 
-    // 3. Upload metadata to IPFS via your server route
-    const pinRes = await fetch("/api/pin-metadata", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(metadata),
-    });
-    const { uri: ipfsUri } = await pinRes.json();
-    if (!ipfsUri) throw new Error("Failed to pin metadata");
-
-    // 4. Use the generated IPFS URI
+    // 3. Simple parameters that match Zora docs
     const coinParams = {
       name: title,
       symbol,
-      uri: ipfsUri, // Use dynamically created URI
+      uri: metadataUrl,
       payoutRecipient: creatorAddress,
       platformReferrer: "0x0000000000000000000000000000000000000000",
     };
 
+    // 4. Create the coin
     const result = await createCoin(coinParams, walletClient, publicClient);
     return { address: result.address, txHash: result.hash };
   } catch (error) {
