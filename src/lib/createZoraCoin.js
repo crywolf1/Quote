@@ -12,18 +12,18 @@ export async function createZoraCoin({
   creatorAddress,
 }) {
   try {
-    const symbol =
-      title
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "")
-        .substring(0, 5) || "QUOTE";
+    // Ensure symbol is 3-8 uppercase letters
+    let symbol = title
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .substring(0, 8);
+    if (symbol.length < 3) symbol = (symbol + "QQQ").substring(0, 3);
+
     const metadataUrl = `${APP_URL}/api/metadata?title=${encodeURIComponent(
       title
     )}&description=${encodeURIComponent(
       `Quote token for "${title}"`
     )}&image=${encodeURIComponent(imageUrl)}`;
-
-    // No need to test the URL in the browser; Zora will fetch it on-chain
 
     const coinParams = {
       name: title,
