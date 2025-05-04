@@ -16,7 +16,7 @@ export async function GET(request) {
       properties: { category: "social" },
     },
     {
-      headers: { "Access-Control-Allow-Origin": "*" }, // For browser testing
+      headers: { "Access-Control-Allow-Origin": "*" },
     }
   );
 }

@@ -10,7 +10,8 @@ import { sdk } from "@farcaster/frame-sdk";
 import { createZoraCoin } from "@/lib/createZoraCoin";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { base } from "viem/chains";
-import { useWalletClient } from "wagmi";
+import { createZoraCoin } from "@/lib/createZoraCoin";
+import { useAccount, useWalletClient, usePublicClient } from "wagmi";
 
 import "../styles/style.css";
 import {
@@ -26,6 +27,8 @@ import {
 export default function Card() {
   const { userData, loading, error, connectWallet } = useFarcaster();
   const { isConnected, isDisconnected, status, address } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
   const { disconnect } = useDisconnect();
   const { profile, isLoading } = useProfile();
   // Use fallback values if userData is not loaded yet
@@ -123,8 +126,6 @@ export default function Card() {
     });
   };
 
-  const { data: walletClient } = useWalletClient();
-
   const sendQuote = async () => {
     if (isSaving) return;
     setIsSaving(true);
@@ -135,13 +136,11 @@ export default function Card() {
       setIsSaving(false);
       return;
     }
-
     if (!quote.trim()) {
       setMessage("Quote cannot be empty!");
       setIsSaving(false);
       return;
     }
-
     if (!userData) {
       setMessage("User data not available");
       setIsSaving(false);
@@ -149,7 +148,7 @@ export default function Card() {
     }
 
     try {
-      // 1. Generate image from quote (existing code)
+      // 1. Generate image from quote
       const ogUrl = `/api/og?quote=${encodeURIComponent(
         quote
       )}&username=${encodeURIComponent(
@@ -157,19 +156,18 @@ export default function Card() {
       )}&displayName=${encodeURIComponent(
         displayName
       )}&pfpUrl=${encodeURIComponent(pfpUrl)}`;
-
       const response = await fetch(ogUrl);
       const blob = await response.blob();
       const base64Image = await blobToBase64(blob);
       setImagePreview(base64Image);
 
-      // 2. Send quote with title to backend
+      // 2. Save quote to backend
       const dateKey = `${address}_${new Date().toISOString().slice(0, 10)}`;
       const res = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: title.trim(), // Add title field
+          title: title.trim(),
           text: quote,
           creatorAddress: address,
           fid: userData.fid,
@@ -188,18 +186,12 @@ export default function Card() {
         // 3. Create Zora coin if wallet client is available
         if (walletClient) {
           try {
-            // Set up viem clients
-            const publicClient = createPublicClient({
-              chain: base,
-              transport: http(),
-            });
-
-            // Create the coin
+            // Use the Cloudinary URL from backend response
             const zoraCoin = await createZoraCoin({
               walletClient,
               publicClient,
               title: title.trim(),
-              imageUrl: data.quote.image, // Use the Cloudinary URL from response
+              imageUrl: data.quote.image,
               creatorAddress: address,
             });
 
@@ -226,8 +218,6 @@ export default function Card() {
         // Reset form fields
         setTitle("");
         setQuote("");
-
-        // Refresh quotes
         fetchQuotes();
       } else {
         setMessage(data.error || "Failed to save quote.");

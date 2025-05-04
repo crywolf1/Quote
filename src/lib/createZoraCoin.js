@@ -12,7 +12,6 @@ export async function createZoraCoin({
   creatorAddress,
 }) {
   try {
-    // Ensure symbol is 3-8 uppercase letters
     let symbol = title
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "")
@@ -30,6 +29,8 @@ export async function createZoraCoin({
       symbol,
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
+      owners: [creatorAddress], // optional but explicit
+      tickLower: -199200, // optional, default for WETH pairs
       initialPurchaseWei: 0n,
     };
 
@@ -41,6 +42,48 @@ export async function createZoraCoin({
     };
   } catch (error) {
     console.error("Error creating Zora coin:", error);
+    throw error;
+  }
+}
+export async function getZoraCoinMetadata(coinAddress) {
+  try {
+    const metadataUrl = `${APP_URL}/api/metadata?address=${coinAddress}`;
+    const response = await fetch(metadataUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch Zora coin metadata");
+    }
+
+    const metadata = await response.json();
+    return metadata;
+  } catch (error) {
+    console.error("Error fetching Zora coin metadata:", error);
+    throw error;
+  }
+}
+export async function getZoraCoinImage(coinAddress) {
+  try {
+    const metadataUrl = `${APP_URL}/api/metadata?address=${coinAddress}`;
+    const response = await fetch(metadataUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch Zora coin image");
+    }
+
+    const metadata = await response.json();
+    return metadata.image;
+  } catch (error) {
+    console.error("Error fetching Zora coin image:", error);
     throw error;
   }
 }
