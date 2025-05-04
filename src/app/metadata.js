@@ -5,7 +5,7 @@ export async function GET(request) {
   const name = searchParams.get("title") || "Quote Token";
   const description = searchParams.get("description") || "A quote on Quoted";
   const image =
-    searchParams.get("image") || "https://yourdomain.com/default.png";
+    searchParams.get("image") || "https://quote-dusky.vercel.app/default.png";
 
   return NextResponse.json(
     {
