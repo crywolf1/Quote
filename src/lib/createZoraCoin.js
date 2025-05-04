@@ -1,4 +1,5 @@
 import { createCoin } from "@zoralabs/coins-sdk";
+const ZERO = "0x0000000000000000000000000000000000000000";
 
 export async function createZoraCoin({
   walletClient,
@@ -8,34 +9,39 @@ export async function createZoraCoin({
   creatorAddress,
 }) {
   try {
-    // 1) Build symbol
+    // build symbol…
     let symbol = title
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "")
       .substring(0, 8);
     if (symbol.length < 3) symbol = symbol.padEnd(3, "Q");
 
-    // 2) Point at your dynamic metadata route
+    // your metadata URL…
     const base =
       typeof window !== "undefined"
         ? window.location.origin
         : process.env.NEXT_PUBLIC_SITE_URL;
-    const metadataUrl = `${base}/api/metadata?title=${encodeURIComponent(
-      title
-    )}&image=${encodeURIComponent(imageUrl)}`;
+    const metadataUrl =
+      `${base}/api/metadata` +
+      `?title=${encodeURIComponent(title)}` +
+      `&image=${encodeURIComponent(imageUrl)}`;
 
-    // 3) Minimal Zora params
     const coinParams = {
       name: title,
       symbol,
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
-      platformReferrer: "0x0000000000000000000000000000000000000000",
+      platformReferrer: ZERO,
+      currency: ZERO, // <—— force ETH pool
+      // tickLower: -199200 // optional: SDK default is fine when currency=ZERO
     };
 
-    // 4) Mint
-    const result = await createCoin(coinParams, walletClient, publicClient);
-    return { address: result.address, txHash: result.hash };
+    const { address, hash } = await createCoin(
+      coinParams,
+      walletClient,
+      publicClient
+    );
+    return { address, txHash: hash };
   } catch (error) {
     console.error("Coin creation error:", error);
     throw error;
