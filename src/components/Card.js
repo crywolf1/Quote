@@ -2,16 +2,16 @@
 
 import { useFarcaster } from "./FarcasterFrameProvider";
 import { useState, useEffect } from "react";
-import { useAccount, useDisconnect } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { SignInButton } from "@farcaster/auth-kit";
 import { useProfile } from "@farcaster/auth-kit";
 import { sdk } from "@farcaster/frame-sdk";
 import { createZoraCoin } from "@/lib/createZoraCoin";
-import { createPublicClient, createWalletClient, http } from "viem";
-import { base } from "viem/chains";
-import { createZoraCoin } from "@/lib/createZoraCoin";
-import { useAccount, useWalletClient, usePublicClient } from "wagmi";
+import {
+  useAccount,
+  useWalletClient,
+  usePublicClient,
+  useDisconnect,
+} from "wagmi";
 
 import "../styles/style.css";
 import {
