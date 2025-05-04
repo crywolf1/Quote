@@ -130,7 +130,7 @@ export default function Card() {
     if (isSaving) return;
     setIsSaving(true);
 
-    // Validate inputs
+    // 1) Validate inputs
     if (!title.trim()) {
       setMessage("Please enter a title");
       setIsSaving(false);
@@ -148,22 +148,19 @@ export default function Card() {
     }
 
     try {
-      // 1. Generate image from quote
-      const ogUrl = `/api/og?quote=${encodeURIComponent(
-        quote
-      )}&username=${encodeURIComponent(
-        username
-      )}&displayName=${encodeURIComponent(
-        displayName
-      )}&pfpUrl=${encodeURIComponent(pfpUrl)}`;
-      const response = await fetch(ogUrl);
-      const blob = await response.blob();
+      // 2) Generate image for metadata
+      const ogUrl =
+        `/api/og?quote=${encodeURIComponent(quote)}` +
+        `&username=${encodeURIComponent(username)}` +
+        `&displayName=${encodeURIComponent(displayName)}` +
+        `&pfpUrl=${encodeURIComponent(pfpUrl)}`;
+      const ogRes = await fetch(ogUrl);
+      const blob = await ogRes.blob();
       const base64Image = await blobToBase64(blob);
-      setImagePreview(base64Image);
 
-      // 2. Save quote to backend
+      // 3) Save quote to backend
       const dateKey = `${address}_${new Date().toISOString().slice(0, 10)}`;
-      const res = await fetch("/api/quote", {
+      const createRes = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -179,52 +176,38 @@ export default function Card() {
           image: base64Image,
         }),
       });
-
-      const data = await res.json();
-
-      if (res.ok && data.quote && data.quote.image) {
-        // 3. Create Zora coin if wallet client is available
-        if (walletClient) {
-          try {
-            // Use the Cloudinary URL from backend response
-            const zoraCoin = await createZoraCoin({
-              walletClient,
-              publicClient,
-              title: title.trim(),
-              imageUrl: data.quote.image,
-              creatorAddress: address,
-            });
-
-            // 4. Update the quote with the token address
-            if (zoraCoin && zoraCoin.address) {
-              await fetch(`/api/quote/${data.quote._id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  zoraTokenAddress: zoraCoin.address,
-                }),
-              });
-
-              setMessage(`Quote published and token created!`);
-            }
-          } catch (zoraError) {
-            console.error("Zora token creation failed:", zoraError);
-            setMessage("Quote published but token creation failed");
-          }
-        } else {
-          setMessage("Quote saved successfully!");
-        }
-
-        // Reset form fields
-        setTitle("");
-        setQuote("");
-        fetchQuotes();
-      } else {
-        setMessage(data.error || "Failed to save quote.");
+      const { quote: saved, error } = await createRes.json();
+      if (!createRes.ok || !saved) {
+        setMessage(error || "Failed to save quote.");
+        setIsSaving(false);
+        return;
       }
-    } catch (error) {
-      console.error("Error:", error);
-      setMessage("Failed to save quote.");
+
+      // 4) Mint Zora coin (opens wallet)
+      setMessage("Minting your token…");
+      const { address: tokenAddress } = await createZoraCoin({
+        walletClient,
+        publicClient,
+        title: saved.title,
+        imageUrl: saved.image,
+        creatorAddress: address,
+      });
+
+      // 5) Persist token address in DB
+      await fetch(`/api/quote/${saved._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ zoraTokenAddress: tokenAddress }),
+      });
+
+      setMessage(`🎉 Token created: ${tokenAddress}`);
+      // refresh and reset form
+      fetchQuotes();
+      setTitle("");
+      setQuote("");
+    } catch (err) {
+      console.error(err);
+      setMessage("Something went wrong during minting.");
     } finally {
       setIsSaving(false);
     }
