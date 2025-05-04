@@ -7,14 +7,14 @@ export async function createZoraCoin({
   imageUrl,
   creatorAddress,
 }) {
-  // build symbol (3–8 uppercase chars)
+  // 1) build symbol
   let symbol = title
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "")
     .substring(0, 8);
   if (symbol.length < 3) symbol = (symbol + "QQQ").substring(0, 3);
 
-  // build metadata JSON
+  // 2) metadata
   const metadata = {
     name: title,
     description: `Quote token for "${title}"`,
@@ -22,20 +22,24 @@ export async function createZoraCoin({
     properties: { category: "social" },
   };
 
-  // POST to your server route to pin on IPFS
-  const pinResponse = await fetch("/api/pin-metadata", {
+  // 3) pin on your server
+  const pinRes = await fetch("/api/pin-metadata", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(metadata),
   });
-  const { uri, error } = await pinResponse.json();
-  if (!uri) throw new Error(error || "Failed to pin metadata");
+  const { uri: ipfsUri } = await pinRes.json();
 
-  // prepare Zora coin params
+  // 4) pick a reliable URI for SDK validation
+  const httpUri = ipfsUri.replace(
+    "ipfs://",
+    "https://cloudflare-ipfs.com/ipfs/"
+  );
+
   const coinParams = {
     name: title,
     symbol,
-    uri, // ipfs://...
+    uri: httpUri, // <— use HTTP gateway
     payoutRecipient: creatorAddress,
     owners: [creatorAddress],
     platformReferrer: "0x0000000000000000000000000000000000000000",
@@ -45,7 +49,17 @@ export async function createZoraCoin({
     orderSize: 0n,
   };
 
-  // create the coin on‐chain
-  const result = await createCoin(coinParams, walletClient, publicClient);
-  return { address: result.address, txHash: result.hash };
+  // 5) mint (with optional Arweave fallback)
+  try {
+    const result = await createCoin(coinParams, walletClient, publicClient);
+    return { address: result.address, txHash: result.hash };
+  } catch (e) {
+    if (e.message.includes("Metadata fetch failed")) {
+      console.warn("Falling back to Arweave URI");
+      coinParams.uri = "ar://NLGaNoj-CfjgKvpbxbwCH7YlLKEZxGWsLIlVvvOznoA";
+      const result = await createCoin(coinParams, walletClient, publicClient);
+      return { address: result.address, txHash: result.hash };
+    }
+    throw e;
+  }
 }
