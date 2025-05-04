@@ -31,10 +31,8 @@ export async function createZoraCoin({
     symbol,
     uri: metadataUrl,
     payoutRecipient: creatorAddress,
-    platformReferrer: ZERO, // optional referrer
-    currency: ZERO, // force native‐ETH pool
-    tickLower: -199200, // Uniswap V3 default for ETH/WETH
-    initialPurchaseWei: 0n, // no upfront ETH purchase
+    platformReferrer: ZERO, // optional
+    // <— NO currency, NO tickLower, NO initialPurchaseWei
   };
 
   // 4) Mint!
