@@ -1,5 +1,6 @@
 import { createCoin } from "@zoralabs/coins-sdk";
 const ZERO = "0x0000000000000000000000000000000000000000";
+
 export async function createZoraCoin({
   walletClient,
   publicClient,
@@ -7,14 +8,14 @@ export async function createZoraCoin({
   imageUrl,
   creatorAddress,
 }) {
-  // 1) Build a valid 3–8 character symbol
+  // 1) Build symbol
   let symbol = title
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "")
     .substring(0, 8);
   if (symbol.length < 3) symbol = symbol.padEnd(3, "Q");
 
-  // 2) Point at your metadata API
+  // 2) Metadata URL
   const base =
     typeof window !== "undefined"
       ? window.location.origin
@@ -24,18 +25,17 @@ export async function createZoraCoin({
     `?title=${encodeURIComponent(title)}` +
     `&image=${encodeURIComponent(imageUrl)}`;
 
-  // 3) Only the exact fields from CreateCoinArgs
-  //    (no currency, no tickLower, no initialPurchaseWei)
+  // 3) Only the fields in the official CreateCoinArgs
   const coinParams = {
     name: title,
     symbol,
     uri: metadataUrl,
     payoutRecipient: creatorAddress,
     platformReferrer: ZERO, // optional
-    // <— NO currency, NO tickLower, NO initialPurchaseWei
+    tickLower: -199200, // the Uniswap v3 default lower tick for ETH/WETH
+    initialPurchaseWei: 0n, // send 0 ETH on creation
   };
-
-  // 4) Mint!
+  // 4) Mint
   const { address, hash } = await createCoin(
     coinParams,
     walletClient,
