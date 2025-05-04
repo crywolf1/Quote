@@ -1,11 +1,18 @@
 import { createCoin } from "@zoralabs/coins-sdk";
-import { publicClient, getWalletClient } from "./viemConfig";
+import { publicClient } from "./viemConfig";
 const ZERO = "0x0000000000000000000000000000000000000000";
 
-export async function createZoraCoin({ title, imageUrl, creatorAddress }) {
+export async function createZoraCoin({
+  walletClient,
+  title,
+  imageUrl,
+  creatorAddress,
+}) {
   try {
-    // Get walletClient dynamically
-    const walletClient = getWalletClient();
+    // Validate walletClient
+    if (!walletClient) {
+      throw new Error("Wallet client not provided.");
+    }
 
     // Build symbol: Convert title to uppercase, remove non-alphanumeric, limit to 8 chars
     let symbol = title
