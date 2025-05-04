@@ -6,7 +6,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useProfile } from "@farcaster/auth-kit";
 import { sdk } from "@farcaster/frame-sdk";
 import { createZoraCoin } from "@/lib/createZoraCoin";
-import { useAccount, useDisconnect } from "wagmi";
+import { useAccount, useWalletClient, useDisconnect } from "wagmi";
 import { publicClient, getWalletClient } from "@/lib/viemConfig";
 
 import "../styles/style.css";
@@ -23,6 +23,7 @@ import {
 export default function Card() {
   const { userData, loading, error, connectWallet } = useFarcaster();
   const { isConnected, isDisconnected, status, address } = useAccount();
+  const { data: wagmiWalletClient } = useWalletClient();
   const { disconnect } = useDisconnect();
   const { profile, isLoading } = useProfile();
   // Use fallback values if userData is not loaded yet
@@ -130,6 +131,13 @@ export default function Card() {
       setIsSaving(false);
       return;
     }
+    if (!wagmiWalletClient) {
+      setMessage(
+        "Wallet client not available. Please try reconnecting your wallet."
+      );
+      setIsSaving(false);
+      return;
+    }
     if (!title.trim()) {
       setMessage("Please enter a title");
       setIsSaving(false);
@@ -147,8 +155,8 @@ export default function Card() {
     }
 
     try {
-      // Get walletClient dynamically
-      const walletClient = getWalletClient();
+      // Get walletClient using address and wagmiWalletClient
+      const walletClient = getWalletClient(address, wagmiWalletClient);
 
       // Generate image for metadata
       const ogUrl =
@@ -191,6 +199,7 @@ export default function Card() {
       // Mint Zora coin
       setMessage("Minting your token…");
       const { address: tokenAddress, txHash } = await createZoraCoin({
+        walletClient,
         title: saved.title,
         imageUrl: saved.image,
         creatorAddress: address,
@@ -470,14 +479,13 @@ export default function Card() {
                 <div className="card-header">
                   <div
                     className="card-cover"
-                    тация
                     style={{ backgroundImage: `url(${pfpUrl})` }}
                   ></div>
                   <img src={pfpUrl} alt="Avatar" className="card-avatar" />
                   <h1 className="card-fullname">{displayName}</h1>
                 </div>
                 <div>
-                  <div className="profile-wrapper-logout ">
+                  <div className="profile-wrapper-logout">
                     <div>
                       <div className="card-subtitle">
                         Share your thoughts...
@@ -520,6 +528,7 @@ export default function Card() {
                       {isSaving ? <FaSpinner className="spin" /> : "Let It Fly"}
                     </button>
                   </div>
+                  {message && <p className="message">{message}</p>}
                 </div>
               </div>
             </div>
