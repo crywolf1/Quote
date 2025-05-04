@@ -1,0 +1,8 @@
+{
+  "name": "Quote Token",
+  "description": "Quote token for Quoted app",
+  "image": "https://quote-dusky.vercel.app/placeholder.png",
+  "properties": {
+    "category": "social"
+  }
+}
