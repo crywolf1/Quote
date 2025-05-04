@@ -6,10 +6,14 @@ export async function POST(request) {
   const apiKey = process.env.PINATA_API_KEY;
   const secret = process.env.PINATA_SECRET_API_KEY;
   if (!apiKey || !secret) {
-    return NextResponse.json({ error: "Missing Pinata credentials" }, { status: 500 });
+    console.error("Missing Pinata creds");
+    return NextResponse.json(
+      { error: "Missing Pinata credentials" },
+      { status: 500 }
+    );
   }
   try {
-    const res = await axios.post(
+    const pinRes = await axios.post(
       "https://api.pinata.cloud/pinning/pinJSONToIPFS",
       metadata,
       {
@@ -20,9 +24,12 @@ export async function POST(request) {
         },
       }
     );
-    return NextResponse.json({ uri: `ipfs://${res.data.IpfsHash}` });
+    return NextResponse.json({ uri: `ipfs://${pinRes.data.IpfsHash}` });
   } catch (e) {
     console.error("Pinata error:", e.response?.data || e.message);
-    return NextResponse.json({ error: "Pinata upload failed" }, { status: 502 });
+    return NextResponse.json(
+      { error: "Pinata upload failed" },
+      { status: 502 }
+    );
   }
 }
