@@ -1,6 +1,5 @@
 import { createCoin } from "@zoralabs/coins-sdk";
-
-const APP_URL = (process.env.NEXT_PUBLIC_BASE_URL || "https://quote-dusky.vercel.app").replace(/\/$/, "");
+import { uploadMetadataToIPFS } from "./uploadToIPFS";
 
 export async function createZoraCoin({
   walletClient,
@@ -16,19 +15,26 @@ export async function createZoraCoin({
       .substring(0, 8);
     if (symbol.length < 3) symbol = (symbol + "QQQ").substring(0, 3);
 
-    const metadataUrl = `${APP_URL}/api/metadata?title=${encodeURIComponent(title)}&description=${encodeURIComponent(`Quote token for "${title}"`)}&image=${encodeURIComponent(imageUrl)}`;
+    // 1. Prepare metadata
+    const metadata = {
+      name: title,
+      description: `Quote token for "${title}"`,
+      image: imageUrl, // This can be a Cloudinary HTTPS URL, but for best results, upload the image to IPFS too
+      properties: { category: "social" },
+    };
 
+    // 2. Upload metadata to IPFS
+    const metadataUri = await uploadMetadataToIPFS(metadata);
+
+    // 3. Create coin with IPFS URI
     const coinParams = {
       name: title,
       symbol,
-      uri: metadataUrl,
+      uri: metadataUri, // <-- must be ipfs://...
       payoutRecipient: creatorAddress,
       owners: [creatorAddress],
-      platformReferrer: "0x0000000000000000000000000000000000000000", // explicitly set
-      currency: "0x4200000000000000000000000000000000000006", // Base ETH
       tickLower: -199200,
       initialPurchaseWei: 0n,
-      orderSize: 0n,
     };
 
     const result = await createCoin(coinParams, walletClient, publicClient);

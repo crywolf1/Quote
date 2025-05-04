@@ -191,7 +191,7 @@ export default function Card() {
               walletClient,
               publicClient,
               title: title.trim(),
-              imageUrl: data.quote.image,
+              imageUrl: data.quote.image, // Use the image URL returned from backend
               creatorAddress: address,
             });
 
