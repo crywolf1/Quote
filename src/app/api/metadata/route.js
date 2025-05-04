@@ -1,22 +1,18 @@
-import { NextResponse } from "next/server";
-
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const name = searchParams.get("title") || "Quote Token";
-  const description = searchParams.get("description") || "A quote on Quoted";
-  const image =
+  const title = searchParams.get("title") || "Untitled Quote";
+  const imageUrl =
     searchParams.get("image") ||
-    "https://quote-dusky.vercel.app/assets/icon.png";
+    `${process.env.NEXT_PUBLIC_SITE_URL}/assets/icon.png`;
 
-  return NextResponse.json(
-    {
-      name,
-      description,
-      image,
-      properties: { category: "social" },
-    },
-    {
-      headers: { "Access-Control-Allow-Origin": "*" },
-    }
-  );
+  const metadata = {
+    name: title,
+    description: `Quote token for “${title}”`,
+    image: imageUrl,
+    properties: { category: "social" },
+  };
+
+  return new Response(JSON.stringify(metadata), {
+    headers: { "Content-Type": "application/json" },
+  });
 }
