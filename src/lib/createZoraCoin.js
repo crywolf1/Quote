@@ -1,6 +1,7 @@
 import { createCoin } from "@zoralabs/coins-sdk";
 import { publicClient } from "./viemConfig";
 const ZERO = "0x0000000000000000000000000000000000000000";
+const ZORA_CURRENCY = "0x1111111111166b7FE7bd91427724B487980aFc69"; // $ZORA on Base
 
 export async function createZoraCoin({
   walletClient,
@@ -12,6 +13,11 @@ export async function createZoraCoin({
     // Validate walletClient
     if (!walletClient) {
       throw new Error("Wallet client not provided.");
+    }
+
+    // Validate creatorAddress
+    if (!creatorAddress || creatorAddress === ZERO) {
+      throw new Error("Invalid creator address.");
     }
 
     // Build symbol: Convert title to uppercase, remove non-alphanumeric, limit to 8 chars
@@ -31,15 +37,39 @@ export async function createZoraCoin({
       `?title=${encodeURIComponent(title)}` +
       `&image=${encodeURIComponent(imageUrl)}`;
 
+    // Validate metadata URL accessibility
+    try {
+      const response = await fetch(metadataUrl);
+      if (!response.ok) {
+        throw new Error(`Metadata URL inaccessible: ${response.statusText}`);
+      }
+      const metadata = await response.json();
+      if (!metadata.name || !metadata.image) {
+        throw new Error("Invalid metadata format: missing name or image.");
+      }
+    } catch (error) {
+      throw new Error(`Metadata validation failed: ${error.message}`);
+    }
+
+    // Check wallet balance for gas fees
+    const balance = await publicClient.getBalance({ address: creatorAddress });
+    if (balance < 0.01 * 10n ** 18n) {
+      // ~0.01 ETH threshold
+      throw new Error(
+        "Insufficient ETH for gas fees. Please fund your wallet."
+      );
+    }
+
     // Define coin parameters per Zora Coins SDK CreateCoinArgs
     const coinParams = {
       name: title,
       symbol,
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
-      platformReferrer: ZERO, // Optional: Zero address for no referrer
+      platformReferrer: ZERO,
       tickLower: -199200, // Uniswap v3 default lower tick
       initialPurchaseWei: 0n, // No initial ETH purchase
+      currency: ZORA_CURRENCY, // Explicitly set $ZORA
     };
 
     // Log parameters for debugging
