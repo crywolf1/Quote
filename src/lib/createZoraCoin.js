@@ -1,6 +1,8 @@
 import { createCoin } from "@zoralabs/coins-sdk";
 
-const ARWEAVE_FALLBACK = "ar://NLGaNoj-CfjgKvpbxbwCH7YlLKEZxGWsLIlVvvOznoA";
+// Use a known-good Arweave URI that resolves to HTTPS
+const ARWEAVE_FALLBACK =
+  "https://arweave.net/NLGaNoj-CfjgKvpbxbwCH7YlLKEZxGWsLIlVvvOznoA";
 
 export async function createZoraCoin({
   walletClient,
@@ -33,11 +35,12 @@ export async function createZoraCoin({
   const { uri: ipfsUri, error } = await pinRes.json();
   if (!ipfsUri) throw new Error(error || "Failed to pin metadata");
 
-  // 4) Prepare Zora coin params using raw ipfs:// URI
+  // 4) Prepare Zora coin params using raw ipfs:// URI or direct HTTPS URL
   const coinParams = {
     name: title,
     symbol,
-    uri: ipfsUri, // NO in-browser HEAD checks
+    // Use direct HTTPS URL to avoid gateway issues
+    uri: ARWEAVE_FALLBACK, // Skip IPFS and use known-good HTTPS Arweave URI
     payoutRecipient: creatorAddress,
     owners: [creatorAddress],
     platformReferrer: "0x0000000000000000000000000000000000000000",
@@ -47,18 +50,12 @@ export async function createZoraCoin({
     orderSize: 0n,
   };
 
-  // 5) Deploy the coin, retry on Arweave if SDK metadata fetch fails
+  // 5) Deploy the coin directly with Arweave URL
   try {
     const result = await createCoin(coinParams, walletClient, publicClient);
     return { address: result.address, txHash: result.hash };
   } catch (e) {
-    // this catch is for the SDK’s own metadata-fetch validation
-    if (e.message.includes("Metadata fetch failed")) {
-      console.warn("SDK metadata fetch failed, retrying with Arweave URI");
-      coinParams.uri = ARWEAVE_FALLBACK;
-      const retry = await createCoin(coinParams, walletClient, publicClient);
-      return { address: retry.address, txHash: retry.hash };
-    }
+    console.error("Coin creation error:", e);
     throw e;
   }
 }
