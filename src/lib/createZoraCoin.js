@@ -1,15 +1,7 @@
 import { createCoin } from "@zoralabs/coins-sdk";
 
 const ARWEAVE_FALLBACK = "ar://NLGaNoj-CfjgKvpbxbwCH7YlLKEZxGWsLIlVvvOznoA";
-const IPFS_GATEWAYS = [
-  "https://ipfs.io/ipfs/",
-  "https://dweb.link/ipfs/",
-  "https://cloudflare-ipfs.com/ipfs/",
-];
 
-/**
- * Creates a Zora coin with reliable metadata URI resolution.
- */
 export async function createZoraCoin({
   walletClient,
   publicClient,
@@ -24,7 +16,7 @@ export async function createZoraCoin({
     .substring(0, 8);
   if (symbol.length < 3) symbol = (symbol + "QQQ").substring(0, 3);
 
-  // 2) Prepare metadata object
+  // 2) Prepare metadata
   const metadata = {
     name: title,
     description: `Quote token for "${title}"`,
@@ -41,33 +33,11 @@ export async function createZoraCoin({
   const { uri: ipfsUri, error } = await pinRes.json();
   if (!ipfsUri) throw new Error(error || "Failed to pin metadata");
 
-  // 4) Attempt to resolve IPFS via multiple HTTP gateways
-  let httpUri;
-  for (const gw of IPFS_GATEWAYS) {
-    const candidate = ipfsUri.replace("ipfs://", gw);
-    try {
-      const head = await fetch(candidate, { method: "HEAD" });
-      if (head.ok) {
-        httpUri = candidate;
-        break;
-      }
-    } catch {
-      // ignore and try next
-    }
-  }
-  // Fallback to Arweave if no IPFS gateway succeeded
-  if (!httpUri) {
-    console.warn(
-      "All IPFS gateways failed, falling back to Arweave URI for metadata"
-    );
-    httpUri = ARWEAVE_FALLBACK;
-  }
-
-  // 5) Prepare coin creation parameters
+  // 4) Prepare Zora coin params using raw ipfs:// URI
   const coinParams = {
     name: title,
     symbol,
-    uri: httpUri,
+    uri: ipfsUri, // NO in-browser HEAD checks
     payoutRecipient: creatorAddress,
     owners: [creatorAddress],
     platformReferrer: "0x0000000000000000000000000000000000000000",
@@ -77,16 +47,17 @@ export async function createZoraCoin({
     orderSize: 0n,
   };
 
-  // 6) Deploy the coin, with fallback if SDK metadata check fails
+  // 5) Deploy the coin, retry on Arweave if SDK metadata fetch fails
   try {
     const result = await createCoin(coinParams, walletClient, publicClient);
     return { address: result.address, txHash: result.hash };
   } catch (e) {
+    // this catch is for the SDK’s own metadata-fetch validation
     if (e.message.includes("Metadata fetch failed")) {
       console.warn("SDK metadata fetch failed, retrying with Arweave URI");
       coinParams.uri = ARWEAVE_FALLBACK;
-      const result = await createCoin(coinParams, walletClient, publicClient);
-      return { address: result.address, txHash: result.hash };
+      const retry = await createCoin(coinParams, walletClient, publicClient);
+      return { address: retry.address, txHash: retry.hash };
     }
     throw e;
   }
