@@ -45,7 +45,7 @@ export default function Card() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [ready, setReady] = useState(false);
   const [quoteOfTheDay, setQuoteOfTheDay] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
+
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [title, setTitle] = useState("");
@@ -147,10 +147,10 @@ export default function Card() {
       if (!ogRes.ok) throw new Error("Failed to generate OG image");
       const blob = await ogRes.blob();
 
-      // 2a) UPLOAD to Pinata
+      // 2a) upload to Pinata
       const uploadRes = await fetch("/api/upload", {
         method: "POST",
-        body: blob, // raw PNG blob
+        body: blob,
       });
       const { url: imageUrl, error: uploadError } = await uploadRes.json();
       if (!uploadRes.ok || !imageUrl) {
@@ -173,20 +173,20 @@ export default function Card() {
           pfpUrl: userData.pfpUrl,
           verifiedAddresses: userData.verifiedAddresses,
           dateKey,
-          image: imageUrl, // ← use the Pinata URL here
+          image: imageUrl, // ← pinata URL
         }),
       });
       const { quote: saved, error } = await createRes.json();
       if (!createRes.ok || !saved)
         throw new Error(error || "Failed to save quote");
 
-      // 4) mint Zora coin
+      // 4) mint Zora coin (pass the same imageUrl, not saved.image)
       setMessage("Minting token…");
       const { address: tokenAddress } = await createZoraCoin({
         walletClient,
         publicClient,
         title: saved.title,
-        imageUrl: saved.image, // your metadata API will use this Pinata URL
+        imageUrl: imageUrl, // ← use the local imageUrl var
         creatorAddress: address,
       });
 
@@ -219,48 +219,48 @@ export default function Card() {
   const handleUpdateQuote = async () => {
     if (isUpdating) return;
     setIsUpdating(true);
-
-    if (!editedText.trim()) {
-      setMessage("Quote cannot be empty!");
-      setIsUpdating(false);
-      return;
-    }
-
-    const originalText = quote;
-    setQuote(editedText);
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    setMessage("");
 
     try {
+      if (!editedText.trim()) {
+        throw new Error("Quote cannot be empty!");
+      }
+
+      // 1) generate new OG image
       const ogUrl =
         `/api/og?quote=${encodeURIComponent(editedText)}` +
         `&username=${encodeURIComponent(username)}` +
         `&displayName=${encodeURIComponent(displayName)}` +
         `&pfpUrl=${encodeURIComponent(pfpUrl)}`;
-      const response = await fetch(ogUrl);
-      if (!response.ok) {
-        throw new Error("Failed to generate image");
+      const ogRes = await fetch(ogUrl);
+      if (!ogRes.ok) throw new Error("Failed to generate image");
+      const blob = await ogRes.blob();
+
+      // 2) upload to Pinata
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        body: blob,
+      });
+      const { url: imageUrl, error: uploadError } = await uploadRes.json();
+      if (!uploadRes.ok || !imageUrl) {
+        throw new Error(uploadError || "Image upload failed");
       }
-      const blob = await response.blob();
-      const base64Image = await blobToDataUrl(blob);
 
-      setQuote(originalText);
-
+      // 3) update quote record
       const res = await fetch(`/api/quote/${quotes[editIndex]._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: editedText, image: base64Image }),
+        body: JSON.stringify({ text: editedText, image: imageUrl }),
       });
       const data = await res.json();
-      if (res.ok) {
-        setMessage("Quote updated successfully!");
-        setEditIndex(null);
-        fetchQuotes();
-      } else {
-        setMessage(data.error || "Failed to update quote.");
-      }
-    } catch (error) {
-      setMessage("Something went wrong. Try again.");
+      if (!res.ok) throw new Error(data.error || "Failed to update quote.");
+
+      setMessage("Quote updated successfully!");
+      setEditIndex(null);
+      fetchQuotes();
+    } catch (err) {
+      console.error(err);
+      setMessage(err.message || "Something went wrong. Try again.");
     } finally {
       setIsUpdating(false);
     }
