@@ -71,7 +71,8 @@ export async function createZoraCoin({
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
       platformReferrer: ZERO, // optional
-      // NO currency, NO tickLower, NO initialPurchaseWei
+      tickLower: -199200, // required lower tick for Base native-ETH pool
+      initialPurchaseWei: 0n, // no initial purchase
     };
 
     // Log parameters for debugging
