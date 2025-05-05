@@ -71,10 +71,9 @@ export async function createZoraCoin({
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
       platformReferrer: ZERO, // optional
-      tickLower: -199200, // required lower tick for Base native-ETH pool
-      initialPurchaseWei: 0n, // no initial purchase
+      // REMOVED tickLower
+      // REMOVED initialPurchaseWei
     };
-
     // Log parameters for debugging
     console.log("Creating Zora coin with params:", coinParams);
 
