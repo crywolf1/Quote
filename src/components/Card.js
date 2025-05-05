@@ -12,7 +12,6 @@ import {
   useDisconnect,
 } from "wagmi";
 import { createZoraCoin } from "@/lib/createZoraCoin";
-import { publicClient as rpcClient } from "@/lib/viemConfig";
 
 import "../styles/style.css";
 import {
@@ -25,7 +24,7 @@ import {
   FaSpinner,
 } from "react-icons/fa";
 
-export default function Card({ userData, fetchQuotes }) {
+export default function Card() {
   const { userData, loading, error, connectWallet } = useFarcaster();
   const { isConnected, isDisconnected, status, address } = useAccount();
   const { data: walletClient } = useWalletClient();
