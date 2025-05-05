@@ -5,13 +5,9 @@ import { useState, useEffect } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useProfile } from "@farcaster/auth-kit";
 import { sdk } from "@farcaster/frame-sdk";
-import {
-  useAccount,
-  useWalletClient,
-  usePublicClient,
-  useDisconnect,
-} from "wagmi";
 import { createZoraCoin } from "@/lib/createZoraCoin";
+import { useAccount, useWalletClient, useDisconnect } from "wagmi";
+import { publicClient, getWalletClient } from "@/lib/viemConfig";
 
 import "../styles/style.css";
 import {
@@ -27,8 +23,7 @@ import {
 export default function Card() {
   const { userData, loading, error, connectWallet } = useFarcaster();
   const { isConnected, isDisconnected, status, address } = useAccount();
-  const { data: walletClient } = useWalletClient();
-  const publicClient = usePublicClient();
+  const { data: wagmiWalletClient } = useWalletClient();
   const { disconnect } = useDisconnect();
   const { profile, isLoading } = useProfile();
   // Use fallback values if userData is not loaded yet
@@ -45,7 +40,7 @@ export default function Card() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [ready, setReady] = useState(false);
   const [quoteOfTheDay, setQuoteOfTheDay] = useState(null);
-
+  const [imagePreview, setImagePreview] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [title, setTitle] = useState("");
@@ -71,10 +66,10 @@ export default function Card() {
     fetchQuoteOfTheDay();
   }, [address]);
 
-  function blobToDataUrl(blob) {
+  function blobToBase64(blob) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result); // ← full "data:image/png;base64,xx..."
+      reader.onloadend = () => resolve(reader.result);
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
@@ -129,36 +124,56 @@ export default function Card() {
   const sendQuote = async () => {
     if (isSaving) return;
     setIsSaving(true);
-    setMessage("");
+
+    // Validate inputs
+    if (!isConnected || !address) {
+      setMessage("Please connect your wallet");
+      setIsSaving(false);
+      return;
+    }
+    if (!wagmiWalletClient) {
+      setMessage(
+        "Wallet client not available. Please try reconnecting your wallet."
+      );
+      setIsSaving(false);
+      return;
+    }
+    if (!title.trim()) {
+      setMessage("Please enter a title");
+      setIsSaving(false);
+      return;
+    }
+    if (!quote.trim()) {
+      setMessage("Quote cannot be empty!");
+      setIsSaving(false);
+      return;
+    }
+    if (!userData) {
+      setMessage("User data not available");
+      setIsSaving(false);
+      return;
+    }
 
     try {
-      // 1) validation
-      if (!title.trim()) throw new Error("Please enter a title");
-      if (!quote.trim()) throw new Error("Quote cannot be empty");
-      if (!userData) throw new Error("User data missing");
+      // Get walletClient
+      const walletClient = getWalletClient(address, wagmiWalletClient);
 
-      // 2) generate OG image
+      // Generate image for metadata
+      setMessage("Generating metadata image...");
       const ogUrl =
         `/api/og?quote=${encodeURIComponent(quote)}` +
-        `&username=${encodeURIComponent(userData.username)}` +
-        `&displayName=${encodeURIComponent(userData.displayName)}` +
-        `&pfpUrl=${encodeURIComponent(userData.pfpUrl)}`;
+        `&username=${encodeURIComponent(username)}` +
+        `&displayName=${encodeURIComponent(displayName)}` +
+        `&pfpUrl=${encodeURIComponent(pfpUrl)}`;
       const ogRes = await fetch(ogUrl);
-      if (!ogRes.ok) throw new Error("Failed to generate OG image");
-      const blob = await ogRes.blob();
-
-      // 2a) upload to Pinata
-      const uploadRes = await fetch("/api/upload", {
-        method: "POST",
-        body: blob,
-      });
-      const { url: imageUrl, error: uploadError } = await uploadRes.json();
-      if (!uploadRes.ok || !imageUrl) {
-        throw new Error(uploadError || "Image upload failed");
+      if (!ogRes.ok) {
+        throw new Error("Failed to generate image. Please try again.");
       }
+      const blob = await ogRes.blob();
+      const base64Image = await blobToBase64(blob);
 
-      // 3) save quote to your backend
-      setMessage("Saving quote…");
+      // Save quote to backend
+      setMessage("Saving quote...");
       const dateKey = `${address}_${new Date().toISOString().slice(0, 10)}`;
       const createRes = await fetch("/api/quote", {
         method: "POST",
@@ -173,38 +188,52 @@ export default function Card() {
           pfpUrl: userData.pfpUrl,
           verifiedAddresses: userData.verifiedAddresses,
           dateKey,
-          image: imageUrl, // ← pinata URL
+          image: base64Image,
         }),
       });
       const { quote: saved, error } = await createRes.json();
-      if (!createRes.ok || !saved)
-        throw new Error(error || "Failed to save quote");
+      if (!createRes.ok || !saved) {
+        setMessage(error || "Failed to save quote.");
+        setIsSaving(false);
+        return;
+      }
 
-      // 4) mint Zora coin (pass the same imageUrl, not saved.image)
-      setMessage("Minting token…");
-      const { address: tokenAddress } = await createZoraCoin({
+      // Mint Zora coin
+      setMessage("Minting your token...");
+      const { address: tokenAddress, txHash } = await createZoraCoin({
         walletClient,
-        publicClient,
         title: saved.title,
-        imageUrl: imageUrl, // ← use the local imageUrl var
+        imageUrl: saved.image,
         creatorAddress: address,
       });
 
-      // 5) persist token address
-      setMessage("Finalizing token…");
+      // Persist token address in DB
+      setMessage("Finalizing token creation...");
       await fetch(`/api/quote/${saved._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ zoraTokenAddress: tokenAddress }),
       });
 
-      setMessage(`🎉 Token minted at ${tokenAddress}`);
+      setMessage(
+        `🎉 Token created: ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(
+          -4
+        )} (Tx: ${txHash.slice(0, 6)}...)`
+      );
       fetchQuotes();
       setTitle("");
       setQuote("");
     } catch (err) {
-      console.error(err);
-      setMessage(err.message || "Something went wrong");
+      console.error("Send quote error:", err);
+      let errorMessage = "Failed to create token: ";
+      if (err.message.includes("Insufficient ETH")) {
+        errorMessage += "Please fund your wallet with ETH on Base.";
+      } else if (err.message.includes("Metadata")) {
+        errorMessage += "Invalid metadata URL. Please try again.";
+      } else {
+        errorMessage += err.message;
+      }
+      setMessage(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -219,48 +248,48 @@ export default function Card() {
   const handleUpdateQuote = async () => {
     if (isUpdating) return;
     setIsUpdating(true);
-    setMessage("");
+
+    if (!editedText.trim()) {
+      setMessage("Quote cannot be empty!");
+      setIsUpdating(false);
+      return;
+    }
+
+    const originalText = quote;
+    setQuote(editedText);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     try {
-      if (!editedText.trim()) {
-        throw new Error("Quote cannot be empty!");
-      }
-
-      // 1) generate new OG image
       const ogUrl =
         `/api/og?quote=${encodeURIComponent(editedText)}` +
         `&username=${encodeURIComponent(username)}` +
         `&displayName=${encodeURIComponent(displayName)}` +
         `&pfpUrl=${encodeURIComponent(pfpUrl)}`;
-      const ogRes = await fetch(ogUrl);
-      if (!ogRes.ok) throw new Error("Failed to generate image");
-      const blob = await ogRes.blob();
-
-      // 2) upload to Pinata
-      const uploadRes = await fetch("/api/upload", {
-        method: "POST",
-        body: blob,
-      });
-      const { url: imageUrl, error: uploadError } = await uploadRes.json();
-      if (!uploadRes.ok || !imageUrl) {
-        throw new Error(uploadError || "Image upload failed");
+      const response = await fetch(ogUrl);
+      if (!response.ok) {
+        throw new Error("Failed to generate image");
       }
+      const blob = await response.blob();
+      const base64Image = await blobToBase64(blob);
 
-      // 3) update quote record
+      setQuote(originalText);
+
       const res = await fetch(`/api/quote/${quotes[editIndex]._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: editedText, image: imageUrl }),
+        body: JSON.stringify({ text: editedText, image: base64Image }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update quote.");
-
-      setMessage("Quote updated successfully!");
-      setEditIndex(null);
-      fetchQuotes();
-    } catch (err) {
-      console.error(err);
-      setMessage(err.message || "Something went wrong. Try again.");
+      if (res.ok) {
+        setMessage("Quote updated successfully!");
+        setEditIndex(null);
+        fetchQuotes();
+      } else {
+        setMessage(data.error || "Failed to update quote.");
+      }
+    } catch (error) {
+      setMessage("Something went wrong. Try again.");
     } finally {
       setIsUpdating(false);
     }
@@ -509,7 +538,7 @@ export default function Card() {
                     <button
                       className="send-quote-btn"
                       onClick={sendQuote}
-                      disabled={isSaving || !isConnected || !walletClient}
+                      disabled={isSaving || !isConnected}
                     >
                       {isSaving ? <FaSpinner className="spin" /> : "Let It Fly"}
                     </button>
