@@ -58,23 +58,22 @@ export async function createZoraCoin({
 
     // Check wallet balance for gas fees
     const balance = await publicClient.getBalance({ address: creatorAddress });
-    if (balance < 0.01 * 10n ** 18n) {
-      // ~0.01 ETH threshold
+    const MIN_BALANCE = 10n ** 16n;
+    if (balance < MIN_BALANCE) {
       throw new Error(
         "Insufficient ETH for gas fees. Please fund your wallet."
       );
     }
-
     // Define coin parameters with explicit type handling
     const coinParams = {
-      name: String(title),
-      symbol: String(symbol),
-      uri: String(metadataUrl),
-      payoutRecipient: String(creatorAddress),
-      platformReferrer: String(ZERO),
-      tickLower: Number(-199200), // Ensure number for int24
-      initialPurchaseWei: "0", // Use string for uint256 to avoid BigInt issues
-      currency: String(ZORA_CURRENCY),
+      name: title,
+      symbol,
+      uri: metadataUrl,
+      payoutRecipient: creatorAddress,
+      platformReferrer: ZERO,
+      currency: ZERO, // force native ETH
+      tickLower: -199200, // correct ETH/WETH tick bound
+      initialPurchaseWei: 0n, // BigInt zero
     };
 
     // Log parameters for debugging
