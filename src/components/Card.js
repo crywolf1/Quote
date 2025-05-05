@@ -5,9 +5,14 @@ import { useState, useEffect } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useProfile } from "@farcaster/auth-kit";
 import { sdk } from "@farcaster/frame-sdk";
+import {
+  useAccount,
+  useWalletClient,
+  usePublicClient,
+  useDisconnect,
+} from "wagmi";
 import { createZoraCoin } from "@/lib/createZoraCoin";
-import { useAccount, useWalletClient, useDisconnect } from "wagmi";
-import { publicClient, getWalletClient } from "@/lib/viemConfig";
+import { publicClient as rpcClient } from "@/lib/viemConfig";
 
 import "../styles/style.css";
 import {
@@ -20,10 +25,11 @@ import {
   FaSpinner,
 } from "react-icons/fa";
 
-export default function Card() {
+export default function Card({ userData, fetchQuotes }) {
   const { userData, loading, error, connectWallet } = useFarcaster();
   const { isConnected, isDisconnected, status, address } = useAccount();
-  const { data: wagmiWalletClient } = useWalletClient();
+  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
   const { disconnect } = useDisconnect();
   const { profile, isLoading } = useProfile();
   // Use fallback values if userData is not loaded yet
@@ -124,55 +130,30 @@ export default function Card() {
   const sendQuote = async () => {
     if (isSaving) return;
     setIsSaving(true);
-
-    // Validate inputs
-    if (!isConnected || !address) {
-      setMessage("Please connect your wallet");
-      setIsSaving(false);
-      return;
-    }
-    if (!wagmiWalletClient) {
-      setMessage(
-        "Wallet client not available. Please try reconnecting your wallet."
-      );
-      setIsSaving(false);
-      return;
-    }
-    if (!title.trim()) {
-      setMessage("Please enter a title");
-      setIsSaving(false);
-      return;
-    }
-    if (!quote.trim()) {
-      setMessage("Quote cannot be empty!");
-      setIsSaving(false);
-      return;
-    }
-    if (!userData) {
-      setMessage("User data not available");
-      setIsSaving(false);
-      return;
-    }
+    setMessage("");
 
     try {
-      // Get walletClient
-      const walletClient = getWalletClient(address, wagmiWalletClient);
+      // 1) validation
+      if (!title.trim()) throw new Error("Please enter a title");
+      if (!quote.trim()) throw new Error("Quote cannot be empty");
+      if (!userData) throw new Error("User data missing");
 
-      // Generate image for metadata
-      setMessage("Generating metadata image...");
+      // 2) generate OG image
       const ogUrl =
         `/api/og?quote=${encodeURIComponent(quote)}` +
-        `&username=${encodeURIComponent(username)}` +
-        `&displayName=${encodeURIComponent(displayName)}` +
-        `&pfpUrl=${encodeURIComponent(pfpUrl)}`;
+        `&username=${encodeURIComponent(userData.username)}` +
+        `&displayName=${encodeURIComponent(userData.displayName)}` +
+        `&pfpUrl=${encodeURIComponent(userData.pfpUrl)}`;
       const ogRes = await fetch(ogUrl);
-      if (!ogRes.ok) {
-        throw new Error("Failed to generate image. Please try again.");
-      }
+      if (!ogRes.ok) throw new Error("Failed to generate image");
       const blob = await ogRes.blob();
-      const base64Image = await blobToBase64(blob);
+      const base64Image = await new Promise((res) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result.split(",")[1]);
+        reader.readAsDataURL(blob);
+      });
 
-      // Save quote to backend
+      // 3) save quote
       setMessage("Saving quote...");
       const dateKey = `${address}_${new Date().toISOString().slice(0, 10)}`;
       const createRes = await fetch("/api/quote", {
@@ -192,48 +173,34 @@ export default function Card() {
         }),
       });
       const { quote: saved, error } = await createRes.json();
-      if (!createRes.ok || !saved) {
-        setMessage(error || "Failed to save quote.");
-        setIsSaving(false);
-        return;
-      }
+      if (!createRes.ok || !saved)
+        throw new Error(error || "Failed to save quote");
 
-      // Mint Zora coin
-      setMessage("Minting your token...");
-      const { address: tokenAddress, txHash } = await createZoraCoin({
+      // 4) mint Zora coin (wallet popup)
+      setMessage("Minting token…");
+      const { address: tokenAddress } = await createZoraCoin({
         walletClient,
+        publicClient,
         title: saved.title,
         imageUrl: saved.image,
         creatorAddress: address,
       });
 
-      // Persist token address in DB
-      setMessage("Finalizing token creation...");
+      // 5) persist token address
+      setMessage("Finalizing token…");
       await fetch(`/api/quote/${saved._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ zoraTokenAddress: tokenAddress }),
       });
 
-      setMessage(
-        `🎉 Token created: ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(
-          -4
-        )} (Tx: ${txHash.slice(0, 6)}...)`
-      );
+      setMessage(`🎉 Token minted at ${tokenAddress}`);
       fetchQuotes();
       setTitle("");
       setQuote("");
     } catch (err) {
-      console.error("Send quote error:", err);
-      let errorMessage = "Failed to create token: ";
-      if (err.message.includes("Insufficient ETH")) {
-        errorMessage += "Please fund your wallet with ETH on Base.";
-      } else if (err.message.includes("Metadata")) {
-        errorMessage += "Invalid metadata URL. Please try again.";
-      } else {
-        errorMessage += err.message;
-      }
-      setMessage(errorMessage);
+      console.error(err);
+      setMessage(err.message || "Something went wrong");
     } finally {
       setIsSaving(false);
     }
@@ -538,7 +505,7 @@ export default function Card() {
                     <button
                       className="send-quote-btn"
                       onClick={sendQuote}
-                      disabled={isSaving || !isConnected}
+                      disabled={isSaving || !isConnected || !walletClient}
                     >
                       {isSaving ? <FaSpinner className="spin" /> : "Let It Fly"}
                     </button>

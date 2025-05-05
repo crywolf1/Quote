@@ -2,10 +2,10 @@ import { createCoin } from "@zoralabs/coins-sdk";
 import { publicClient } from "./viemConfig";
 
 const ZERO = "0x0000000000000000000000000000000000000000";
-const ZORA_CURRENCY = "0x1111111111166b7FE7bd91427724B487980aFc69"; // $ZORA on Base
 
 export async function createZoraCoin({
   walletClient,
+  publicClient,
   title,
   imageUrl,
   creatorAddress,
@@ -70,10 +70,8 @@ export async function createZoraCoin({
       symbol,
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
-      platformReferrer: ZERO,
-      currency: ZERO, // force native ETH
-      tickLower: -199200, // correct ETH/WETH tick bound
-      initialPurchaseWei: 0n, // BigInt zero
+      platformReferrer: ZERO, // optional
+      // NO currency, NO tickLower, NO initialPurchaseWei
     };
 
     // Log parameters for debugging
