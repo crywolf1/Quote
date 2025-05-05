@@ -71,10 +71,10 @@ export default function Card() {
     fetchQuoteOfTheDay();
   }, [address]);
 
-  function blobToBase64(blob) {
+  function blobToDataUrl(blob) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
+      reader.onloadend = () => resolve(reader.result); // ← full "data:image/png;base64,xx..."
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
@@ -144,16 +144,21 @@ export default function Card() {
         `&displayName=${encodeURIComponent(userData.displayName)}` +
         `&pfpUrl=${encodeURIComponent(userData.pfpUrl)}`;
       const ogRes = await fetch(ogUrl);
-      if (!ogRes.ok) throw new Error("Failed to generate image");
+      if (!ogRes.ok) throw new Error("Failed to generate OG image");
       const blob = await ogRes.blob();
-      const base64Image = await new Promise((res) => {
-        const reader = new FileReader();
-        reader.onload = () => res(reader.result.split(",")[1]);
-        reader.readAsDataURL(blob);
-      });
 
-      // 3) save quote
-      setMessage("Saving quote...");
+      // 2a) UPLOAD to Pinata
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        body: blob, // raw PNG blob
+      });
+      const { url: imageUrl, error: uploadError } = await uploadRes.json();
+      if (!uploadRes.ok || !imageUrl) {
+        throw new Error(uploadError || "Image upload failed");
+      }
+
+      // 3) save quote to your backend
+      setMessage("Saving quote…");
       const dateKey = `${address}_${new Date().toISOString().slice(0, 10)}`;
       const createRes = await fetch("/api/quote", {
         method: "POST",
@@ -168,20 +173,20 @@ export default function Card() {
           pfpUrl: userData.pfpUrl,
           verifiedAddresses: userData.verifiedAddresses,
           dateKey,
-          image: base64Image,
+          image: imageUrl, // ← use the Pinata URL here
         }),
       });
       const { quote: saved, error } = await createRes.json();
       if (!createRes.ok || !saved)
         throw new Error(error || "Failed to save quote");
 
-      // 4) mint Zora coin (wallet popup)
+      // 4) mint Zora coin
       setMessage("Minting token…");
       const { address: tokenAddress } = await createZoraCoin({
         walletClient,
         publicClient,
         title: saved.title,
-        imageUrl: saved.image,
+        imageUrl: saved.image, // your metadata API will use this Pinata URL
         creatorAddress: address,
       });
 
@@ -237,7 +242,7 @@ export default function Card() {
         throw new Error("Failed to generate image");
       }
       const blob = await response.blob();
-      const base64Image = await blobToBase64(blob);
+      const base64Image = await blobToDataUrl(blob);
 
       setQuote(originalText);
 
