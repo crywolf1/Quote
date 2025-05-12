@@ -4,7 +4,7 @@ export async function createZoraCoin({
   walletClient,
   publicClient,
   title,
-  imageUrl, // This is your base64 image
+  imageUrl,
   creatorAddress,
 }) {
   try {
@@ -14,77 +14,94 @@ export async function createZoraCoin({
     if (!title || typeof title !== "string")
       throw new Error("Valid title required.");
 
-    // Build symbol: Convert title to uppercase, remove non-alphanumeric, limit to 8 chars
-    const symbol = title
+    // More restrictive symbol creation to avoid contract errors
+    // Only use letters A-Z and ensure at least 3 characters
+    let symbol = title
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "")
       .substring(0, 8);
 
-    const finalSymbol = symbol.length > 0 ? symbol : "QUOTE";
-
-    // Upload image to Cloudinary using your existing API
-    console.log("Uploading image to Cloudinary...");
-    const uploadRes = await fetch("/api/upload-image", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: imageUrl }),
-    });
-
-    if (!uploadRes.ok) {
-      throw new Error("Failed to upload image to Cloudinary");
+    // Make sure symbol is at least 3 characters
+    if (symbol.length < 3) {
+      const padding = ["QTE", "ABD", "XYZ"];
+      symbol = symbol + padding[0].substring(0, 3 - symbol.length);
     }
 
-    const { url: cloudinaryUrl } = await uploadRes.json();
+    // Check for common reserved words
+    const reservedWords = ["ETH", "BTC", "WETH", "USD", "USDT", "USDC", "DAI"];
+    if (reservedWords.includes(symbol)) {
+      symbol = symbol + "TKN";
+    }
 
-    // Create metadata JSON
-    const metadata = {
-      name: title,
-      description: `Quote token for "${title}"`,
-      image: cloudinaryUrl,
-      attributes: [
-        { trait_type: "Type", value: "Quote" },
-        { trait_type: "Created", value: new Date().toISOString() },
-      ],
-    };
-
-    // Host metadata on your server
+    // Create metadata with the existing image URL from the quote
     console.log("Creating metadata...");
-    const metadataRes = await fetch("/api/metadata", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(metadata),
-    });
+    try {
+      const metadataRes = await fetch("/api/metadata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: title,
+          description: `Quote token: ${title}`,
+          image: imageUrl,
+          attributes: [
+            { trait_type: "Type", value: "Quote" },
+            { trait_type: "Created", value: new Date().toISOString() },
+          ],
+        }),
+      });
 
-    if (!metadataRes.ok) {
-      throw new Error("Failed to create metadata");
+      if (!metadataRes.ok) {
+        const errorData = await metadataRes.json();
+        throw new Error(errorData.error || "Failed to create metadata");
+      }
+
+      const { url: metadataUrl } = await metadataRes.json();
+      console.log("Metadata URL:", metadataUrl);
+
+      // Verify metadata URL is accessible
+      try {
+        const metadataCheck = await fetch(metadataUrl);
+        if (!metadataCheck.ok) {
+          throw new Error(`Metadata URL not accessible: ${metadataUrl}`);
+        }
+        const metadata = await metadataCheck.json();
+        if (!metadata.name || !metadata.image) {
+          throw new Error("Metadata missing required fields");
+        }
+      } catch (metadataError) {
+        console.error("Metadata verification failed:", metadataError);
+        throw new Error(
+          `Metadata verification failed: ${metadataError.message}`
+        );
+      }
+
+      // Define coin parameters with minimal required fields
+      const coinParams = {
+        name: title,
+        symbol: symbol,
+        uri: metadataUrl,
+        payoutRecipient: creatorAddress,
+        // Omit optional parameters that could cause issues
+      };
+
+      console.log("Creating Zora coin with params:", coinParams);
+
+      // Create the coin with simplified parameters
+      const { address, hash } = await createCoin(
+        coinParams,
+        walletClient,
+        publicClient
+      );
+
+      console.log("Coin creation successful!");
+      console.log("- Token address:", address);
+      console.log("- Transaction hash:", hash);
+
+      return { address, txHash: hash };
+    } catch (metadataError) {
+      console.error("Metadata creation error:", metadataError);
+      throw new Error(`Metadata error: ${metadataError.message}`);
     }
-
-    const { url: metadataUrl } = await metadataRes.json();
-
-    console.log("Metadata URL:", metadataUrl);
-
-    // Define coin parameters
-    const coinParams = {
-      name: title,
-      symbol: finalSymbol,
-      uri: metadataUrl,
-      payoutRecipient: creatorAddress,
-    };
-
-    console.log("Creating Zora coin with params:", coinParams);
-
-    // Create the coin
-    const { address, hash } = await createCoin(
-      coinParams,
-      walletClient,
-      publicClient
-    );
-
-    console.log("Coin creation successful!");
-    console.log("- Token address:", address);
-    console.log("- Transaction hash:", hash);
-
-    return { address, txHash: hash };
   } catch (error) {
     console.error("Error creating Zora coin:", error);
 
@@ -92,14 +109,16 @@ export async function createZoraCoin({
       console.error("Contract revert data:", error.cause.data);
     }
 
+    // Check for specific error signatures
     if (error.message.includes("0x4ab38e08")) {
-      throw new Error(
-        "Failed to create token: Name or symbol may be invalid. Try a different title."
-      );
+      // This is the error code we're seeing - likely invalid symbol/name
+      return {
+        error: "Invalid token name or symbol. Please try a different title.",
+      };
     } else if (error.message.includes("user rejected")) {
-      throw new Error("Transaction was rejected by user.");
+      return { error: "Transaction was rejected by user." };
     } else {
-      throw new Error(`Failed to create Zora coin: ${error.message}`);
+      return { error: `Failed to create Zora coin: ${error.message}` };
     }
   }
 }

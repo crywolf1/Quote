@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import cloudinary from "cloudinary";
+import { v4 as uuidv4 } from "uuid";
 
 // Configure Cloudinary
 cloudinary.v2.config({
@@ -19,11 +20,54 @@ export async function POST(req) {
       );
     }
 
-    // Instead of writing to filesystem (which fails on Vercel),
-    // store the metadata as a JSON file in Cloudinary
-    const metadataString = JSON.stringify(metadata);
+    // First, make sure we have a proper image URL
+    let imageUrl = metadata.image;
 
-    // Upload the JSON to Cloudinary as a raw file
+    // If the image is a base64 string, upload it to Cloudinary first
+    if (imageUrl.startsWith("data:image")) {
+      try {
+        // Extract base64 string
+        const base64Data = imageUrl.split(",")[1];
+        const buffer = Buffer.from(base64Data, "base64");
+
+        // Upload using upload_stream
+        const uploadRes = await new Promise((resolve, reject) => {
+          const stream = cloudinary.v2.uploader.upload_stream(
+            {
+              folder: "zora-tokens",
+              public_id: uuidv4(),
+              overwrite: true,
+            },
+            (error, result) => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve(result);
+              }
+            }
+          );
+          stream.end(buffer);
+        });
+
+        imageUrl = uploadRes.secure_url;
+      } catch (uploadErr) {
+        console.error("Image upload failed:", uploadErr);
+        return NextResponse.json(
+          { error: "Image upload failed" },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Update metadata with proper image URL
+    const finalMetadata = {
+      ...metadata,
+      image: imageUrl,
+    };
+
+    // Store metadata as a JSON file in Cloudinary
+    const metadataString = JSON.stringify(finalMetadata);
+
     const uploadResult = await new Promise((resolve, reject) => {
       cloudinary.v2.uploader.upload(
         "data:application/json;base64," +

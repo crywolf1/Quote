@@ -201,7 +201,7 @@ export default function Card() {
       if (wagmiWalletClient) {
         try {
           setMessage("Creating token for your quote...");
-          const { address: tokenAddress, txHash } = await createZoraCoin({
+          const result = await createZoraCoin({
             walletClient: wagmiWalletClient,
             publicClient,
             title: title.trim(),
@@ -209,13 +209,18 @@ export default function Card() {
             creatorAddress: address,
           });
 
+          // Check if result contains an error message
+          if (result.error) {
+            throw new Error(result.error);
+          }
+
           // Update the quote with token information
           const updateRes = await fetch(`/api/quote/${saved.quote._id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              zoraTokenAddress: tokenAddress,
-              zoraTokenTxHash: txHash,
+              zoraTokenAddress: result.address,
+              zoraTokenTxHash: result.txHash,
             }),
           });
 
@@ -230,7 +235,9 @@ export default function Card() {
         } catch (tokenError) {
           console.error("Token creation failed:", tokenError);
           // Still saved the quote, just failed token creation
-          setMessage("Quote saved successfully! (Token creation failed)");
+          setMessage(
+            `Quote saved successfully! (Token creation failed: ${tokenError.message})`
+          );
         }
       } else {
         setMessage("Quote saved successfully!");
