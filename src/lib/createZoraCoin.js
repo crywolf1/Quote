@@ -2,7 +2,7 @@ import { createCoin } from "@zoralabs/coins-sdk";
 
 /**
  * Creates a Zora token with proper validation and error handling
- * Mimics the Zora.co posting flow that automatically creates coins
+ * Mimics the Flipp.lol approach that successfully creates Zora coins
  */
 export async function createZoraCoin({
   walletClient,
@@ -19,36 +19,9 @@ export async function createZoraCoin({
       throw new Error("Valid title required.");
     if (!imageUrl) throw new Error("Image URL required.");
 
-    // Generate deterministic safe symbols based on the title
-    // This approach creates consistency in how symbols are generated
-    const baseSafeSymbols = ["QT", "TK", "VR", "QO"];
+    console.log("Starting token creation process for:", title);
 
-    // Create a hash of the title to get a consistent number
-    const titleHash = title.split("").reduce((acc, char) => {
-      return acc + char.charCodeAt(0);
-    }, 0);
-
-    // Use the hash to select a base symbol
-    const baseSymbol = baseSafeSymbols[titleHash % baseSafeSymbols.length];
-
-    // Add a numeric suffix from the hash for uniqueness
-    const numericSuffix = (titleHash % 100).toString().padStart(2, "0");
-    const symbol = `${baseSymbol}${numericSuffix}`;
-
-    // Clean the title to be safe but preserve meaning
-    const sanitizedTitle = title
-      .replace(/[^a-zA-Z0-9\s]/g, "") // Remove special characters
-      .trim()
-      .substring(0, 30); // Limit length
-
-    // Use a simple token name format that keeps original meaning
-    const tokenName = sanitizedTitle;
-
-    console.log(
-      `Creating token with symbol: ${symbol} for title: "${tokenName}"`
-    );
-
-    // Step 1: Prepare metadata (like Zora's first step)
+    // Step 1: Prepare metadata
     console.log("Step 1: Preparing metadata...");
     let metadataUrl;
     try {
@@ -56,8 +29,8 @@ export async function createZoraCoin({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: tokenName,
-          description: `Quote: ${sanitizedTitle}`,
+          name: title,
+          description: `Quote token: ${title}`,
           image: imageUrl,
           attributes: [
             { trait_type: "Type", value: "Quote" },
@@ -80,21 +53,42 @@ export async function createZoraCoin({
       throw new Error(`Metadata creation failed: ${metadataError.message}`);
     }
 
-    // Step 2: Create the coin parameters (like Zora's final step)
+    // Step 2: Generate a ticker (like Flipp.lol) - simple and uppercase
+    // Create ticker from first 3-5 characters of the title
+    let ticker = title
+      .replace(/[^a-zA-Z0-9]/g, "") // Remove non-alphanumeric chars
+      .toUpperCase()
+      .substring(0, 5); // Get first 5 chars max
+
+    // Ensure ticker is at least 3 characters
+    if (ticker.length < 3) {
+      ticker = ticker + "XYZ".substring(0, 3 - ticker.length);
+    }
+
+    // Add randomness to avoid collisions
+    const randomChar = String.fromCharCode(65 + Math.floor(Math.random() * 26)); // Random A-Z
+    ticker = ticker.substring(0, 4) + randomChar;
+
+    console.log("Using ticker:", ticker);
+
+    // Step 3: Use Flipp.lol style parameters
     console.log("Step 2: Preparing coin parameters...");
 
-    // Use minimal parameters, similar to what Zora likely uses
+    // Note: Flipp.lol sets 10M initial supply, so we're mimicking their approach
     const coinParams = {
-      name: tokenName,
-      symbol: symbol,
+      name: title, // Use original title as name
+      symbol: ticker, // Use generated ticker
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
+      // Flipp.lol might be setting these parameters:
+      // initialSupply: "10000000000000000000000000", // 10M with 18 decimals
+      // But the createCoin function handles defaults for us
     };
 
-    // Step 3: Create the coin
+    // Step 4: Create the coin
     console.log("Step 3: Creating coin with Zora SDK...");
     try {
-      // No extra parameters, just the basics
+      // Create with minimal parameters, letting Zora SDK handle the rest
       const coinResult = await createCoin(
         coinParams,
         walletClient,
@@ -119,7 +113,7 @@ export async function createZoraCoin({
         // This specific error often relates to name/symbol issues
         return {
           error:
-            "Unable to create token with this name. Please try a different title.",
+            "This token name or ticker is already taken or not allowed. Please try a different title.",
         };
       } else if (errorDetails.includes("user rejected")) {
         return { error: "Transaction was rejected in your wallet." };
