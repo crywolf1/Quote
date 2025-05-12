@@ -12,13 +12,35 @@ export async function createZoraCoin({
   creatorAddress,
 }) {
   try {
-    // Validate basic inputs
-    if (!walletClient) throw new Error("Wallet client not provided.");
+    // More robust wallet client validation
+    if (!walletClient) {
+      console.error("Wallet client not provided or not initialized");
+      throw new Error(
+        "Wallet client not available. Please connect your wallet and try again."
+      );
+    }
+
+    // Check if wallet client has the required properties
+    if (!walletClient.account?.address) {
+      console.error(
+        "Wallet client is missing account information",
+        walletClient
+      );
+      throw new Error(
+        "Wallet client is not properly initialized. Please reconnect your wallet."
+      );
+    }
+
+    // Validate other basic inputs
     if (!creatorAddress) throw new Error("Creator address required.");
     if (!title || typeof title !== "string")
       throw new Error("Valid title required.");
     if (!imageUrl) throw new Error("Image URL required.");
 
+    console.log("Wallet client validation passed:", {
+      walletAddress: walletClient.account.address,
+      connected: true,
+    });
     console.log("Starting token creation process for:", title);
 
     // Generate a safer symbol - using a different pattern
@@ -108,6 +130,23 @@ export async function createZoraCoin({
       console.log("Waiting for metadata propagation...");
       await new Promise((resolve) => setTimeout(resolve, 3000));
 
+      // Double-check wallet client before transaction
+      if (!walletClient.account?.address) {
+        throw new Error("Wallet client lost connection. Please try again.");
+      }
+
+      // Log transaction details for debugging
+      console.log("Transaction parameters:", {
+        walletClient: {
+          address: walletClient.account.address,
+          chainId: walletClient.chain?.id || "unknown",
+        },
+        publicClient: {
+          chainId: publicClient.chain.id,
+        },
+        coinParams: coinParams,
+      });
+
       console.log("Sending transaction with params:", coinParams);
       const coinResult = await createCoin(
         coinParams,
@@ -151,6 +190,14 @@ export async function createZoraCoin({
         errorDetails.includes("timed out")
       ) {
         return { error: "Transaction timed out. Please try again later." };
+      } else if (
+        errorDetails.includes("not available") ||
+        errorDetails.includes("wallet client")
+      ) {
+        return {
+          error:
+            "Wallet connection issue. Please refresh the page and reconnect your wallet.",
+        };
       } else {
         return {
           error: `Token creation failed: ${

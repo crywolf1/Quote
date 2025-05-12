@@ -24,7 +24,11 @@ import {
 export default function Card() {
   const { userData, loading, error, connectWallet } = useFarcaster();
   const { isConnected, isDisconnected, status, address } = useAccount();
-  const { data: wagmiWalletClient } = useWalletClient();
+  const {
+    data: walletClient,
+    isLoading: isWalletLoading,
+    isError: isWalletError,
+  } = useWalletClient();
   const { disconnect } = useDisconnect();
   const { profile, isLoading } = useProfile();
   // Use fallback values if userData is not loaded yet
@@ -129,10 +133,23 @@ export default function Card() {
     setIsSaving(true);
 
     // Log wallet client status for debugging
+    if (isWalletLoading) {
+      setMessage("Please wait while connecting to wallet...");
+      setIsSaving(false);
+      return;
+    }
+
+    if (isWalletError || !walletClient) {
+      setMessage("Wallet connection error. Please reconnect your wallet.");
+      console.error("Wallet client error:", isWalletError);
+      setIsSaving(false);
+      return;
+    }
+
+    // Log wallet client for debugging
     console.log("Wallet client status:", {
-      hasWalletClient: !!wagmiWalletClient,
-      isConnected: isConnected,
-      walletAddress: address,
+      isConnected: !!walletClient,
+      walletAddress: walletClient?.account?.address || "Not available",
     });
 
     // Validate basic inputs before proceeding
@@ -213,7 +230,7 @@ export default function Card() {
       console.log("Quote saved successfully, image URL:", cloudinaryImageUrl);
 
       // STEP 3: Verify wallet client availability before token creation
-      if (!wagmiWalletClient) {
+      if (!walletClient) {
         console.error("Wallet client is not available");
         setMessage(
           "Quote saved! Token creation failed: Wallet client not available."
@@ -238,10 +255,10 @@ export default function Card() {
 
         // Call the createZoraCoin function with necessary parameters
         const result = await createZoraCoin({
-          walletClient: wagmiWalletClient,
+          walletClient: walletClient, // Use the walletClient from the hook
           publicClient,
           title: title.trim(),
-          imageUrl: cloudinaryImageUrl, // Use the already uploaded Cloudinary URL
+          imageUrl: cloudinaryImageUrl,
           creatorAddress: address,
         });
 
