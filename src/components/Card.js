@@ -122,141 +122,146 @@ export default function Card() {
     });
   };
 
-  const sendQuote = async () => {
-    if (isSaving) return;
-    setIsSaving(true);
 
-    // Validate inputs
-    if (!isConnected || !address) {
-      setMessage("Please connect your wallet");
-      setIsSaving(false);
-      return;
+
+const sendQuote = async () => {
+  if (isSaving) return;
+  setIsSaving(true);
+
+  // Validate inputs
+  if (!isConnected || !address) {
+    setMessage("Please connect your wallet");
+    setIsSaving(false);
+    return;
+  }
+  if (!title.trim()) {
+    setMessage("Please enter a title");
+    setIsSaving(false);
+    return;
+  }
+  if (!quote.trim()) {
+    setMessage("Quote cannot be empty!");
+    setIsSaving(false);
+    return;
+  }
+
+  try {
+    // Generate image for metadata
+    setMessage("Generating quote image...");
+    const ogUrl =
+      `/api/og?quote=${encodeURIComponent(quote)}` +
+      `&username=${encodeURIComponent(username)}` +
+      `&displayName=${encodeURIComponent(displayName)}` +
+      `&pfpUrl=${encodeURIComponent(pfpUrl)}`;
+
+    // Fetch the image from the OG endpoint
+    const response = await fetch(ogUrl);
+    if (!response.ok) {
+      throw new Error("Failed to generate image");
     }
-    if (!title.trim()) {
-      setMessage("Please enter a title");
-      setIsSaving(false);
-      return;
+
+    // Convert the image to Base64
+    const blob = await response.blob();
+    const base64Image = await blobToBase64(blob);
+
+    // Set temporary image preview
+    setImagePreview(base64Image);
+
+    // Create dateKey for the quote
+    const now = new Date();
+    const dateKey = `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    // First, save the quote to your database
+    setMessage("Saving your quote...");
+    const createRes = await fetch("/api/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: title.trim(),
+        text: quote,
+        creatorAddress: address,
+        fid: userData?.fid || null,
+        username: userData?.username || null,
+        displayName: userData?.displayName || `${address.slice(0, 6)}...`,
+        pfpUrl: userData?.pfpUrl || "/assets/default-avatar.png",
+        verifiedAddresses: userData?.verifiedAddresses || [address],
+        dateKey,
+        image: base64Image,
+      }),
+    });
+
+    if (!createRes.ok) {
+      const errorData = await createRes.json();
+      throw new Error(errorData.error || "Failed to save quote");
     }
-    if (!quote.trim()) {
-      setMessage("Quote cannot be empty!");
-      setIsSaving(false);
-      return;
-    }
 
-    try {
-      // Generate image for metadata
-      setMessage("Generating quote image...");
-      const ogUrl =
-        `/api/og?quote=${encodeURIComponent(quote)}` +
-        `&username=${encodeURIComponent(username)}` +
-        `&displayName=${encodeURIComponent(displayName)}` +
-        `&pfpUrl=${encodeURIComponent(pfpUrl)}`;
+    const saved = await createRes.json();
+    
+    // Extract the Cloudinary URL from the response to avoid duplicate uploads
+    const cloudinaryImageUrl = saved.quote.imageUrl || null;
 
-      // Fetch the image from the OG endpoint
-      const response = await fetch(ogUrl);
-      if (!response.ok) {
-        throw new Error("Failed to generate image");
-      }
-
-      // Convert the image to Base64
-      const blob = await response.blob();
-      const base64Image = await blobToBase64(blob);
-
-      // Set temporary image preview
-      setImagePreview(base64Image);
-
-      // Create dateKey for the quote
-      const now = new Date();
-      const dateKey = `${now.getFullYear()}-${String(
-        now.getMonth() + 1
-      ).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-
-      // First, save the quote to your database
-      setMessage("Saving your quote...");
-      const createRes = await fetch("/api/quote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+    // Then optionally mint a token if user has wallet client
+    if (wagmiWalletClient && cloudinaryImageUrl) {
+      try {
+        setMessage("Creating token for your quote...");
+        const result = await createZoraCoin({
+          walletClient: wagmiWalletClient,
+          publicClient,
           title: title.trim(),
-          text: quote,
+          imageUrl: cloudinaryImageUrl, // Use the already uploaded image URL
           creatorAddress: address,
-          fid: userData?.fid || null,
-          username: userData?.username || null,
-          displayName: userData?.displayName || `${address.slice(0, 6)}...`,
-          pfpUrl: userData?.pfpUrl || "/assets/default-avatar.png",
-          verifiedAddresses: userData?.verifiedAddresses || [address],
-          dateKey,
-          image: base64Image,
-        }),
-      });
+        });
 
-      if (!createRes.ok) {
-        const errorData = await createRes.json();
-        throw new Error(errorData.error || "Failed to save quote");
-      }
+        // Check if result contains an error message
+        if (result.error) {
+          throw new Error(result.error);
+        }
 
-      const saved = await createRes.json();
+        // Update the quote with token information
+        const updateRes = await fetch(`/api/quote/${saved.quote._id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            zoraTokenAddress: result.address,
+            zoraTokenTxHash: result.txHash,
+          }),
+        });
 
-      // Then optionally mint a token if user has wallet client
-      if (wagmiWalletClient) {
-        try {
-          setMessage("Creating token for your quote...");
-          const result = await createZoraCoin({
-            walletClient: wagmiWalletClient,
-            publicClient,
-            title: title.trim(),
-            imageUrl: base64Image,
-            creatorAddress: address,
-          });
-
-          // Check if result contains an error message
-          if (result.error) {
-            throw new Error(result.error);
-          }
-
-          // Update the quote with token information
-          const updateRes = await fetch(`/api/quote/${saved.quote._id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              zoraTokenAddress: result.address,
-              zoraTokenTxHash: result.txHash,
-            }),
-          });
-
-          if (updateRes.ok) {
-            setMessage("Quote and token created successfully!");
-          } else {
-            // Token created but failed to update DB record
-            setMessage(
-              "Quote saved and token created! (Token info update failed)"
-            );
-          }
-        } catch (tokenError) {
-          console.error("Token creation failed:", tokenError);
-          // Still saved the quote, just failed token creation
+        if (updateRes.ok) {
+          setMessage("Quote and token created successfully!");
+        } else {
+          // Token created but failed to update DB record
           setMessage(
-            `Quote saved successfully! (Token creation failed: ${tokenError.message})`
+            "Quote saved and token created! (Token info update failed)"
           );
         }
-      } else {
-        setMessage("Quote saved successfully!");
+      } catch (tokenError) {
+        console.error("Token creation failed:", tokenError);
+        // Still saved the quote, just failed token creation
+        setMessage(
+          `Quote saved successfully! (Token creation failed: ${tokenError.message})`
+        );
       }
-
-      // Clear form
-      setQuote("");
-      setTitle("");
-      setImagePreview(null);
-
-      // Refresh quotes list
-      fetchQuotes();
-    } catch (err) {
-      console.error("Send quote error:", err);
-      setMessage(`Failed to save quote: ${err.message}`);
-    } finally {
-      setIsSaving(false);
+    } else {
+      setMessage("Quote saved successfully!");
     }
-  };
+
+    // Clear form
+    setQuote("");
+    setTitle("");
+    setImagePreview(null);
+
+    // Refresh quotes list
+    fetchQuotes();
+  } catch (err) {
+    console.error("Send quote error:", err);
+    setMessage(`Failed to save quote: ${err.message}`);
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   // Edit quote
   const handleEdit = (index) => {

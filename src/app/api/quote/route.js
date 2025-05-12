@@ -87,14 +87,21 @@ export async function POST(req) {
       pfpUrl,
       verifiedAddresses,
       dateKey,
-      image: imageUrl,
+      image: imageUrl, // This is the Cloudinary URL
     });
 
     // Save to database
-    await newQuote.save();
+    const savedQuote = await newQuote.save();
     console.log("Quote saved to database");
 
-    return NextResponse.json({ success: true, quote: newQuote });
+    // Return response with quote data and explicitly include imageUrl
+    return NextResponse.json({
+      success: true,
+      quote: {
+        ...savedQuote.toObject(),
+        imageUrl: imageUrl, // Explicitly include the imageUrl for the client
+      },
+    });
   } catch (error) {
     console.error("Error saving quote:", error);
     return NextResponse.json(
@@ -103,6 +110,7 @@ export async function POST(req) {
     );
   }
 }
+
 export async function GET(req) {
   await dbConnect();
 
