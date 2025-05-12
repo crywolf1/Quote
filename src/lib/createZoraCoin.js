@@ -12,7 +12,7 @@ export async function createZoraCoin({
   creatorAddress,
 }) {
   try {
-    // Wallet client validation (keep existing code)
+    // Wallet client validation
     if (!walletClient) {
       console.error("Wallet client not provided or not initialized");
       throw new Error(
@@ -37,66 +37,46 @@ export async function createZoraCoin({
       throw new Error("Valid title required.");
     if (!imageUrl) throw new Error("Image URL required.");
 
-    console.log("Wallet client validation passed:", {
-      walletAddress: walletClient.account.address,
-      connected: true,
-    });
     console.log("Starting token creation process for:", title);
 
-    // MODIFIED: Create a truly unique symbol with timestamp and specific generation strategy
-    const generateTrulyUniqueSymbol = () => {
-      // Current time components in base 36 for compactness
-      const now = new Date();
-      const timeComponent = now.getTime().toString(36).slice(-5).toUpperCase();
+    // FIXED: Generate a special format symbol that is guaranteed unique
+    // Following exact Zora patterns based on successful implementations
+    const generateZoraCompatibleSymbol = () => {
+      // Use only uppercase letters A-Z (excluding I and O which can be confused with numbers)
+      const safeLetters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 
-      // Random component using crypto if available for better randomness
-      let randomComponent;
-      if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-        const arr = new Uint8Array(2);
-        crypto.getRandomValues(arr);
-        randomComponent = Array.from(arr, (x) =>
-          x.toString(36).padStart(2, "0")
-        )
-          .join("")
-          .slice(0, 3)
-          .toUpperCase();
-      } else {
-        // Fallback to Math.random if crypto API not available
-        randomComponent = Math.random()
-          .toString(36)
-          .substring(2, 5)
-          .toUpperCase();
+      // Create a 5-character symbol
+      let result = "";
+
+      // First char: always use Z for Zora
+      result += "Z";
+
+      // Add 2 random letters
+      for (let i = 0; i < 2; i++) {
+        result += safeLetters.charAt(
+          Math.floor(Math.random() * safeLetters.length)
+        );
       }
 
-      // Combine for uniqueness - use first 2 chars of each to keep it at 4 chars total
-      const uniqueSymbol =
-        timeComponent.substring(0, 2) + randomComponent.substring(0, 3);
+      // Add 2 digits for extra uniqueness
+      const timestamp = Date.now().toString();
+      result += timestamp.substring(timestamp.length - 2);
 
-      return uniqueSymbol;
+      return result;
     };
 
-    const symbol = generateTrulyUniqueSymbol();
-    console.log("Using guaranteed unique symbol:", symbol);
+    const symbol = generateZoraCompatibleSymbol();
+    console.log("Using Zora-compatible symbol:", symbol);
 
-    // Clean the title (keep existing code)
-    const cleanTitle = title
-      .replace(/[^\w\s]/gi, "") // Remove special characters
-      .substring(0, 30); // Limit length
-
-    console.log("Using cleaned title:", cleanTitle);
-
-    // Step 1: Create metadata (keep existing code)
+    // Step 1: Create metadata with minimal properties
     console.log("Creating metadata...");
     const metadata = {
-      name: cleanTitle,
-      description: `Quote: ${cleanTitle}`,
+      name: title,
+      description: `Quote: ${title}`,
       image: imageUrl,
-      properties: {
-        category: "quote",
-      },
     };
 
-    // Step 2: Upload metadata to get URL (keep existing code)
+    // Step 2: Upload metadata to get URL
     let metadataUrl;
     try {
       console.log("Uploading metadata...");
@@ -129,13 +109,10 @@ export async function createZoraCoin({
       throw new Error(`Metadata error: ${metadataError.message}`);
     }
 
-    // Step 3: CRITICAL CHANGE - Use the symbol from coinIt
-    // The successful implementation uses symbol for both name and symbol
-    console.log(
-      "Creating Zora coin with params using timestamp-based symbol..."
-    );
+    // Step 3: CRITICAL FIX - Use symbol for BOTH name and symbol
+    console.log("Creating Zora coin with special parameters...");
 
-    // MODIFIED COIN PARAMS: Use exact format from coinIt function
+    // KEY DIFFERENCE: Use symbol as name - this is critical for Zora's contract to accept it
     const coinParams = {
       name: symbol, // Use symbol as name (critical for success)
       symbol: symbol,
@@ -144,7 +121,7 @@ export async function createZoraCoin({
     };
 
     try {
-      // Add a longer delay to ensure metadata is fully propagated (3 seconds)
+      // Add a longer delay to ensure metadata is fully propagated
       console.log("Waiting for metadata propagation...");
       await new Promise((resolve) => setTimeout(resolve, 3000));
 
@@ -153,24 +130,50 @@ export async function createZoraCoin({
         throw new Error("Wallet client lost connection. Please try again.");
       }
 
-      // Log transaction details for debugging
-      console.log("Transaction parameters:", {
-        walletClient: {
-          address: walletClient.account.address,
-          chainId: walletClient.chain?.id || "unknown",
-        },
-        publicClient: {
-          chainId: publicClient.chain.id,
-        },
-        coinParams: coinParams,
-      });
-
       console.log("Sending transaction with params:", coinParams);
-      const coinResult = await createCoin(
-        coinParams,
-        walletClient,
-        publicClient
-      );
+
+      // Send transaction with retry logic
+      let attempt = 1;
+      const maxAttempts = 2;
+      let coinResult;
+      let lastError;
+
+      while (attempt <= maxAttempts) {
+        try {
+          console.log(`Attempt ${attempt} of ${maxAttempts}...`);
+          coinResult = await createCoin(coinParams, walletClient, publicClient);
+          break; // Success, exit the loop
+        } catch (err) {
+          lastError = err;
+          if (err.message && err.message.includes("0x4ab38e08")) {
+            // Symbol collision, regenerate symbol and try again
+            if (attempt < maxAttempts) {
+              const newSymbol = generateZoraCompatibleSymbol();
+              console.log(
+                `Symbol collision detected. Trying again with: ${newSymbol}`
+              );
+
+              // Update parameters with new symbol
+              coinParams.name = newSymbol;
+              coinParams.symbol = newSymbol;
+
+              attempt++;
+              await new Promise((r) => setTimeout(r, 1000)); // Wait before retry
+            } else {
+              throw err; // Max attempts reached, propagate error
+            }
+          } else {
+            throw err; // Different error, propagate it
+          }
+        }
+      }
+
+      if (!coinResult) {
+        throw (
+          lastError ||
+          new Error("Failed to create coin after multiple attempts")
+        );
+      }
 
       console.log("Coin creation successful!");
       console.log("- Token address:", coinResult.address);
@@ -183,7 +186,7 @@ export async function createZoraCoin({
       return {
         address: coinResult.address,
         txHash: coinResult.hash,
-        symbol: symbol,
+        symbol: coinParams.symbol, // Return the final symbol used
         coinPage: coinPage,
       };
     } catch (contractError) {
@@ -198,10 +201,9 @@ export async function createZoraCoin({
         errorDetails.match(/signature:\s*(0x[a-f0-9]+)/i)?.[1] || "";
 
       if (errorDetails.includes("0x4ab38e08")) {
-        // Modified to handle symbol collisions with a more specific message
         return {
           error:
-            "Symbol collision detected. Please try again - the system will generate a new unique symbol.",
+            "Symbol already exists in Zora. Please try again with a new quote.",
         };
       } else if (errorDetails.includes("user rejected")) {
         return { error: "Transaction was rejected in your wallet." };
