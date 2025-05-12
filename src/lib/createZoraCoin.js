@@ -17,37 +17,39 @@ export async function createZoraCoin({
     if (!title || typeof title !== "string")
       throw new Error("Valid title required.");
 
-    // Create a clean symbol (3-6 chars recommended by Zora)
-    // Use only uppercase alphanumeric with strict validation
-    const rawSymbol = title.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    // Create a clean symbol using safer approach
+    // Only use A-Z characters to avoid potential inappropriate combinations
+    const rawSymbol = title.toUpperCase().replace(/[^A-Z]/g, ""); // Remove numbers and special chars for safety
 
-    // Always ensure 3-6 characters for symbol (Zora recommended length)
+    // Create safer symbol (4-5 chars is ideal)
     let symbol;
-    if (rawSymbol.length >= 3 && rawSymbol.length <= 6) {
+    if (rawSymbol.length >= 4 && rawSymbol.length <= 5) {
       symbol = rawSymbol;
-    } else if (rawSymbol.length < 3) {
-      // If too short, pad with random characters
-      const padding = "XYZ";
-      symbol = (rawSymbol + padding).substring(0, 3);
+    } else if (rawSymbol.length < 4) {
+      // If too short, pad with safe characters
+      const safePadding = "ABCD";
+      symbol = (rawSymbol + safePadding).substring(0, 4);
     } else {
-      // If too long, truncate to 6 characters
-      symbol = rawSymbol.substring(0, 6);
+      // If too long, truncate to 5 characters
+      symbol = rawSymbol.substring(0, 5);
     }
 
-    // Check for reserved words and common token names to avoid collisions
-    const reservedSymbols = [
-      "ETH",
-      "BTC",
-      "WETH",
-      "USD",
-      "USDC",
-      "USDT",
-      "DAI",
-      "COIN",
-    ];
-    if (reservedSymbols.includes(symbol)) {
-      symbol = symbol.substring(0, 2) + "Q";
+    // Safe words to use as prefixes for symbol generation
+    const safeWords = ["TOKN", "QUOT", "WORD", "TEXT", "VERS"];
+
+    // Always add a safe prefix if original symbol is too short or potentially problematic
+    if (rawSymbol.length < 3 || symbol.length < 4) {
+      const randomPrefix =
+        safeWords[Math.floor(Math.random() * safeWords.length)];
+      symbol = randomPrefix;
     }
+
+    // Avoid reserved names and add randomization to prevent collisions
+    const randomChar = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+    symbol = symbol + randomChar;
+
+    // Keep symbol within 5 characters for optimal compatibility
+    symbol = symbol.substring(0, 5);
 
     console.log(`Using symbol: ${symbol} for title: ${title}`);
 
@@ -96,10 +98,9 @@ export async function createZoraCoin({
       throw new Error(`Metadata error: ${metadataError.message}`);
     }
 
-    // Simplified coin parameters - only use what's absolutely required
-    // This minimizes the chance of validation errors
+    // Simplified coin parameters with consistent safe naming pattern
     const coinParams = {
-      name: title,
+      name: `${title} Quote`, // Make name more distinctive
       symbol: symbol,
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
@@ -124,16 +125,19 @@ export async function createZoraCoin({
     } catch (contractError) {
       console.error("Contract execution error:", contractError);
 
+      // Detailed error handling based on specific error signatures
       if (contractError.message.includes("0x4ab38e08")) {
-        // Common error - try to provide helpful guidance
         return {
-          error:
-            "Symbol/name validation failed - please try a different title with only letters and numbers.",
+          error: "Token naming issue. Please try again with a different title.",
         };
       } else if (contractError.message.includes("user rejected")) {
         return { error: "Transaction was rejected in your wallet." };
+      } else if (contractError.message.includes("timeout")) {
+        return { error: "Transaction timed out. Please try again later." };
       } else {
-        return { error: `Contract error: ${contractError.message}` };
+        return {
+          error: `Contract error: Please try again with a different title.`,
+        };
       }
     }
   } catch (error) {
