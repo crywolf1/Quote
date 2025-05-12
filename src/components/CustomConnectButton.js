@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-
+import "../styles/CustomConnectButton.css"; // Import your custom CSS
 export default function CustomConnectButton() {
   const { openConnectModal } = useConnectModal();
   const [isMobileDevice, setIsMobileDevice] = useState(false);
@@ -35,7 +35,7 @@ export default function CustomConnectButton() {
   };
 
   return (
-    <button onClick={handleConnect} className="custom-connect-btn">
+    <button onClick={handleConnect} className="connect-button">
       Sign in
     </button>
   );
