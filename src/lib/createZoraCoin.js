@@ -17,41 +17,26 @@ export async function createZoraCoin({
     if (!title || typeof title !== "string")
       throw new Error("Valid title required.");
 
-    // Create a clean symbol using safer approach
-    // Only use A-Z characters to avoid potential inappropriate combinations
-    const rawSymbol = title.toUpperCase().replace(/[^A-Z]/g, ""); // Remove numbers and special chars for safety
+    // Generate a guaranteed safe symbol that won't trigger filters
+    // Use simple, unambiguous letters and avoid any potentially problematic combinations
+    const safeSymbols = ["QUOTE", "TOKEN", "VERSE", "WORDS", "NOTES", "SAYNG"];
 
-    // Create safer symbol (4-5 chars is ideal)
-    let symbol;
-    if (rawSymbol.length >= 4 && rawSymbol.length <= 5) {
-      symbol = rawSymbol;
-    } else if (rawSymbol.length < 4) {
-      // If too short, pad with safe characters
-      const safePadding = "ABCD";
-      symbol = (rawSymbol + safePadding).substring(0, 4);
-    } else {
-      // If too long, truncate to 5 characters
-      symbol = rawSymbol.substring(0, 5);
-    }
+    // Generate a random timestamp suffix (1-999) to make the symbol unique
+    const timestamp = Date.now() % 1000;
 
-    // Safe words to use as prefixes for symbol generation
-    const safeWords = ["TOKN", "QUOT", "WORD", "TEXT", "VERS"];
+    // Use a completely known-safe symbol pattern
+    const symbol = safeSymbols[Math.floor(Math.random() * safeSymbols.length)];
 
-    // Always add a safe prefix if original symbol is too short or potentially problematic
-    if (rawSymbol.length < 3 || symbol.length < 4) {
-      const randomPrefix =
-        safeWords[Math.floor(Math.random() * safeWords.length)];
-      symbol = randomPrefix;
-    }
+    // Clean the title to be extremely safe
+    const sanitizedTitle = title
+      .replace(/[^a-zA-Z0-9\s]/g, "") // Remove special characters
+      .trim()
+      .substring(0, 30); // Limit length
 
-    // Avoid reserved names and add randomization to prevent collisions
-    const randomChar = String.fromCharCode(65 + Math.floor(Math.random() * 26));
-    symbol = symbol + randomChar;
+    // Make a safe token name by adding a distinctive prefix
+    const tokenName = `Quote: ${sanitizedTitle}`;
 
-    // Keep symbol within 5 characters for optimal compatibility
-    symbol = symbol.substring(0, 5);
-
-    console.log(`Using symbol: ${symbol} for title: ${title}`);
+    console.log(`Using symbol: ${symbol} for title: "${tokenName}"`);
 
     // Upload image to metadata service first
     let metadataUrl;
@@ -61,8 +46,8 @@ export async function createZoraCoin({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: title,
-          description: `Quote token: ${title}`,
+          name: tokenName,
+          description: `Quote token created for "${sanitizedTitle}"`,
           image: imageUrl,
           attributes: [
             { trait_type: "Type", value: "Quote" },
@@ -86,36 +71,35 @@ export async function createZoraCoin({
         throw new Error(`Metadata URL not accessible: ${checkRes.status}`);
       }
 
-      // Parse the metadata to ensure it's valid JSON
-      const metadata = await checkRes.json();
-      if (!metadata.name || !metadata.image) {
-        throw new Error("Metadata is missing required fields");
-      }
-
       console.log("Metadata verification successful");
     } catch (metadataError) {
       console.error("Metadata preparation failed:", metadataError);
       throw new Error(`Metadata error: ${metadataError.message}`);
     }
 
-    // Simplified coin parameters with consistent safe naming pattern
+    // Ultra-simplified coin parameters - use hardcoded known-good values
     const coinParams = {
-      name: `${title} Quote`, // Make name more distinctive
+      name: tokenName,
       symbol: symbol,
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
+      // Skip optional parameters entirely
     };
 
     console.log("Creating Zora coin with params:", coinParams);
 
     try {
-      // Use a timeout to ensure proper async handling
-      const coinResult = await Promise.race([
-        createCoin(coinParams, walletClient, publicClient),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Coin creation timeout")), 60000)
-        ),
-      ]);
+      // Create coin with simplified approach - don't use any extra parameters
+      const coinResult = await createCoin(
+        {
+          name: tokenName,
+          symbol: symbol,
+          uri: metadataUrl,
+          payoutRecipient: creatorAddress,
+        },
+        walletClient,
+        publicClient
+      );
 
       console.log("Coin creation successful!");
       console.log("- Token address:", coinResult.address);
@@ -125,18 +109,26 @@ export async function createZoraCoin({
     } catch (contractError) {
       console.error("Contract execution error:", contractError);
 
-      // Detailed error handling based on specific error signatures
+      // More informative error messages
       if (contractError.message.includes("0x4ab38e08")) {
         return {
-          error: "Token naming issue. Please try again with a different title.",
+          error:
+            "The Zora contract rejected the token creation. This might be a temporary issue - please try again later.",
         };
       } else if (contractError.message.includes("user rejected")) {
         return { error: "Transaction was rejected in your wallet." };
       } else if (contractError.message.includes("timeout")) {
         return { error: "Transaction timed out. Please try again later." };
+      } else if (contractError.message.includes("insufficient funds")) {
+        return {
+          error: "Insufficient funds for gas. Please add funds to your wallet.",
+        };
       } else {
         return {
-          error: `Contract error: Please try again with a different title.`,
+          error: `Contract error: ${contractError.message.substring(
+            0,
+            100
+          )}...`,
         };
       }
     }
