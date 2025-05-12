@@ -23,13 +23,19 @@ export async function createZoraCoin({
 
     // Generate symbol from title (similar to ExtractSymbolFromText function)
     // Key insight: Use simplified symbols that mimic what Google Gemini would generate
-    let symbol = title
-      .replace(/[^a-zA-Z0-9\s]/g, "") // Remove special characters
-      .split(/\s+/) // Split by whitespace
-      .filter((word) => word.length > 0) // Remove empty strings
-      .map((word) => word.toUpperCase()) // Make uppercase
-      .join("") // Join them
-      .substring(0, 5); // Limit to 5 characters
+
+    const generateUniqueSymbol = () => {
+      // Use a UUID-style approach for uniqueness
+      const prefix = "Z";
+      const randomChars = Math.random()
+        .toString(36)
+        .substring(2, 6)
+        .toUpperCase();
+      return prefix + randomChars.substring(0, 4); // "Z" + 4 random chars
+    };
+
+    const symbol = generateUniqueSymbol();
+    console.log("Using completely random symbol:", symbol);
 
     // Ensure symbol is at least 3 characters
     if (symbol.length < 3) {
