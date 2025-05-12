@@ -1,43 +1,23 @@
 import "@rainbow-me/rainbowkit/styles.css";
-import {
-  getDefaultWallets,
-  connectorsForWallets,
-} from "@rainbow-me/rainbowkit";
-import {
-  rainbowWallet,
-  metaMaskWallet,
-  walletConnectWallet,
-} from "@rainbow-me/rainbowkit/wallets";
-import { createConfig, WagmiProvider } from "wagmi";
+import { getDefaultWallets } from "@rainbow-me/rainbowkit";
+import { createConfig } from "wagmi";
 import { base } from "wagmi/chains";
 import { http } from "wagmi";
 
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+// Your WalletConnect v2 Project ID
+const projectId = "7319963b46188b07bc4af4daaa18ad93";
 
-// Configure chains
+// Configure chains list
 const chains = [base];
 
-// Get default wallets with priority order
-const { wallets } = getDefaultWallets({
-  appName: "Quote",
-  projectId,
+// Set up connectors
+const { connectors } = getDefaultWallets({
+  appName: "Quoted App",
+  projectId: projectId,
   chains,
 });
 
-// Create connectors with additional mobile-friendly wallets
-const connectors = connectorsForWallets([
-  ...wallets,
-  {
-    groupName: "Popular",
-    wallets: [
-      rainbowWallet({ projectId, chains }),
-      metaMaskWallet({ projectId, chains }),
-      walletConnectWallet({ projectId, chains }),
-    ],
-  },
-]);
-
-// Create Wagmi config
+// Create config with http transport - Wagmi v2 syntax
 export const wagmiConfig = createConfig({
   chains,
   connectors,
