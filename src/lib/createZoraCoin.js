@@ -21,30 +21,37 @@ export async function createZoraCoin({
 
     console.log("Starting token creation process for:", title);
 
-    // Generate a simple random symbol - keep it extremely basic
-    // Using a fixed prefix followed by random characters works most reliably
+    // Generate a safer symbol - using a different pattern
+    // This pattern mirrors the coinIt function from your example code
     const generateUniqueSymbol = () => {
-      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-      const prefix = "ZZ"; // Fixed prefix
-      let random = "";
+      // Use only letters for simplicity
+      const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // Removed confusing letters I,O
+      let symbol = "";
 
-      // Generate 3 random uppercase letters
-      for (let i = 0; i < 3; i++) {
-        random += letters.charAt(Math.floor(Math.random() * letters.length));
+      // Generate 5 random uppercase letters (exactly 5 chars)
+      for (let i = 0; i < 5; i++) {
+        symbol += letters.charAt(Math.floor(Math.random() * letters.length));
       }
 
-      return prefix + random;
+      return symbol;
     };
 
     const symbol = generateUniqueSymbol();
     console.log("Using symbol:", symbol);
 
+    // Clean the title to be absolutely safe
+    const cleanTitle = title
+      .replace(/[^\w\s]/gi, "") // Remove special characters
+      .substring(0, 30); // Limit length
+
+    console.log("Using cleaned title:", cleanTitle);
+
     // Step 1: Create metadata with minimal structure
     // The successful implementation uses a very simple metadata structure
     console.log("Creating metadata...");
     const metadata = {
-      name: title,
-      description: title, // Use the same value for both name and description
+      name: cleanTitle,
+      description: `Quote: ${cleanTitle}`,
       image: imageUrl,
       properties: {
         category: "quote",
@@ -71,31 +78,35 @@ export async function createZoraCoin({
       console.log("Metadata created:", metadataUrl);
 
       // Verify metadata URL is accessible
-      const checkRes = await fetch(metadataUrl);
+      console.log("Verifying metadata URL:", metadataUrl);
+      const checkRes = await fetch(metadataUrl, {
+        cache: "no-store", // Force fresh fetch
+      });
       if (!checkRes.ok) {
         throw new Error(`Metadata URL not accessible: ${metadataUrl}`);
       }
+      console.log("Metadata verification successful");
     } catch (metadataError) {
       console.error("Metadata error:", metadataError);
       throw new Error(`Metadata error: ${metadataError.message}`);
     }
 
     // Step 3: Create coin with absolute minimal parameters
-    // The key insight from the successful implementation is to use minimal parameters
     console.log("Creating Zora coin...");
 
-    // Use extremely minimal parameters like the successful implementation
+    // Use the exact structure from the successful coinIt function
+    // Note the symbol is used as both name and symbol in the coinIt function
     const coinParams = {
-      name: title,
+      name: symbol, // Use symbol as name like in the coinIt function
       symbol: symbol,
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
-      // No additional parameters - this is the key difference
     };
 
     try {
-      // Add a small delay to ensure metadata is fully propagated
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Add a longer delay to ensure metadata is fully propagated (3 seconds)
+      console.log("Waiting for metadata propagation...");
+      await new Promise((resolve) => setTimeout(resolve, 3000));
 
       console.log("Sending transaction with params:", coinParams);
       const coinResult = await createCoin(
@@ -121,16 +132,17 @@ export async function createZoraCoin({
     } catch (contractError) {
       console.error("Contract execution error:", contractError);
 
-      // Handle errors with more specific messaging
+      // Get detailed error information
       const errorDetails = contractError.message || "";
+      console.log("Full error details:", contractError);
+
+      // Try to extract specific error signatures for better diagnosis
+      const errorSignature =
+        errorDetails.match(/signature:\s*(0x[a-f0-9]+)/i)?.[1] || "";
 
       if (errorDetails.includes("0x4ab38e08")) {
-        // Try to extract more details from the error for better diagnosis
-        console.log("Full error details:", contractError);
-
         return {
-          error:
-            "Token creation failed. Please try again with a different title.",
+          error: "Symbol already exists. Please try again.",
         };
       } else if (errorDetails.includes("user rejected")) {
         return { error: "Transaction was rejected in your wallet." };
@@ -141,8 +153,9 @@ export async function createZoraCoin({
         return { error: "Transaction timed out. Please try again later." };
       } else {
         return {
-          error:
-            "Token creation failed. This could be due to network conditions or contract restrictions.",
+          error: `Token creation failed: ${
+            errorSignature || "Contract error"
+          }. Please try again.`,
         };
       }
     }
