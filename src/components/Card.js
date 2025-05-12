@@ -132,13 +132,6 @@ export default function Card() {
       setIsSaving(false);
       return;
     }
-    if (!wagmiWalletClient) {
-      setMessage(
-        "Wallet client not available. Please try reconnecting your wallet."
-      );
-      setIsSaving(false);
-      return;
-    }
     if (!title.trim()) {
       setMessage("Please enter a title");
       setIsSaving(false);
@@ -149,33 +142,37 @@ export default function Card() {
       setIsSaving(false);
       return;
     }
-    if (!userData) {
-      setMessage("User data not available");
-      setIsSaving(false);
-      return;
-    }
 
     try {
-      // Get walletClient
-      const walletClient = getWalletClient(address, wagmiWalletClient);
-
       // Generate image for metadata
-      setMessage("Generating metadata image...");
+      setMessage("Generating quote image...");
       const ogUrl =
         `/api/og?quote=${encodeURIComponent(quote)}` +
         `&username=${encodeURIComponent(username)}` +
         `&displayName=${encodeURIComponent(displayName)}` +
         `&pfpUrl=${encodeURIComponent(pfpUrl)}`;
-      const ogRes = await fetch(ogUrl);
-      if (!ogRes.ok) {
-        throw new Error("Failed to generate image. Please try again.");
+
+      // Fetch the image from the OG endpoint
+      const response = await fetch(ogUrl);
+      if (!response.ok) {
+        throw new Error("Failed to generate image");
       }
-      const blob = await ogRes.blob();
+
+      // Convert the image to Base64
+      const blob = await response.blob();
       const base64Image = await blobToBase64(blob);
 
-      // Save quote to backend
-      setMessage("Saving quote...");
-      const dateKey = `${address}_${new Date().toISOString().slice(0, 10)}`;
+      // Set temporary image preview
+      setImagePreview(base64Image);
+
+      // Create dateKey for the quote
+      const now = new Date();
+      const dateKey = `${now.getFullYear()}-${String(
+        now.getMonth() + 1
+      ).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+      // First, save the quote to your database
+      setMessage("Saving your quote...");
       const createRes = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -183,58 +180,72 @@ export default function Card() {
           title: title.trim(),
           text: quote,
           creatorAddress: address,
-          fid: userData.fid,
-          username: userData.username,
-          displayName: userData.displayName,
-          pfpUrl: userData.pfpUrl,
-          verifiedAddresses: userData.verifiedAddresses,
+          fid: userData?.fid || null,
+          username: userData?.username || null,
+          displayName: userData?.displayName || `${address.slice(0, 6)}...`,
+          pfpUrl: userData?.pfpUrl || "/assets/default-avatar.png",
+          verifiedAddresses: userData?.verifiedAddresses || [address],
           dateKey,
           image: base64Image,
         }),
       });
-      const { quote: saved, error } = await createRes.json();
-      if (!createRes.ok || !saved) {
-        setMessage(error || "Failed to save quote.");
-        setIsSaving(false);
-        return;
+
+      if (!createRes.ok) {
+        const errorData = await createRes.json();
+        throw new Error(errorData.error || "Failed to save quote");
       }
 
-      // Mint Zora coin
-      setMessage("Minting your token...");
-      const { address: tokenAddress, txHash } = await createZoraCoin({
-        walletClient,
-        title: saved.title,
-        imageUrl: saved.image,
-        creatorAddress: address,
-      });
+      const saved = await createRes.json();
 
-      // Persist token address in DB
-      setMessage("Finalizing token creation...");
-      await fetch(`/api/quote/${saved._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ zoraTokenAddress: tokenAddress }),
-      });
+      // Then optionally mint a token if user has wallet client
+      if (wagmiWalletClient) {
+        try {
+          setMessage("Creating token for your quote...");
+          const { address: tokenAddress, txHash } = await createZoraCoin({
+            walletClient: wagmiWalletClient,
+            publicClient,
+            title: title.trim(),
+            imageUrl: base64Image,
+            creatorAddress: address,
+          });
 
-      setMessage(
-        `🎉 Token created: ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(
-          -4
-        )} (Tx: ${txHash.slice(0, 6)}...)`
-      );
-      fetchQuotes();
-      setTitle("");
+          // Update the quote with token information
+          const updateRes = await fetch(`/api/quote/${saved.quote._id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              zoraTokenAddress: tokenAddress,
+              zoraTokenTxHash: txHash,
+            }),
+          });
+
+          if (updateRes.ok) {
+            setMessage("Quote and token created successfully!");
+          } else {
+            // Token created but failed to update DB record
+            setMessage(
+              "Quote saved and token created! (Token info update failed)"
+            );
+          }
+        } catch (tokenError) {
+          console.error("Token creation failed:", tokenError);
+          // Still saved the quote, just failed token creation
+          setMessage("Quote saved successfully! (Token creation failed)");
+        }
+      } else {
+        setMessage("Quote saved successfully!");
+      }
+
+      // Clear form
       setQuote("");
+      setTitle("");
+      setImagePreview(null);
+
+      // Refresh quotes list
+      fetchQuotes();
     } catch (err) {
       console.error("Send quote error:", err);
-      let errorMessage = "Failed to create token: ";
-      if (err.message.includes("Insufficient ETH")) {
-        errorMessage += "Please fund your wallet with ETH on Base.";
-      } else if (err.message.includes("Metadata")) {
-        errorMessage += "Invalid metadata URL. Please try again.";
-      } else {
-        errorMessage += err.message;
-      }
-      setMessage(errorMessage);
+      setMessage(`Failed to save quote: ${err.message}`);
     } finally {
       setIsSaving(false);
     }

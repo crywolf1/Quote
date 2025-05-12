@@ -1,29 +1,18 @@
 import { createCoin } from "@zoralabs/coins-sdk";
 
-// Zero address constant
-const ZERO = "0x0000000000000000000000000000000000000000";
-
 export async function createZoraCoin({
   walletClient,
   publicClient,
   title,
-  imageUrl,
+  imageUrl, // This is your base64 image
   creatorAddress,
 }) {
   try {
     // Validate inputs
-    if (!walletClient) {
-      throw new Error("Wallet client not provided.");
-    }
-    if (!creatorAddress || creatorAddress === ZERO) {
-      throw new Error("Invalid creator address.");
-    }
-    if (!title || typeof title !== "string") {
-      throw new Error("Title must be a non-empty string.");
-    }
-    if (!imageUrl || typeof imageUrl !== "string") {
-      throw new Error("Image URL must be a non-empty string.");
-    }
+    if (!walletClient) throw new Error("Wallet client not provided.");
+    if (!creatorAddress) throw new Error("Creator address required.");
+    if (!title || typeof title !== "string")
+      throw new Error("Valid title required.");
 
     // Build symbol: Convert title to uppercase, remove non-alphanumeric, limit to 8 chars
     const symbol = title
@@ -31,43 +20,48 @@ export async function createZoraCoin({
       .replace(/[^A-Z0-9]/g, "")
       .substring(0, 8);
 
-    // Make sure symbol is at least 1 character
     const finalSymbol = symbol.length > 0 ? symbol : "QUOTE";
 
-    // Metadata URL: Construct URL for /api/metadata endpoint
-    const base =
-      typeof window !== "undefined"
-        ? window.location.origin
-        : process.env.NEXT_PUBLIC_SITE_URL || "https://quote-dusky.vercel.app";
-    const metadataUrl =
-      `${base}/api/metadata` +
-      `?title=${encodeURIComponent(title)}` +
-      `&image=${encodeURIComponent(imageUrl)}`;
+    // Upload image to Cloudinary using your existing API
+    console.log("Uploading image to Cloudinary...");
+    const uploadRes = await fetch("/api/upload-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: imageUrl }),
+    });
 
-    // Validate metadata URL
-    try {
-      console.log("Validating metadata URL:", metadataUrl);
-      const response = await fetch(metadataUrl);
-      if (!response.ok) {
-        throw new Error(`Metadata URL inaccessible: ${response.statusText}`);
-      }
-      const metadata = await response.json();
-      console.log("Metadata validation result:", metadata);
-      if (!metadata.name || !metadata.image) {
-        throw new Error("Invalid metadata format: missing name or image.");
-      }
-    } catch (error) {
-      throw new Error(`Metadata validation failed: ${error.message}`);
+    if (!uploadRes.ok) {
+      throw new Error("Failed to upload image to Cloudinary");
     }
 
-    // Check wallet balance for gas fees
-    const balance = await publicClient.getBalance({ address: creatorAddress });
-    const MIN_BALANCE = 10n ** 16n; // 0.01 ETH
-    if (balance < MIN_BALANCE) {
-      throw new Error(
-        "Insufficient ETH for gas fees. Please fund your wallet."
-      );
+    const { url: cloudinaryUrl } = await uploadRes.json();
+
+    // Create metadata JSON
+    const metadata = {
+      name: title,
+      description: `Quote token for "${title}"`,
+      image: cloudinaryUrl,
+      attributes: [
+        { trait_type: "Type", value: "Quote" },
+        { trait_type: "Created", value: new Date().toISOString() },
+      ],
+    };
+
+    // Host metadata on your server
+    console.log("Creating metadata...");
+    const metadataRes = await fetch("/api/metadata", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(metadata),
+    });
+
+    if (!metadataRes.ok) {
+      throw new Error("Failed to create metadata");
     }
+
+    const { url: metadataUrl } = await metadataRes.json();
+
+    console.log("Metadata URL:", metadataUrl);
 
     // Define coin parameters
     const coinParams = {
@@ -75,13 +69,11 @@ export async function createZoraCoin({
       symbol: finalSymbol,
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
-      // Omit optional parameters for maximum compatibility
     };
 
-    // Log parameters for debugging
     console.log("Creating Zora coin with params:", coinParams);
 
-    // Create the coin with minimal required parameters
+    // Create the coin
     const { address, hash } = await createCoin(
       coinParams,
       walletClient,
@@ -96,7 +88,6 @@ export async function createZoraCoin({
   } catch (error) {
     console.error("Error creating Zora coin:", error);
 
-    // Enhanced error logging
     if (error.cause?.data) {
       console.error("Contract revert data:", error.cause.data);
     }

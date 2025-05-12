@@ -1,0 +1,15 @@
+{
+  "name": "drop",
+  "description": "Quote token for \"drop\"",
+  "image": "https://res.cloudinary.com/dj9qefbzo/image/upload/v1747057229/zora-tokens/b10f977c-1212-42d5-b429-e3a2ddfcf2f7.png",
+  "attributes": [
+    {
+      "trait_type": "Type",
+      "value": "Quote"
+    },
+    {
+      "trait_type": "Created",
+      "value": "2025-05-12T13:40:30.277Z"
+    }
+  ]
+}
