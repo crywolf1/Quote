@@ -8,6 +8,7 @@ import { sdk } from "@farcaster/frame-sdk";
 import { createZoraCoin } from "@/lib/createZoraCoin";
 import { useAccount, useWalletClient, useDisconnect } from "wagmi";
 import { publicClient, getWalletClient } from "@/lib/viemConfig";
+import CustomConnectButton from "./CustomConnectButton";
 
 import "../styles/style.css";
 import {
@@ -589,7 +590,19 @@ export default function Card() {
         isDisconnected && (
           <div className="connection-error">
             <p>Sign in with your wallet to continue</p>
-            <ConnectButton label="sign in" />
+            <CustomConnectButton />
+
+            {/* Add mobile help text */}
+            {typeof window !== "undefined" &&
+              /Android|iPhone/i.test(navigator.userAgent) && (
+                <p className="mobile-hint">
+                  If prompted, open the QR code in your wallet app.
+                  <br />
+                  <small>
+                    Trouble? Install Rainbow or MetaMask wallet first.
+                  </small>
+                </p>
+              )}
           </div>
         )
       )}
