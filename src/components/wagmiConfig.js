@@ -5,7 +5,6 @@ import { base } from "wagmi/chains";
 import { http } from "wagmi";
 
 // Your WalletConnect v2 Project ID
-const projectId = "7319963b46188b07bc4af4daaa18ad93";
 
 // Configure chains list
 const chains = [base];
@@ -13,7 +12,7 @@ const chains = [base];
 // Set up connectors
 const { connectors } = getDefaultWallets({
   appName: "Quoted App",
-  projectId: projectId,
+  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
   chains,
 });
 
