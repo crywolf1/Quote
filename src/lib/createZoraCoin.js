@@ -2,6 +2,7 @@ import { createCoin } from "@zoralabs/coins-sdk";
 
 /**
  * Creates a Zora token with proper validation and error handling
+ * Mimics the Zora.co posting flow that automatically creates coins
  */
 export async function createZoraCoin({
   walletClient,
@@ -16,38 +17,47 @@ export async function createZoraCoin({
     if (!creatorAddress) throw new Error("Creator address required.");
     if (!title || typeof title !== "string")
       throw new Error("Valid title required.");
+    if (!imageUrl) throw new Error("Image URL required.");
 
-    // Generate a guaranteed safe symbol that won't trigger filters
-    // Use simple, unambiguous letters and avoid any potentially problematic combinations
-    const safeSymbols = ["QUOTE", "TOKEN", "VERSE", "WORDS", "NOTES", "SAYNG"];
+    // Generate deterministic safe symbols based on the title
+    // This approach creates consistency in how symbols are generated
+    const baseSafeSymbols = ["QT", "TK", "VR", "QO"];
 
-    // Generate a random timestamp suffix (1-999) to make the symbol unique
-    const timestamp = Date.now() % 1000;
+    // Create a hash of the title to get a consistent number
+    const titleHash = title.split("").reduce((acc, char) => {
+      return acc + char.charCodeAt(0);
+    }, 0);
 
-    // Use a completely known-safe symbol pattern
-    const symbol = safeSymbols[Math.floor(Math.random() * safeSymbols.length)];
+    // Use the hash to select a base symbol
+    const baseSymbol = baseSafeSymbols[titleHash % baseSafeSymbols.length];
 
-    // Clean the title to be extremely safe
+    // Add a numeric suffix from the hash for uniqueness
+    const numericSuffix = (titleHash % 100).toString().padStart(2, "0");
+    const symbol = `${baseSymbol}${numericSuffix}`;
+
+    // Clean the title to be safe but preserve meaning
     const sanitizedTitle = title
       .replace(/[^a-zA-Z0-9\s]/g, "") // Remove special characters
       .trim()
       .substring(0, 30); // Limit length
 
-    // Make a safe token name by adding a distinctive prefix
-    const tokenName = `Quote: ${sanitizedTitle}`;
+    // Use a simple token name format that keeps original meaning
+    const tokenName = sanitizedTitle;
 
-    console.log(`Using symbol: ${symbol} for title: "${tokenName}"`);
+    console.log(
+      `Creating token with symbol: ${symbol} for title: "${tokenName}"`
+    );
 
-    // Upload image to metadata service first
+    // Step 1: Prepare metadata (like Zora's first step)
+    console.log("Step 1: Preparing metadata...");
     let metadataUrl;
     try {
-      console.log("Creating metadata with image...");
       const metadataRes = await fetch("/api/metadata", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: tokenName,
-          description: `Quote token created for "${sanitizedTitle}"`,
+          description: `Quote: ${sanitizedTitle}`,
           image: imageUrl,
           attributes: [
             { trait_type: "Type", value: "Quote" },
@@ -64,39 +74,29 @@ export async function createZoraCoin({
       const metadataData = await metadataRes.json();
       metadataUrl = metadataData.url;
 
-      // Verify metadata URL is accessible before continuing
-      console.log("Verifying metadata URL:", metadataUrl);
-      const checkRes = await fetch(metadataUrl);
-      if (!checkRes.ok) {
-        throw new Error(`Metadata URL not accessible: ${checkRes.status}`);
-      }
-
-      console.log("Metadata verification successful");
+      console.log("Metadata created successfully:", metadataUrl);
     } catch (metadataError) {
       console.error("Metadata preparation failed:", metadataError);
-      throw new Error(`Metadata error: ${metadataError.message}`);
+      throw new Error(`Metadata creation failed: ${metadataError.message}`);
     }
 
-    // Ultra-simplified coin parameters - use hardcoded known-good values
+    // Step 2: Create the coin parameters (like Zora's final step)
+    console.log("Step 2: Preparing coin parameters...");
+
+    // Use minimal parameters, similar to what Zora likely uses
     const coinParams = {
       name: tokenName,
       symbol: symbol,
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
-      // Skip optional parameters entirely
     };
 
-    console.log("Creating Zora coin with params:", coinParams);
-
+    // Step 3: Create the coin
+    console.log("Step 3: Creating coin with Zora SDK...");
     try {
-      // Create coin with simplified approach - don't use any extra parameters
+      // No extra parameters, just the basics
       const coinResult = await createCoin(
-        {
-          name: tokenName,
-          symbol: symbol,
-          uri: metadataUrl,
-          payoutRecipient: creatorAddress,
-        },
+        coinParams,
         walletClient,
         publicClient
       );
@@ -109,31 +109,45 @@ export async function createZoraCoin({
     } catch (contractError) {
       console.error("Contract execution error:", contractError);
 
-      // More informative error messages
-      if (contractError.message.includes("0x4ab38e08")) {
+      // Extract useful information from the error
+      const errorDetails = contractError.message || "";
+      const errorSignature =
+        errorDetails.match(/signature:\s*(0x[a-f0-9]+)/i)?.[1] || "";
+
+      // Handle known error cases with user-friendly messages
+      if (errorDetails.includes("0x4ab38e08")) {
+        // This specific error often relates to name/symbol issues
         return {
           error:
-            "The Zora contract rejected the token creation. This might be a temporary issue - please try again later.",
+            "Unable to create token with this name. Please try a different title.",
         };
-      } else if (contractError.message.includes("user rejected")) {
+      } else if (errorDetails.includes("user rejected")) {
         return { error: "Transaction was rejected in your wallet." };
-      } else if (contractError.message.includes("timeout")) {
+      } else if (
+        errorDetails.includes("timeout") ||
+        errorDetails.includes("timed out")
+      ) {
         return { error: "Transaction timed out. Please try again later." };
-      } else if (contractError.message.includes("insufficient funds")) {
+      } else if (
+        errorDetails.includes("insufficient funds") ||
+        errorDetails.includes("gas")
+      ) {
         return {
           error: "Insufficient funds for gas. Please add funds to your wallet.",
         };
       } else {
+        // For unknown errors, provide the error signature for debugging
         return {
-          error: `Contract error: ${contractError.message.substring(
-            0,
-            100
-          )}...`,
+          error: `Token creation failed. ${
+            errorSignature
+              ? `(Error code: ${errorSignature})`
+              : "Please try again later."
+          }`,
         };
       }
     }
   } catch (error) {
     console.error("Coin creation process error:", error);
-    return { error: error.message };
+    return { error: "Failed to create token: " + error.message };
   }
 }
