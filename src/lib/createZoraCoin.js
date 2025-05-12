@@ -1,6 +1,6 @@
 import { createCoin } from "@zoralabs/coins-sdk";
-import { publicClient } from "./viemConfig";
 
+// Zero address constant
 const ZERO = "0x0000000000000000000000000000000000000000";
 
 export async function createZoraCoin({
@@ -26,29 +26,33 @@ export async function createZoraCoin({
     }
 
     // Build symbol: Convert title to uppercase, remove non-alphanumeric, limit to 8 chars
-    let symbol = title
+    const symbol = title
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "")
       .substring(0, 8);
-    if (symbol.length < 3) symbol = symbol.padEnd(3, "Q");
+
+    // Make sure symbol is at least 1 character
+    const finalSymbol = symbol.length > 0 ? symbol : "QUOTE";
 
     // Metadata URL: Construct URL for /api/metadata endpoint
     const base =
       typeof window !== "undefined"
         ? window.location.origin
-        : process.env.NEXT_PUBLIC_SITE_URL;
+        : process.env.NEXT_PUBLIC_SITE_URL || "https://quote-dusky.vercel.app";
     const metadataUrl =
       `${base}/api/metadata` +
       `?title=${encodeURIComponent(title)}` +
       `&image=${encodeURIComponent(imageUrl)}`;
 
-    // Validate metadata URL accessibility
+    // Validate metadata URL
     try {
+      console.log("Validating metadata URL:", metadataUrl);
       const response = await fetch(metadataUrl);
       if (!response.ok) {
         throw new Error(`Metadata URL inaccessible: ${response.statusText}`);
       }
       const metadata = await response.json();
+      console.log("Metadata validation result:", metadata);
       if (!metadata.name || !metadata.image) {
         throw new Error("Invalid metadata format: missing name or image.");
       }
@@ -58,42 +62,53 @@ export async function createZoraCoin({
 
     // Check wallet balance for gas fees
     const balance = await publicClient.getBalance({ address: creatorAddress });
-    const MIN_BALANCE = 10n ** 16n;
+    const MIN_BALANCE = 10n ** 16n; // 0.01 ETH
     if (balance < MIN_BALANCE) {
       throw new Error(
         "Insufficient ETH for gas fees. Please fund your wallet."
       );
     }
-    // Define coin parameters with explicit type handling
+
+    // Define coin parameters
     const coinParams = {
       name: title,
-      symbol,
+      symbol: finalSymbol,
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
-      platformReferrer: ZERO, // optional
-      // REMOVED tickLower
-      // REMOVED initialPurchaseWei
+      // Omit optional parameters for maximum compatibility
     };
+
     // Log parameters for debugging
     console.log("Creating Zora coin with params:", coinParams);
 
-    // Create the coin
+    // Create the coin with minimal required parameters
     const { address, hash } = await createCoin(
       coinParams,
       walletClient,
       publicClient
     );
 
-    // Log transaction hash for tracing
-    console.log("Coin creation transaction hash:", hash);
+    console.log("Coin creation successful!");
+    console.log("- Token address:", address);
+    console.log("- Transaction hash:", hash);
 
     return { address, txHash: hash };
   } catch (error) {
     console.error("Error creating Zora coin:", error);
+
+    // Enhanced error logging
     if (error.cause?.data) {
-      console.error("Revert data:", error.cause.data);
-      console.error("Error details:", JSON.stringify(error, null, 2));
+      console.error("Contract revert data:", error.cause.data);
     }
-    throw new Error(`Failed to create Zora coin: ${error.message}`);
+
+    if (error.message.includes("0x4ab38e08")) {
+      throw new Error(
+        "Failed to create token: Name or symbol may be invalid. Try a different title."
+      );
+    } else if (error.message.includes("user rejected")) {
+      throw new Error("Transaction was rejected by user.");
+    } else {
+      throw new Error(`Failed to create Zora coin: ${error.message}`);
+    }
   }
 }
