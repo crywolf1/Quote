@@ -21,53 +21,30 @@ export async function createZoraCoin({
 
     console.log("Starting token creation process for:", title);
 
-    // Generate symbol from title (similar to ExtractSymbolFromText function)
-    // Key insight: Use simplified symbols that mimic what Google Gemini would generate
-
+    // Generate a simple random symbol - keep it extremely basic
+    // Using a fixed prefix followed by random characters works most reliably
     const generateUniqueSymbol = () => {
-      // Use a UUID-style approach for uniqueness
-      const prefix = "Z";
-      const randomChars = Math.random()
-        .toString(36)
-        .substring(2, 6)
-        .toUpperCase();
-      return prefix + randomChars.substring(0, 4); // "Z" + 4 random chars
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const prefix = "ZZ"; // Fixed prefix
+      let random = "";
+
+      // Generate 3 random uppercase letters
+      for (let i = 0; i < 3; i++) {
+        random += letters.charAt(Math.floor(Math.random() * letters.length));
+      }
+
+      return prefix + random;
     };
 
     const symbol = generateUniqueSymbol();
-    console.log("Using completely random symbol:", symbol);
-
-    // Ensure symbol is at least 3 characters
-    if (symbol.length < 3) {
-      const safeDefaults = ["QOT", "TKN", "QUOT"];
-      symbol = safeDefaults[0];
-    }
-
-    // Ensure symbol is not too long (keep it to 5 chars max for Zora compatibility)
-    if (symbol.length > 5) {
-      symbol = symbol.substring(0, 5);
-    }
-
-    // Add uniqueness with uuid-like suffix if needed (important for preventing collisions)
-    const randomSuffix = Math.floor(Math.random() * 10).toString();
-
-    // Final symbol format: keep it short and unique
-    // Use exactly 4-5 chars which works reliably with Zora
-    if (symbol.length <= 3) {
-      symbol = symbol + randomSuffix;
-    } else {
-      // For longer symbols, truncate to keep total length at 5 chars
-      symbol = symbol.substring(0, 4) + randomSuffix;
-    }
-
     console.log("Using symbol:", symbol);
 
-    // Step 1: Create metadata (similar to the example metadata structure)
-    console.log("Creating metadata JSON...");
+    // Step 1: Create metadata with minimal structure
+    // The successful implementation uses a very simple metadata structure
+    console.log("Creating metadata...");
     const metadata = {
       name: title,
-      description: `Quote token: ${title}`,
-      symbol: symbol,
+      description: title, // Use the same value for both name and description
       image: imageUrl,
       properties: {
         category: "quote",
@@ -91,10 +68,9 @@ export async function createZoraCoin({
 
       const metadataData = await metadataRes.json();
       metadataUrl = metadataData.url;
-      console.log("Metadata created successfully:", metadataUrl);
+      console.log("Metadata created:", metadataUrl);
 
-      // Verify metadata is accessible (important for contract success)
-      console.log("Verifying metadata URL...");
+      // Verify metadata URL is accessible
       const checkRes = await fetch(metadataUrl);
       if (!checkRes.ok) {
         throw new Error(`Metadata URL not accessible: ${metadataUrl}`);
@@ -104,23 +80,23 @@ export async function createZoraCoin({
       throw new Error(`Metadata error: ${metadataError.message}`);
     }
 
-    // Step 3: Create coin with parameters matching the successful implementation
+    // Step 3: Create coin with absolute minimal parameters
+    // The key insight from the successful implementation is to use minimal parameters
     console.log("Creating Zora coin...");
 
-    // Notice in the coinIt function they use minimal parameters and the
-    // same symbol for both name and symbol properties
+    // Use extremely minimal parameters like the successful implementation
     const coinParams = {
       name: title,
       symbol: symbol,
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
-      // Optional parameter from the example code
-      platformReferrer:
-        process.env.PLATFORM_REFERRER ||
-        "0x0000000000000000000000000000000000000000",
+      // No additional parameters - this is the key difference
     };
 
     try {
+      // Add a small delay to ensure metadata is fully propagated
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       console.log("Sending transaction with params:", coinParams);
       const coinResult = await createCoin(
         coinParams,
@@ -132,7 +108,7 @@ export async function createZoraCoin({
       console.log("- Token address:", coinResult.address);
       console.log("- Transaction hash:", coinResult.hash);
 
-      // Generate coin page URL like in the example
+      // Generate coin page URL
       const coinAddress = coinResult.address;
       const coinPage = `https://zora.co/coin/base:${coinAddress?.toLowerCase()}`;
 
@@ -145,16 +121,16 @@ export async function createZoraCoin({
     } catch (contractError) {
       console.error("Contract execution error:", contractError);
 
-      // Extract useful information from the error
+      // Handle errors with more specific messaging
       const errorDetails = contractError.message || "";
-      const errorSignature =
-        errorDetails.match(/signature:\s*(0x[a-f0-9]+)/i)?.[1] || "";
 
-      // Handle known error cases with user-friendly messages (similar to example code)
       if (errorDetails.includes("0x4ab38e08")) {
+        // Try to extract more details from the error for better diagnosis
+        console.log("Full error details:", contractError);
+
         return {
           error:
-            "This symbol is already taken. Please try again with a different title.",
+            "Token creation failed. Please try again with a different title.",
         };
       } else if (errorDetails.includes("user rejected")) {
         return { error: "Transaction was rejected in your wallet." };
@@ -163,21 +139,10 @@ export async function createZoraCoin({
         errorDetails.includes("timed out")
       ) {
         return { error: "Transaction timed out. Please try again later." };
-      } else if (
-        errorDetails.includes("insufficient funds") ||
-        errorDetails.includes("gas")
-      ) {
-        return {
-          error: "Insufficient funds for gas. Please add funds to your wallet.",
-        };
       } else {
-        // For unknown errors, provide the error signature for debugging
         return {
-          error: `Token creation failed. ${
-            errorSignature
-              ? `(Error code: ${errorSignature})`
-              : "Please try again later."
-          }`,
+          error:
+            "Token creation failed. This could be due to network conditions or contract restrictions.",
         };
       }
     }
