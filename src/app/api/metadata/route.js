@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import { v4 as uuidv4 } from "uuid";
+import cloudinary from "cloudinary";
+
+// Configure Cloudinary
+cloudinary.v2.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function POST(req) {
   try {
@@ -14,30 +19,40 @@ export async function POST(req) {
       );
     }
 
-    // Generate a unique ID for the metadata file
-    const id = uuidv4();
-    const dirPath = path.join(process.cwd(), "public", "metadata");
-    const filePath = path.join(dirPath, `${id}.json`);
+    // Instead of writing to filesystem (which fails on Vercel),
+    // store the metadata as a JSON file in Cloudinary
+    const metadataString = JSON.stringify(metadata);
 
-    // Create directory if it doesn't exist
-    try {
-      await mkdir(dirPath, { recursive: true });
-    } catch (err) {
-      // Ignore if directory already exists
-    }
+    // Upload the JSON to Cloudinary as a raw file
+    const uploadResult = await new Promise((resolve, reject) => {
+      cloudinary.v2.uploader.upload(
+        "data:application/json;base64," +
+          Buffer.from(metadataString).toString("base64"),
+        {
+          folder: "metadata",
+          resource_type: "raw",
+          public_id: `metadata-${Date.now()}`,
+          format: "json",
+        },
+        (error, result) => {
+          if (error) {
+            console.error("Cloudinary metadata upload error:", error);
+            reject(error);
+          } else {
+            resolve(result);
+          }
+        }
+      );
+    });
 
-    // Write the metadata to a file
-    await writeFile(filePath, JSON.stringify(metadata, null, 2));
-
-    // Return the URL for the metadata
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const url = `${baseUrl}/metadata/${id}.json`;
-
-    return NextResponse.json({ success: true, url });
+    return NextResponse.json({
+      success: true,
+      url: uploadResult.secure_url,
+    });
   } catch (error) {
     console.error("Metadata creation error:", error);
     return NextResponse.json(
-      { error: "Failed to create metadata" },
+      { error: `Failed to create metadata: ${error.message}` },
       { status: 500 }
     );
   }
