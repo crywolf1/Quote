@@ -2,7 +2,7 @@ import { createCoin } from "@zoralabs/coins-sdk";
 
 /**
  * Creates a Zora token with proper validation and error handling
- * Based on successful implementation patterns from flipp.lol and cast-to-coin apps
+ * Based on successful implementation patterns and Zora developer recommendations
  */
 export async function createZoraCoin({
   walletClient,
@@ -39,8 +39,7 @@ export async function createZoraCoin({
 
     console.log("Starting token creation process for:", title);
 
-    // FIXED: Generate a special format symbol that is guaranteed unique
-    // Following exact Zora patterns based on successful implementations
+    // Generate a special format symbol that is guaranteed unique
     const generateZoraCompatibleSymbol = () => {
       // Use only uppercase letters A-Z (excluding I and O which can be confused with numbers)
       const safeLetters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -109,15 +108,21 @@ export async function createZoraCoin({
       throw new Error(`Metadata error: ${metadataError.message}`);
     }
 
-    // Step 3: CRITICAL FIX - Use symbol for BOTH name and symbol
-    console.log("Creating Zora coin with special parameters...");
+    // Step 3: Use the correct parameters as recommended by Zora developer
+    console.log("Creating Zora coin with developer-recommended parameters...");
 
-    // KEY DIFFERENCE: Use symbol as name - this is critical for Zora's contract to accept it
+    // Add the tickLower parameter as recommended by Zora developer
     const coinParams = {
-      name: symbol, // Use symbol as name (critical for success)
+      name: symbol, // Use symbol as name
       symbol: symbol,
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
+      // Add currency parameter for Base (ETH on Base)
+      currency: "0x4200000000000000000000000000000000000006", // ETH on Base
+      // Add tickLower parameter per Zora developer recommendation
+      tickLower: -208200,
+      // Add empty platform referrer (this is important for proper contract execution)
+      platformReferrer: "0x0000000000000000000000000000000000000000",
     };
 
     try {
