@@ -389,35 +389,23 @@ export default function Card() {
         }),
       });
 
-      let updatedData;
-      try {
-        updatedData = await updateRes.json();
+      // Parse the response only once and keep it outside the nested try/catch
+      let updatedData = await updateRes.json();
 
-        if (!updateRes.ok) {
-          throw new Error(updatedData.error || "Failed to update quote");
-        }
-
-        // The response format is { quote: {...} } - extract the quote directly
-        const updatedQuote = updatedData.quote;
-
-        if (!updatedQuote || !updatedQuote.imageUrl) {
-          console.error("Missing required quote data:", updatedData);
-          throw new Error("Invalid quote data in response");
-        }
-
-        // Get the new Cloudinary URL from the quote object
-        const newImageUrl = updatedQuote.imageUrl;
-
-        // Continue with token update...
-      } catch (parseError) {
-        console.error("Error parsing response:", parseError);
-        throw new Error(
-          `Failed to process API response: ${parseError.message}`
-        );
+      if (!updateRes.ok) {
+        throw new Error(updatedData.error || "Failed to update quote");
       }
 
-      // Get the new Cloudinary URL from the response
-     
+      // The response format is { quote: {...} } - extract the quote directly
+      const updatedQuote = updatedData.quote;
+
+      if (!updatedQuote || !updatedQuote.imageUrl) {
+        console.error("Missing required quote data:", updatedData);
+        throw new Error("Invalid quote data in response");
+      }
+
+      // Get the new Cloudinary URL from the quote object
+      const newImageUrl = updatedQuote.imageUrl;
 
       // STEP 3: If this quote has a Zora token, update the token metadata too
       if (quoteToUpdate.zoraTokenAddress && walletClient) {
