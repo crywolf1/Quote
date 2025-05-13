@@ -9,6 +9,7 @@ import { createZoraCoin } from "@/lib/createZoraCoin";
 import { useAccount, useWalletClient, useDisconnect } from "wagmi";
 import { publicClient, isWalletReady, getWalletClient } from "@/lib/viemConfig";
 import CustomConnectButton from "./CustomConnectButton";
+import { updateZoraCoin } from "@/lib/updateZoraCoin";
 
 import "../styles/style.css";
 import {
@@ -355,43 +356,88 @@ export default function Card() {
       return;
     }
 
+    const quoteToUpdate = quotes[editIndex];
     const originalText = quote;
-    setQuote(editedText);
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
 
     try {
+      setMessage("Updating quote...");
+
+      // STEP 1: Generate new image with updated text
       const ogUrl =
         `/api/og?quote=${encodeURIComponent(editedText)}` +
         `&username=${encodeURIComponent(username)}` +
         `&displayName=${encodeURIComponent(displayName)}` +
         `&pfpUrl=${encodeURIComponent(pfpUrl)}`;
+
       const response = await fetch(ogUrl);
       if (!response.ok) {
         throw new Error("Failed to generate image");
       }
+
       const blob = await response.blob();
       const base64Image = await blobToBase64(blob);
 
-      setQuote(originalText);
-
-      const res = await fetch(`/api/quote/${quotes[editIndex]._id}`, {
+      // STEP 2: Update quote in database (this will also upload the new image to Cloudinary)
+      const updateRes = await fetch(`/api/quote/${quoteToUpdate._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: editedText, image: base64Image }),
+        body: JSON.stringify({
+          text: editedText,
+          image: base64Image,
+        }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        setMessage("Quote updated successfully!");
-        setEditIndex(null);
-        fetchQuotes();
-      } else {
-        setMessage(data.error || "Failed to update quote.");
+
+      if (!updateRes.ok) {
+        const errorData = await updateRes.json();
+        throw new Error(errorData.error || "Failed to update quote");
       }
+
+      const updatedQuote = await updateRes.json();
+
+      // Get the new Cloudinary URL from the response
+      const newImageUrl = updatedQuote.quote.imageUrl;
+
+      // STEP 3: If this quote has a Zora token, update the token metadata too
+      if (quoteToUpdate.zoraTokenAddress && walletClient) {
+        setMessage("Updating token metadata...");
+
+        // Call the updateZoraCoin function
+        const tokenUpdateResult = await updateZoraCoin({
+          walletClient,
+          publicClient,
+          coinAddress: quoteToUpdate.zoraTokenAddress,
+          title: quoteToUpdate.title, // Keep the original title
+          imageUrl: newImageUrl, // Use the new Cloudinary URL
+          description: editedText, // Use the updated text
+        });
+
+        console.log("Token update result:", tokenUpdateResult);
+
+        if (tokenUpdateResult.error) {
+          // Still consider quote update successful, but notify about token update failure
+          setMessage(
+            `Quote updated! Note: Token metadata update failed: ${tokenUpdateResult.error}`
+          );
+        } else if (tokenUpdateResult.status === "pending") {
+          setMessage(
+            `Quote updated! Token metadata update in progress. Track it here: ${tokenUpdateResult.explorerUrl}`
+          );
+        } else {
+          setMessage("Quote and token metadata updated successfully!");
+        }
+      } else {
+        // No token to update
+        setMessage("Quote updated successfully!");
+      }
+
+      setEditIndex(null);
+      fetchQuotes();
     } catch (error) {
-      setMessage("Something went wrong. Try again.");
+      console.error("Update error:", error);
+      setMessage(`Update failed: ${error.message}`);
     } finally {
       setIsUpdating(false);
+      setQuote(originalText); // Restore original quote state
     }
   };
 
