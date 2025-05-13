@@ -14,7 +14,9 @@ export async function updateZoraCoin({
   try {
     // Basic validation
     if (!walletClient || !walletClient.account?.address) {
-      console.error("Wallet client validation failed:", { walletClient });
+      console.error("[ZORA UPDATE] Wallet client validation failed:", {
+        walletClient,
+      });
       throw new Error("Wallet client not properly initialized");
     }
 
@@ -46,11 +48,12 @@ export async function updateZoraCoin({
       ],
     };
 
-    // Step 2: Upload metadata to get URL - follow same pattern as createZoraCoin.js
+    // Step 2: Upload metadata to get URL - using our specialized update endpoint
     let metadataUrl;
     try {
-      console.log("[ZORA UPDATE] Uploading metadata...", metadata);
-      const metadataRes = await fetch("/api/metadata", {
+      console.log("[ZORA UPDATE] Uploading updated metadata...");
+      const metadataRes = await fetch("/api/update-token-metadata", {
+        // Use the new endpoint
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(metadata),
@@ -71,16 +74,30 @@ export async function updateZoraCoin({
         metadataData = JSON.parse(responseText);
       } catch (parseError) {
         console.error(
-          "[ZORA UPDATE] Failed to parse metadata response:",
-          parseError
+          "[ZORA UPDATE] JSON parse error for metadata:",
+          parseError,
+          "Response:",
+          responseText
         );
-        throw new Error("Invalid JSON response from metadata API");
+        throw new Error(
+          `Invalid JSON from metadata API: ${parseError.message}`
+        );
       }
 
       console.log("[ZORA UPDATE] Parsed metadata API response:", metadataData);
 
-      // Check for the URL property
-      if (!metadataData.url) {
+      // Check for the IPFS URL property first (preferred by Zora)
+      if (metadataData.ipfsUrl) {
+        metadataUrl = metadataData.ipfsUrl;
+        console.log(
+          "[ZORA UPDATE] Using IPFS URL for token update:",
+          metadataUrl
+        );
+      } else if (metadataData.url) {
+        // Fall back to regular URL if IPFS URL is not available
+        metadataUrl = metadataData.url;
+        console.log("[ZORA UPDATE] Falling back to HTTP URL:", metadataUrl);
+      } else {
         console.error(
           "[ZORA UPDATE] Missing URL in metadata response:",
           metadataData
@@ -88,33 +105,28 @@ export async function updateZoraCoin({
         throw new Error("Metadata response missing URL property");
       }
 
-      metadataUrl = metadataData.url;
-      console.log("[ZORA UPDATE] Metadata created:", metadataUrl);
-
-      // Verify if URL starts with https:// (not ideal) or ipfs:// (preferred)
-      if (!metadataUrl.startsWith("ipfs://")) {
-        // If not IPFS URL, log warning
-        if (metadataUrl.startsWith("https://")) {
-          console.warn(
-            "[ZORA UPDATE] Metadata URL uses HTTPS instead of IPFS (less preferred but supported):",
-            metadataUrl
-          );
-        } else {
-          console.error(
-            "[ZORA UPDATE] Metadata URL format not compatible with Zora:",
-            metadataUrl
-          );
-          throw new Error(
-            "Metadata URL must start with ipfs:// or https:// for Zora"
-          );
-        }
+      // CRITICAL: Verify the URL meets Zora requirements
+      if (
+        !metadataUrl.startsWith("ipfs://") &&
+        !metadataUrl.startsWith("https://")
+      ) {
+        console.error(
+          "[ZORA UPDATE] Invalid metadata URL format:",
+          metadataUrl
+        );
+        throw new Error(
+          "Metadata URL must start with ipfs:// or https:// for Zora"
+        );
       }
 
       // Validate metadata is accessible
       try {
         // For IPFS URLs, convert to HTTP gateway URL for checking
         const checkUrl = metadataUrl.startsWith("ipfs://")
-          ? `https://ipfs.io/ipfs/${metadataUrl.replace("ipfs://", "")}`
+          ? `https://gateway.pinata.cloud/ipfs/${metadataUrl.replace(
+              "ipfs://",
+              ""
+            )}`
           : metadataUrl;
 
         console.log(
@@ -130,9 +142,10 @@ export async function updateZoraCoin({
 
         if (!validateRes.ok) {
           console.warn(
-            "[ZORA UPDATE] Warning: Metadata URL not accessible:",
+            "[ZORA UPDATE] Warning: Metadata URL not immediately accessible:",
             checkUrl
           );
+          console.log("[ZORA UPDATE] Status:", validateRes.status);
         } else {
           console.log("[ZORA UPDATE] Metadata URL accessible:", checkUrl);
         }

@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import cloudinary from "cloudinary";
 import { v4 as uuidv4 } from "uuid";
-import axios from "axios";
-import FormData from "form-data";
 
 // Configure Cloudinary
 cloudinary.v2.config({
@@ -10,10 +8,6 @@ cloudinary.v2.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-
-// Pinata credentials
-const pinataApiKey = process.env.PINATA_API_KEY;
-const pinataSecretApiKey = process.env.PINATA_SECRET_API_KEY;
 
 export async function POST(req) {
   try {
@@ -97,7 +91,6 @@ export async function POST(req) {
       description: metadata.description || `Token for "${metadata.name}"`,
       image: imageUrl, // Use Cloudinary URL
       attributes: metadata.attributes || [],
-      updated_at: new Date().toISOString(), // Add timestamp for cache busting
     };
 
     console.log("Final metadata object:", {
@@ -105,93 +98,8 @@ export async function POST(req) {
       description: finalMetadata.description.substring(0, 50) + "...", // Truncate for logging
     });
 
-    let metadataUrl;
-
-    // Check if Pinata credentials are available
-    if (pinataApiKey && pinataSecretApiKey) {
-      try {
-        console.log("Pinata credentials found, uploading to IPFS...");
-
-        // Upload metadata to Pinata (IPFS)
-        const pinataHeaders = {
-          pinata_api_key: pinataApiKey,
-          pinata_secret_api_key: pinataSecretApiKey,
-        };
-
-        const pinataResponse = await axios.post(
-          "https://api.pinata.cloud/pinning/pinJSONToIPFS",
-          {
-            pinataContent: finalMetadata,
-            pinataMetadata: {
-              name: `Zora Token Metadata - ${metadata.name}`,
-              keyvalues: {
-                timestamp: Date.now().toString(),
-              },
-            },
-            pinataOptions: {
-              cidVersion: 0,
-            },
-          },
-          { headers: pinataHeaders }
-        );
-
-        // Get IPFS hash and create URL
-        const ipfsHash = pinataResponse.data.IpfsHash;
-        metadataUrl = `ipfs://${ipfsHash}`;
-        console.log("Metadata uploaded to IPFS:", metadataUrl);
-
-        // Also upload to Cloudinary as fallback
-        const metadataJson = JSON.stringify(finalMetadata, null, 2);
-        const metadataId = `metadata-${Date.now()}`;
-        console.log(
-          "Also uploading metadata to Cloudinary as fallback:",
-          metadataId
-        );
-
-        const cloudinaryResult = await new Promise((resolve, reject) => {
-          cloudinary.v2.uploader.upload(
-            "data:application/json;base64," +
-              Buffer.from(metadataJson).toString("base64"),
-            {
-              folder: "metadata",
-              public_id: metadataId,
-              resource_type: "raw",
-              format: "json",
-            },
-            (error, result) => {
-              if (error) {
-                console.error("Cloudinary metadata upload error:", error);
-                reject(error);
-              } else {
-                console.log(
-                  "Metadata uploaded to Cloudinary as fallback:",
-                  result.secure_url
-                );
-                resolve(result);
-              }
-            }
-          );
-        });
-
-        // Return both the IPFS URL (primary) and Cloudinary URL (fallback)
-        return NextResponse.json({
-          success: true,
-          url: metadataUrl, // IPFS URL is primary
-          cloudinaryUrl: cloudinaryResult.secure_url, // Cloudinary as fallback
-        });
-      } catch (ipfsError) {
-        console.error(
-          "IPFS upload failed, falling back to Cloudinary only:",
-          ipfsError
-        );
-        // Continue with Cloudinary only
-      }
-    }
-
-    // If we reach here, either Pinata failed or credentials weren't available
-    // Upload metadata JSON to Cloudinary as fallback
+    // Upload metadata JSON to Cloudinary
     try {
-      console.log("Using Cloudinary for metadata storage");
       const metadataJson = JSON.stringify(finalMetadata, null, 2);
       const metadataId = `metadata-${Date.now()}`;
       console.log("Uploading metadata with ID:", metadataId);
@@ -221,7 +129,6 @@ export async function POST(req) {
       const responseObj = {
         success: true,
         url: uploadResult.secure_url,
-        warning: "Using HTTPS URL instead of IPFS. Zora recommends IPFS URLs.",
       };
 
       console.log("Returning metadata URL:", responseObj.url);
