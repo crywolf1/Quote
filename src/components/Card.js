@@ -358,6 +358,7 @@ export default function Card() {
 
     const quoteToUpdate = quotes[editIndex];
     const originalText = quote;
+    let newImageUrl = null; // Define this variable at the outer scope so it's accessible throughout
 
     try {
       setMessage("Updating quote...");
@@ -389,11 +390,32 @@ export default function Card() {
         }),
       });
 
-      // Parse the response only once and keep it outside the nested try/catch
-      let updatedData = await updateRes.json();
+      // Get the text response and parse it once
+      const responseText = await updateRes.text();
+      console.log("Raw API response:", responseText);
+
+      let updatedData;
+      try {
+        updatedData = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error(
+          "JSON parse error:",
+          parseError,
+          "Response text:",
+          responseText
+        );
+        throw new Error("Invalid JSON response from API");
+      }
 
       if (!updateRes.ok) {
         throw new Error(updatedData.error || "Failed to update quote");
+      }
+
+      console.log("Parsed response data:", updatedData);
+
+      if (!updatedData || typeof updatedData.quote !== "object") {
+        console.error("Invalid API response format:", updatedData);
+        throw new Error("API response missing expected quote object");
       }
 
       // The response format is { quote: {...} } - extract the quote directly
@@ -401,11 +423,12 @@ export default function Card() {
 
       if (!updatedQuote || !updatedQuote.imageUrl) {
         console.error("Missing required quote data:", updatedData);
-        throw new Error("Invalid quote data in response");
+        throw new Error("Quote missing required fields");
       }
 
       // Get the new Cloudinary URL from the quote object
-      const newImageUrl = updatedQuote.imageUrl;
+      newImageUrl = updatedQuote.imageUrl;
+      console.log("Successfully retrieved new image URL:", newImageUrl);
 
       // STEP 3: If this quote has a Zora token, update the token metadata too
       if (quoteToUpdate.zoraTokenAddress && walletClient) {

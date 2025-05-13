@@ -37,38 +37,49 @@ export async function PUT(req, { params }) {
         if (existingImageUrl && typeof existingImageUrl === "string") {
           console.log("Original image URL:", existingImageUrl);
 
-          // More robust extraction of public_id
-          const matches = existingImageUrl.match(/\/v\d+\/([^/]+\/[^.]+)/);
-          if (matches && matches[1]) {
-            publicId = matches[1];
-            console.log("Extracted public ID (regex):", publicId);
-          } else {
-            // Fallback to your existing extraction method
+          // Try to delete the existing image first
+          try {
+            // Extract public_id using your current method
             const url = existingImageUrl.split("?")[0];
             const urlNoExt = url.replace(/\.[^/.]+$/, "");
             const uploadIndex = urlNoExt.indexOf("/upload/");
-
             if (uploadIndex !== -1) {
               publicId = urlNoExt.substring(uploadIndex + 8);
               publicId = publicId.replace(/^v\d+\//, "");
-              console.log("Fallback extracted public ID:", publicId);
+              console.log("Attempting to destroy existing image:", publicId);
+
+              // Try to delete the existing image
+              await new Promise((resolve) => {
+                cloudinary.v2.uploader.destroy(publicId, (error) => {
+                  if (error) {
+                    console.log(
+                      "Warning: Failed to delete existing image",
+                      error
+                    );
+                  } else {
+                    console.log("Successfully deleted existing image");
+                  }
+                  resolve();
+                });
+              });
             }
+          } catch (deleteError) {
+            console.log("Error deleting existing image:", deleteError);
+            // Continue regardless of deletion success
           }
+
+          // Generate a new unique ID - don't try to reuse the old one
+          publicId = `zora-tokens/quote-${uuidv4().substring(0, 8)}`;
+          console.log("Generated new public ID:", publicId);
         }
 
-        // Upload new image, replacing existing one if possible
+        // Upload as a new image with a unique ID
         const uploadOptions = {
-          folder: publicId ? undefined : "zora-tokens", // Don't specify folder when replacing
+          public_id:
+            publicId || `zora-tokens/quote-${uuidv4().substring(0, 8)}`,
           resource_type: "image",
           format: "png",
         };
-
-        // If we have extracted a public ID, use it to replace the image
-        if (publicId) {
-          uploadOptions.public_id = publicId;
-          uploadOptions.overwrite = true;
-          uploadOptions.invalidate = true; // Force CDN cache invalidation
-        }
 
         console.log("Cloudinary upload options:", uploadOptions);
 
@@ -129,14 +140,35 @@ export async function DELETE(req, { params }) {
       return NextResponse.json({ error: "Quote not found" }, { status: 404 });
     }
 
+    // Check if this quote has been tokenized
+    if (quote.zoraTokenAddress) {
+      return NextResponse.json(
+        {
+          error:
+            "Cannot delete a quote that has been tokenized on the blockchain",
+          tokenAddress: quote.zoraTokenAddress,
+        },
+        { status: 403 }
+      );
+    }
+
     // Delete image from Cloudinary if it exists
-    if (quote.image && quote.image.includes("cloudinary.com")) {
-      const url = quote.image.split("?")[0];
-      const urlNoExt = url.replace(/\.[^/.]+$/, "");
-      const uploadIndex = urlNoExt.indexOf("/upload/");
-      let publicId = urlNoExt.substring(uploadIndex + 8);
-      publicId = publicId.replace(/^v\d+\//, "");
-      await cloudinary.v2.uploader.destroy(publicId);
+    if (quote.imageUrl && quote.imageUrl.includes("cloudinary.com")) {
+      try {
+        const url = quote.imageUrl.split("?")[0];
+        const urlNoExt = url.replace(/\.[^/.]+$/, "");
+        const uploadIndex = urlNoExt.indexOf("/upload/");
+        let publicId = urlNoExt.substring(uploadIndex + 8);
+        publicId = publicId.replace(/^v\d+\//, "");
+        await cloudinary.v2.uploader.destroy(publicId);
+        console.log("Deleted Cloudinary image:", publicId);
+      } catch (cloudinaryError) {
+        console.error(
+          "Failed to delete image from Cloudinary:",
+          cloudinaryError
+        );
+        // Continue with deletion even if image deletion fails
+      }
     }
 
     await Quote.findByIdAndDelete(id);
@@ -151,8 +183,9 @@ export async function DELETE(req, { params }) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error deleting quote:", error);
     return NextResponse.json(
-      { error: "Failed to delete quote" },
+      { error: `Failed to delete quote: ${error.message}` },
       { status: 500 }
     );
   }
