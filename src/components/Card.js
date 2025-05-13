@@ -264,6 +264,34 @@ export default function Card() {
 
         console.log("Token creation result:", result);
 
+        // Check if result indicates a pending transaction
+        if (result.status === "pending" && result.txHash) {
+          // Update the quote record with the transaction hash
+          const updateRes = await fetch(`/api/quote/${saved.quote._id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              zoraTokenTxHash: result.txHash,
+              zoraTokenPending: true, // Flag to indicate we're waiting for confirmation
+            }),
+          });
+
+          if (updateRes.ok) {
+            setMessage(
+              `Quote saved! Your token is being created. You can track progress at: ${result.explorerUrl}`
+            );
+          } else {
+            setMessage("Quote saved! Token transaction is processing.");
+          }
+
+          // Reset form state
+          setQuote("");
+          setTitle("");
+          setImagePreview(null);
+          fetchQuotes();
+          return;
+        }
+
         // Check if result contains an error message
         if (result.error) {
           throw new Error(result.error);
