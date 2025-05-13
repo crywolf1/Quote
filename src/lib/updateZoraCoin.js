@@ -36,15 +36,13 @@ export async function updateZoraCoin({
       image: imageUrl,
     };
 
-    // Step 2: Upload metadata to get URL
+    // Step 2: Upload metadata to get URL - we need an IPFS URL
     let metadataUrl;
     try {
-      console.log("Uploading updated metadata:", metadata);
+      console.log("Uploading updated metadata to get IPFS URL...");
 
-      // Add debugging to help identify any issues with the fetch call
-      console.log("Calling metadata API endpoint...");
-
-      const metadataRes = await fetch("/api/metadata", {
+      // We need to call our API to get an IPFS URL, not just a Cloudinary URL
+      const metadataRes = await fetch("/api/ipfs-metadata", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(metadata),
@@ -83,23 +81,18 @@ export async function updateZoraCoin({
       }
 
       // Ensure we have a proper URL from the metadata endpoint
-      if (!metadataData || !metadataData.url) {
+      if (!metadataData || !metadataData.ipfsUrl) {
         console.error("Invalid metadata API response:", metadataData);
-        throw new Error("Metadata API response missing URL property");
+        throw new Error("Metadata API response missing ipfsUrl property");
       }
 
-      metadataUrl = metadataData.url;
-      console.log("Updated metadata created with URL:", metadataUrl);
+      metadataUrl = metadataData.ipfsUrl;
+      console.log("Updated metadata created with IPFS URL:", metadataUrl);
 
-      // Verify the URL meets Zora requirements
-      if (
-        !metadataUrl.startsWith("ipfs://") &&
-        !metadataUrl.startsWith("https://")
-      ) {
-        console.warn(
-          "Warning: Metadata URL should ideally start with ipfs:// for best practices"
-        );
-        // We'll continue anyway, but log a warning
+      // CRITICAL: Verify the URL meets Zora requirements - MUST start with ipfs://
+      if (!metadataUrl.startsWith("ipfs://")) {
+        console.error("Invalid metadata URL format for Zora:", metadataUrl);
+        throw new Error("Metadata URL must start with ipfs:// for Zora tokens");
       }
     } catch (metadataError) {
       console.error("Metadata update error:", metadataError);
@@ -112,7 +105,7 @@ export async function updateZoraCoin({
     // These are the params to pass to the SDK's updateCoinURI function
     const updateParams = {
       coin: coinAddress,
-      newURI: metadataUrl,
+      newURI: metadataUrl, // This MUST be an ipfs:// URL
     };
 
     try {
@@ -199,16 +192,52 @@ export async function updateZoraCoin({
           console.error("Transaction timed out without hash information");
           return { error: "Transaction timed out. Please try again later." };
         }
+      } else if (errorDetails.includes("insufficient funds")) {
+        return {
+          error:
+            "Insufficient funds to complete this transaction. Please check your wallet balance.",
+        };
+      } else if (errorDetails.includes("nonce too low")) {
+        return {
+          error:
+            "Transaction nonce issue. Please refresh your browser and try again.",
+        };
+      } else if (errorDetails.includes("gas required exceeds allowance")) {
+        return {
+          error:
+            "Gas limit too low. Please try increasing the gas limit in your wallet.",
+        };
+      } else if (errorDetails.includes("already known")) {
+        // Transaction is already in the mempool
+        const txHashMatch = errorDetails.match(/hash\s*["']([^"']+)["']/i);
+        const extractedTxHash = txHashMatch ? txHashMatch[1] : null;
+
+        if (extractedTxHash) {
+          const txExplorerUrl = `https://basescan.org/tx/${extractedTxHash}`;
+          return {
+            status: "pending",
+            txHash: extractedTxHash,
+            message: "Transaction already submitted, waiting for confirmation.",
+            explorerUrl: txExplorerUrl,
+          };
+        }
+        return {
+          error:
+            "Transaction is already pending. Please wait for it to complete.",
+        };
       } else {
         console.error("Unhandled contract error");
         return {
-          error: contractError.message || "Contract error occurred",
-          details: contractError.details || "No additional details available",
+          error: "Failed to update token metadata. Please try again later.",
+          details: contractError.message || "Unknown error",
         };
       }
     }
   } catch (error) {
     console.error("Coin update process error:", error);
-    return { error: error.message || "Failed to update token" };
+    return {
+      error: "Failed to update token metadata",
+      details: error.message || "Unknown error occurred",
+    };
   }
 }
