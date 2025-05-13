@@ -12,7 +12,7 @@ export async function updateZoraCoin({
   description,
 }) {
   try {
-    // Basic validation with more detailed error messages
+    // Basic validation
     if (!walletClient || !walletClient.account?.address) {
       console.error("Wallet client validation failed:", { walletClient });
       throw new Error("Wallet client not properly initialized");
@@ -26,77 +26,56 @@ export async function updateZoraCoin({
     console.log("Starting token update process for coin:", coinAddress);
     console.log("New image URL:", imageUrl);
     console.log("New description:", description);
-    console.log("Using wallet address:", walletClient.account.address);
 
-    // Step 1: Create updated metadata
-    console.log("Creating updated metadata...");
+    // Step 1: Create metadata
+    console.log("Creating metadata...");
     const metadata = {
       name: title,
       description: `Quote: ${description}`,
       image: imageUrl,
     };
 
-    // Step 2: Upload metadata to get URL - we need an IPFS URL
+    // Step 2: Upload metadata to get URL - follow same pattern as createZoraCoin.js
     let metadataUrl;
     try {
-      console.log("Uploading updated metadata to get IPFS URL...");
-
-      // We need to call our API to get an IPFS URL, not just a Cloudinary URL
-      const metadataRes = await fetch("/api/ipfs-metadata", {
+      console.log("Uploading metadata...");
+      const metadataRes = await fetch("/api/metadata", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(metadata),
       });
 
-      console.log("Metadata API status:", metadataRes.status);
-
       if (!metadataRes.ok) {
         const errorText = await metadataRes.text();
-        console.error("Metadata API error:", {
-          status: metadataRes.status,
-          body: errorText,
-        });
-        throw new Error(
-          `Failed to create updated metadata: ${metadataRes.status} ${errorText}`
-        );
+        console.error("Metadata API error:", errorText);
+        throw new Error("Failed to create metadata");
       }
 
-      // Parse the metadata response
-      const responseText = await metadataRes.text();
-      console.log("Raw metadata API response:", responseText);
+      const metadataData = await metadataRes.json();
+      console.log("Metadata API response:", metadataData);
 
-      let metadataData;
-      try {
-        metadataData = JSON.parse(responseText);
-        console.log("Parsed metadata API response:", metadataData);
-      } catch (parseError) {
-        console.error(
-          "JSON parse error for metadata:",
-          parseError,
-          "Response:",
-          responseText
-        );
-        throw new Error(
-          `Invalid JSON from metadata API: ${parseError.message}`
-        );
-      }
-      // Ensure we have a proper URL from the metadata endpoint
-      if (!metadataData || !metadataData.ipfsUrl) {
-        console.error("Invalid metadata API response:", metadataData);
-        throw new Error("Metadata API response missing ipfsUrl property");
+      // Check for the URL property
+      if (!metadataData.url) {
+        console.error("Missing URL in metadata response:", metadataData);
+        throw new Error("Metadata response missing URL property");
       }
 
-      metadataUrl = metadataData.ipfsUrl;
-      console.log("Updated metadata created with IPFS URL:", metadataUrl);
+      metadataUrl = metadataData.url;
+      console.log("Metadata created:", metadataUrl);
 
-      // CRITICAL: Verify the URL meets Zora requirements - MUST start with ipfs://
-      if (!metadataUrl.startsWith("ipfs://")) {
-        console.error("Invalid metadata URL format for Zora:", metadataUrl);
-        throw new Error("Metadata URL must start with ipfs:// for Zora tokens");
+      // Verify if URL starts with https:// (not ideal) or ipfs:// (preferred)
+      if (
+        !metadataUrl.startsWith("https://") &&
+        !metadataUrl.startsWith("ipfs://")
+      ) {
+        console.warn(
+          "Metadata URL format may not be compatible with Zora:",
+          metadataUrl
+        );
       }
     } catch (metadataError) {
-      console.error("Metadata update error:", metadataError);
-      throw new Error(`Metadata update error: ${metadataError.message}`);
+      console.error("Metadata error:", metadataError);
+      throw new Error(`Metadata error: ${metadataError.message}`);
     }
 
     // Step 3: Use updateCoinURI to update the coin's metadata URI
@@ -105,7 +84,7 @@ export async function updateZoraCoin({
     // These are the params to pass to the SDK's updateCoinURI function
     const updateParams = {
       coin: coinAddress,
-      newURI: metadataUrl, // This MUST be an ipfs:// URL
+      newURI: metadataUrl,
     };
 
     try {
@@ -206,24 +185,6 @@ export async function updateZoraCoin({
         return {
           error:
             "Gas limit too low. Please try increasing the gas limit in your wallet.",
-        };
-      } else if (errorDetails.includes("already known")) {
-        // Transaction is already in the mempool
-        const txHashMatch = errorDetails.match(/hash\s*["']([^"']+)["']/i);
-        const extractedTxHash = txHashMatch ? txHashMatch[1] : null;
-
-        if (extractedTxHash) {
-          const txExplorerUrl = `https://basescan.org/tx/${extractedTxHash}`;
-          return {
-            status: "pending",
-            txHash: extractedTxHash,
-            message: "Transaction already submitted, waiting for confirmation.",
-            explorerUrl: txExplorerUrl,
-          };
-        }
-        return {
-          error:
-            "Transaction is already pending. Please wait for it to complete.",
         };
       } else {
         console.error("Unhandled contract error");
