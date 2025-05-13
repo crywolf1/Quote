@@ -384,6 +384,8 @@ export default function Card() {
         body: JSON.stringify({
           text: editedText,
           image: base64Image,
+          existingImageUrl: quoteToUpdate.imageUrl, // Pass the existing image URL to help with replacement
+          updateImage: true, // Flag to request image replacement rather than new upload
         }),
       });
 
@@ -392,10 +394,16 @@ export default function Card() {
         throw new Error(errorData.error || "Failed to update quote");
       }
 
-      const updatedQuote = await updateRes.json();
+      const updatedData = await updateRes.json();
+
+      // Check if the response has the expected structure
+      if (!updatedData || !updatedData.quote || !updatedData.quote.imageUrl) {
+        console.error("Unexpected API response format:", updatedData);
+        throw new Error("API returned invalid data structure");
+      }
 
       // Get the new Cloudinary URL from the response
-      const newImageUrl = updatedQuote.quote.imageUrl;
+      const newImageUrl = updatedData.quote.imageUrl;
 
       // STEP 3: If this quote has a Zora token, update the token metadata too
       if (quoteToUpdate.zoraTokenAddress && walletClient) {
@@ -407,7 +415,7 @@ export default function Card() {
           publicClient,
           coinAddress: quoteToUpdate.zoraTokenAddress,
           title: quoteToUpdate.title, // Keep the original title
-          imageUrl: newImageUrl, // Use the new Cloudinary URL
+          imageUrl: newImageUrl, // Use the new/updated Cloudinary URL
           description: editedText, // Use the updated text
         });
 

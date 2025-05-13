@@ -12,46 +12,92 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// In your PUT handler:
+
 export async function PUT(req, { params }) {
-  await dbConnect();
   try {
-    const { id } = params;
-    const { text, image } = await req.json();
-    if (!text) {
-      return NextResponse.json({ error: "Text is required" }, { status: 400 });
-    }
+    const id = params.id;
+    const { text, image, existingImageUrl, updateImage } = await req.json();
 
-    // Find old quote
-    const oldQuote = await Quote.findById(id);
-    let imageUrl = oldQuote.image;
+    await connectDB();
+    const quote = await Quote.findById(id);
 
-    // If new image provided, upload to Cloudinary
-    if (image && image.startsWith("data:image")) {
-      // Optionally delete old image from Cloudinary
-      if (imageUrl && imageUrl.includes("cloudinary.com")) {
-        // Extract public_id from URL
-        const publicId = imageUrl.split("/").slice(-1)[0].split(".")[0];
-        await cloudinary.v2.uploader.destroy(`quotes/${publicId}`);
-      }
-      // Upload new image
-      const uploadRes = await cloudinary.v2.uploader.upload(image, {
-        folder: "quotes",
-        public_id: uuidv4(),
-        overwrite: true,
-      });
-      imageUrl = uploadRes.secure_url;
-    }
-
-    const updatedQuote = await Quote.findByIdAndUpdate(
-      id,
-      { text, image: imageUrl },
-      { new: true }
-    );
-    if (!updatedQuote) {
+    if (!quote) {
       return NextResponse.json({ error: "Quote not found" }, { status: 404 });
     }
-    return NextResponse.json(updatedQuote, { status: 200 });
+
+    // Update text field
+    quote.text = text;
+
+    // Handle image update if provided
+    if (image && updateImage) {
+      // Extract the public_id from the existing URL if available
+      let publicId = null;
+
+      if (existingImageUrl && typeof existingImageUrl === "string") {
+        // Parse Cloudinary URL to get public ID - typically in format:
+        // https://res.cloudinary.com/[cloud_name]/image/upload/[transformations]/[public_id].[extension]
+        const urlParts = existingImageUrl.split("/");
+        if (urlParts.length >= 2) {
+          // Get the filename without extension
+          const fileNameWithExt = urlParts[urlParts.length - 1];
+          const fileName = fileNameWithExt.split(".")[0];
+          // Path typically includes folder structure
+          const folder = urlParts[urlParts.length - 2];
+          publicId = `${folder}/${fileName}`;
+        }
+      }
+
+      try {
+        // Upload method that will replace if public_id is provided
+        const uploadResult = await new Promise((resolve, reject) => {
+          const uploadOptions = {
+            folder: "zora-tokens",
+            resource_type: "image",
+            format: "png",
+            overwrite: true, // Tell Cloudinary to overwrite
+          };
+
+          // If we have a public ID, use it to replace existing image
+          if (publicId) {
+            uploadOptions.public_id = publicId;
+          } else {
+            // Otherwise create a new ID
+            uploadOptions.public_id = `token-${uuidv4().substring(0, 8)}`;
+          }
+
+          cloudinary.v2.uploader.upload(
+            image,
+            uploadOptions,
+            (error, result) => {
+              if (error) {
+                console.error("Cloudinary upload error:", error);
+                reject(error);
+              } else {
+                resolve(result);
+              }
+            }
+          );
+        });
+
+        // Update quote with new image URL
+        quote.imageUrl = uploadResult.secure_url;
+      } catch (uploadError) {
+        console.error("Image upload error:", uploadError);
+        return NextResponse.json(
+          { error: "Failed to upload image" },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Save updated quote
+    await quote.save();
+
+    // Return the updated quote
+    return NextResponse.json({ quote });
   } catch (error) {
+    console.error("Error updating quote:", error);
     return NextResponse.json(
       { error: "Failed to update quote" },
       { status: 500 }
