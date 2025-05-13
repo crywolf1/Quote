@@ -12,8 +12,7 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// In your PUT handler:
-
+// PUT handler for updating quotes
 export async function PUT(req, { params }) {
   try {
     const id = params.id;
@@ -36,20 +35,30 @@ export async function PUT(req, { params }) {
         let publicId = null;
 
         if (existingImageUrl && typeof existingImageUrl === "string") {
-          // Parse the Cloudinary URL to get public ID
-          const url = existingImageUrl.split("?")[0];
-          const urlNoExt = url.replace(/\.[^/.]+$/, "");
-          const uploadIndex = urlNoExt.indexOf("/upload/");
+          console.log("Original image URL:", existingImageUrl);
 
-          if (uploadIndex !== -1) {
-            publicId = urlNoExt.substring(uploadIndex + 8);
-            publicId = publicId.replace(/^v\d+\//, "");
+          // More robust extraction of public_id
+          const matches = existingImageUrl.match(/\/v\d+\/([^/]+\/[^.]+)/);
+          if (matches && matches[1]) {
+            publicId = matches[1];
+            console.log("Extracted public ID (regex):", publicId);
+          } else {
+            // Fallback to your existing extraction method
+            const url = existingImageUrl.split("?")[0];
+            const urlNoExt = url.replace(/\.[^/.]+$/, "");
+            const uploadIndex = urlNoExt.indexOf("/upload/");
+
+            if (uploadIndex !== -1) {
+              publicId = urlNoExt.substring(uploadIndex + 8);
+              publicId = publicId.replace(/^v\d+\//, "");
+              console.log("Fallback extracted public ID:", publicId);
+            }
           }
         }
 
-        // Upload new image, potentially replacing existing one
+        // Upload new image, replacing existing one if possible
         const uploadOptions = {
-          folder: "zora-tokens",
+          folder: publicId ? undefined : "zora-tokens", // Don't specify folder when replacing
           resource_type: "image",
           format: "png",
         };
@@ -58,9 +67,12 @@ export async function PUT(req, { params }) {
         if (publicId) {
           uploadOptions.public_id = publicId;
           uploadOptions.overwrite = true;
+          uploadOptions.invalidate = true; // Force CDN cache invalidation
         }
 
-        // Upload to Cloudinary
+        console.log("Cloudinary upload options:", uploadOptions);
+
+        // Upload to Cloudinary with proper options
         const uploadResult = await new Promise((resolve, reject) => {
           cloudinary.v2.uploader.upload(
             image,
@@ -70,6 +82,7 @@ export async function PUT(req, { params }) {
                 console.error("Cloudinary upload error:", error);
                 reject(error);
               } else {
+                console.log("Cloudinary upload success:", result.public_id);
                 resolve(result);
               }
             }
@@ -106,6 +119,7 @@ export async function PUT(req, { params }) {
     );
   }
 }
+
 export async function DELETE(req, { params }) {
   await dbConnect();
   try {
