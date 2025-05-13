@@ -387,7 +387,7 @@ export default function Card() {
         body: JSON.stringify({
           text: editedText,
           image: base64Image,
-          existingImageUrl: quoteToUpdate.imageUrl,
+          existingImageUrl: quoteToUpdate.imageUrl || quoteToUpdate.image, // Try both possible fields
           updateImage: true,
         }),
       });
@@ -436,20 +436,61 @@ export default function Card() {
         throw new Error("API response missing valid quote object");
       }
 
-      // Check if imageUrl exists, if not, use the existing URL from the quote we're updating
+      // Check for image URL in various properties and in various places
+      // Try updatedQuote first, with multiple possible field names
       if (updatedQuote.imageUrl) {
         newImageUrl = updatedQuote.imageUrl;
-        console.log("Successfully retrieved new image URL:", newImageUrl);
-      } else {
-        console.warn("Missing imageUrl in API response, using original URL");
+        console.log("Found imageUrl property:", newImageUrl);
+      } else if (updatedQuote.image) {
+        newImageUrl = updatedQuote.image;
+        console.log("Found image property:", newImageUrl);
+      } else if (quoteToUpdate.imageUrl) {
+        // Fall back to the original quote's imageUrl
         newImageUrl = quoteToUpdate.imageUrl;
+        console.log("Using original quote's imageUrl as fallback");
+      } else if (quoteToUpdate.image) {
+        // Try original quote's image property
+        newImageUrl = quoteToUpdate.image;
+        console.log("Using original quote's image as fallback");
+      } else {
+        // Last resort: scan all properties for a URL-looking string
+        console.error("Looking for any URL-like property in the objects");
 
-        // Only continue if we have at least one valid URL to use
-        if (!newImageUrl) {
-          console.error("No valid image URL available", updatedQuote);
+        // Check all string properties of updatedQuote for URL patterns
+        const possibleImageProps = Object.entries(updatedQuote).filter(
+          ([key, value]) =>
+            typeof value === "string" &&
+            (value.includes("cloudinary.com") ||
+              value.includes(".jpg") ||
+              value.includes(".png") ||
+              value.includes(".jpeg"))
+        );
+
+        if (possibleImageProps.length > 0) {
+          newImageUrl = possibleImageProps[0][1];
+          console.log(
+            "Found URL-like property:",
+            possibleImageProps[0][0],
+            newImageUrl
+          );
+        } else {
+          // Log complete objects for debugging
+          console.error("Cannot find any image URL in either object:", {
+            updatedQuote,
+            quoteToUpdate,
+          });
+
           throw new Error("No valid image URL available for token update");
         }
       }
+
+      // Final validation of the URL
+      if (!newImageUrl || typeof newImageUrl !== "string") {
+        console.error("Invalid image URL format:", newImageUrl);
+        throw new Error("Invalid image URL format for token update");
+      }
+
+      console.log("Final image URL for token update:", newImageUrl);
 
       // STEP 3: If this quote has a Zora token, update the token metadata too
       if (quoteToUpdate.zoraTokenAddress && walletClient) {

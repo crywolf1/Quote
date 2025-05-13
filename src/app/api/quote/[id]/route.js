@@ -99,9 +99,9 @@ export async function PUT(req, { params }) {
             }
           );
         });
-
         // Update quote with the new image URL
         quote.imageUrl = uploadResult.secure_url;
+        quote.image = uploadResult.secure_url; //
       } catch (uploadError) {
         console.error("Image upload error:", uploadError);
         return NextResponse.json(
