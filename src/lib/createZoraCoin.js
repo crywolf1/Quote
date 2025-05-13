@@ -22,22 +22,6 @@ export async function createZoraCoin({
 
     console.log("Starting token creation process for:", title);
 
-    // Generate a symbol - keep it simple
-    const generateSymbol = () => {
-      // Use timestamp to ensure uniqueness
-      const timestamp = Date.now().toString().slice(-4);
-      // Take first 2 chars of title (or use "ZT" if title is too short)
-      const titleChars =
-        title
-          .replace(/[^A-Za-z]/g, "")
-          .substring(0, 2)
-          .toUpperCase() || "ZT";
-      return titleChars + timestamp;
-    };
-
-    const symbol = generateSymbol();
-    console.log("Using symbol:", symbol);
-
     // Step 1: Create metadata
     console.log("Creating metadata...");
     const metadata = {
@@ -73,8 +57,8 @@ export async function createZoraCoin({
 
     // These are the params to pass to the SDK's createCoin function
     const coinParams = {
-      name: title,
-      symbol: symbol,
+      name: title, // Using title directly for name
+      symbol: title, // Using title directly for symbol
       uri: metadataUrl,
       payoutRecipient: creatorAddress,
       // Use the recommended tickLower value from Zora dev
