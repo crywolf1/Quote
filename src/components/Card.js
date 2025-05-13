@@ -358,7 +358,8 @@ export default function Card() {
 
     const quoteToUpdate = quotes[editIndex];
     const originalText = quote;
-    let newImageUrl = null; // Define this variable at the outer scope so it's accessible throughout
+    // Declare newImageUrl at the outer scope so it's accessible throughout
+    let newImageUrl = null;
 
     try {
       setMessage("Updating quote...");
@@ -379,6 +380,7 @@ export default function Card() {
       const base64Image = await blobToBase64(blob);
 
       // STEP 2: Update quote in database (this will also upload the new image to Cloudinary)
+      console.log("Sending update request to API...");
       const updateRes = await fetch(`/api/quote/${quoteToUpdate._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -390,10 +392,11 @@ export default function Card() {
         }),
       });
 
-      // Get the text response and parse it once
+      // Get the raw response for debugging
       const responseText = await updateRes.text();
       console.log("Raw API response:", responseText);
 
+      // Parse JSON in a safe way
       let updatedData;
       try {
         updatedData = JSON.parse(responseText);
@@ -401,29 +404,41 @@ export default function Card() {
         console.error(
           "JSON parse error:",
           parseError,
-          "Response text:",
+          "Response:",
           responseText
         );
-        throw new Error("Invalid JSON response from API");
+        throw new Error(
+          `Invalid JSON response from API: ${responseText.slice(0, 100)}`
+        );
       }
 
       if (!updateRes.ok) {
-        throw new Error(updatedData.error || "Failed to update quote");
+        console.error("API error response:", updatedData);
+        throw new Error(
+          updatedData.error || `Failed to update quote: ${updateRes.status}`
+        );
       }
 
       console.log("Parsed response data:", updatedData);
 
-      if (!updatedData || typeof updatedData.quote !== "object") {
-        console.error("Invalid API response format:", updatedData);
-        throw new Error("API response missing expected quote object");
+      // Check for expected structure - more forgiving approach
+      if (!updatedData) {
+        console.error("Invalid API response (empty):", updatedData);
+        throw new Error("Empty API response");
       }
 
-      // The response format is { quote: {...} } - extract the quote directly
-      const updatedQuote = updatedData.quote;
+      // If we have a quote property, use it, otherwise try to use the response directly
+      const updatedQuote = updatedData.quote || updatedData;
+      console.log("Using quote data:", updatedQuote);
 
-      if (!updatedQuote || !updatedQuote.imageUrl) {
-        console.error("Missing required quote data:", updatedData);
-        throw new Error("Quote missing required fields");
+      if (!updatedQuote || typeof updatedQuote !== "object") {
+        console.error("Invalid quote object:", updatedQuote);
+        throw new Error("API response missing valid quote object");
+      }
+
+      if (!updatedQuote.imageUrl) {
+        console.error("Missing imageUrl in quote:", updatedQuote);
+        throw new Error("Quote missing imageUrl property");
       }
 
       // Get the new Cloudinary URL from the quote object

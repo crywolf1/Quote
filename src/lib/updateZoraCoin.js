@@ -12,8 +12,9 @@ export async function updateZoraCoin({
   description,
 }) {
   try {
-    // Basic validation
+    // Basic validation with more detailed error messages
     if (!walletClient || !walletClient.account?.address) {
+      console.error("Wallet client validation failed:", { walletClient });
       throw new Error("Wallet client not properly initialized");
     }
 
@@ -44,12 +45,54 @@ export async function updateZoraCoin({
       });
 
       if (!metadataRes.ok) {
-        throw new Error("Failed to create updated metadata");
+        const errorText = await metadataRes.text();
+        console.error("Metadata API error:", {
+          status: metadataRes.status,
+          body: errorText,
+        });
+        throw new Error(
+          `Failed to create updated metadata: ${metadataRes.status} ${errorText}`
+        );
       }
 
-      const metadataData = await metadataRes.json();
+      // Parse the metadata response
+      const responseText = await metadataRes.text();
+      console.log("Raw metadata API response:", responseText);
+
+      let metadataData;
+      try {
+        metadataData = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error(
+          "JSON parse error for metadata:",
+          parseError,
+          "Response:",
+          responseText
+        );
+        throw new Error(
+          `Invalid JSON from metadata API: ${parseError.message}`
+        );
+      }
+
+      // Ensure we have a proper URL from the metadata endpoint
+      if (!metadataData || !metadataData.url) {
+        console.error("Invalid metadata API response:", metadataData);
+        throw new Error("Metadata API response missing URL property");
+      }
+
       metadataUrl = metadataData.url;
       console.log("Updated metadata created:", metadataUrl);
+
+      // Verify the URL meets Zora requirements
+      if (
+        !metadataUrl.startsWith("ipfs://") &&
+        !metadataUrl.startsWith("https://")
+      ) {
+        console.warn(
+          "Warning: Metadata URL should ideally start with ipfs:// for best practices"
+        );
+        // We'll continue anyway, but log a warning
+      }
     } catch (metadataError) {
       console.error("Metadata update error:", metadataError);
       throw new Error(`Metadata update error: ${metadataError.message}`);
