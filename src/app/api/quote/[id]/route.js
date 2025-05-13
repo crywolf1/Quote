@@ -19,7 +19,6 @@ export async function PUT(req, { params }) {
     const id = params.id;
     const { text, image, existingImageUrl, updateImage } = await req.json();
 
-    // Change this line from connectDB() to dbConnect()
     await dbConnect();
     const quote = await Quote.findById(id);
 
@@ -27,11 +26,82 @@ export async function PUT(req, { params }) {
       return NextResponse.json({ error: "Quote not found" }, { status: 404 });
     }
 
-    // Rest of your function remains the same...
+    // Update quote text
+    quote.text = text;
+
+    // Handle image update if provided
+    if (image && updateImage) {
+      try {
+        // Extract the public_id from the existing URL if available
+        let publicId = null;
+
+        if (existingImageUrl && typeof existingImageUrl === "string") {
+          // Parse the Cloudinary URL to get public ID
+          const url = existingImageUrl.split("?")[0];
+          const urlNoExt = url.replace(/\.[^/.]+$/, "");
+          const uploadIndex = urlNoExt.indexOf("/upload/");
+
+          if (uploadIndex !== -1) {
+            publicId = urlNoExt.substring(uploadIndex + 8);
+            publicId = publicId.replace(/^v\d+\//, "");
+          }
+        }
+
+        // Upload new image, potentially replacing existing one
+        const uploadOptions = {
+          folder: "zora-tokens",
+          resource_type: "image",
+          format: "png",
+        };
+
+        // If we have extracted a public ID, use it to replace the image
+        if (publicId) {
+          uploadOptions.public_id = publicId;
+          uploadOptions.overwrite = true;
+        }
+
+        // Upload to Cloudinary
+        const uploadResult = await new Promise((resolve, reject) => {
+          cloudinary.v2.uploader.upload(
+            image,
+            uploadOptions,
+            (error, result) => {
+              if (error) {
+                console.error("Cloudinary upload error:", error);
+                reject(error);
+              } else {
+                resolve(result);
+              }
+            }
+          );
+        });
+
+        // Update quote with the new image URL
+        quote.imageUrl = uploadResult.secure_url;
+      } catch (uploadError) {
+        console.error("Image upload error:", uploadError);
+        return NextResponse.json(
+          { error: `Failed to upload image: ${uploadError.message}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Save updated quote
+    const updatedQuote = await quote.save();
+
+    // Format response properly to match your frontend expectations
+    return NextResponse.json({ quote: updatedQuote }, { status: 200 });
   } catch (error) {
     console.error("Error updating quote:", error);
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    });
+
     return NextResponse.json(
-      { error: "Failed to update quote" },
+      { error: `Failed to update quote: ${error.message}` },
       { status: 500 }
     );
   }
