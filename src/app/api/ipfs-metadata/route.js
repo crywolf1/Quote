@@ -40,6 +40,15 @@ export async function POST(req) {
       );
     }
 
+    // Verify Pinata credentials are available
+    if (!pinataApiKey || !pinataSecretApiKey) {
+      console.error("Missing Pinata API credentials");
+      return NextResponse.json(
+        { error: "Pinata API credentials not configured" },
+        { status: 500 }
+      );
+    }
+
     // First, upload the image to IPFS via Pinata
     console.log(
       "Fetching image from URL for Pinata upload:",
@@ -51,12 +60,17 @@ export async function POST(req) {
     try {
       const imageResponse = await axios.get(metadata.image, {
         responseType: "arraybuffer",
+        timeout: 10000, // 10 second timeout
       });
       imageData = imageResponse.data;
+      console.log(`Successfully fetched image (${imageData.byteLength} bytes)`);
     } catch (fetchError) {
       console.error("Failed to fetch image:", fetchError);
       return NextResponse.json(
-        { error: "Failed to fetch image from URL" },
+        {
+          error: "Failed to fetch image from URL",
+          details: fetchError.message,
+        },
         { status: 500 }
       );
     }
@@ -68,7 +82,13 @@ export async function POST(req) {
       const imageFormData = new FormData();
       const fileName = `quote-image-${Date.now()}.png`;
 
-      imageFormData.append("file", Buffer.from(imageData), {
+      // Log buffer details for debugging
+      console.log(
+        `Creating buffer from image data (${imageData.byteLength} bytes)`
+      );
+      const buffer = Buffer.from(imageData);
+
+      imageFormData.append("file", buffer, {
         filename: fileName,
         contentType: "image/png",
       });
@@ -78,6 +98,10 @@ export async function POST(req) {
         "pinataMetadata",
         JSON.stringify({
           name: `Quote Image - ${metadata.name}`,
+          keyvalues: {
+            timestamp: Date.now().toString(),
+            type: "quote-image",
+          },
         })
       );
 
@@ -90,21 +114,39 @@ export async function POST(req) {
       );
 
       console.log("Uploading image to Pinata...");
+      console.log(
+        "Headers:",
+        JSON.stringify({
+          ...headers,
+          "Content-Type": `multipart/form-data`,
+        })
+      );
+
       const imageResponse = await axios.post(PINATA_FILE_URL, imageFormData, {
         maxBodyLength: Infinity,
         headers: {
           ...headers,
           "Content-Type": `multipart/form-data; boundary=${imageFormData._boundary}`,
         },
+        timeout: 30000, // 30 second timeout
       });
 
       console.log("Image uploaded to Pinata:", imageResponse.data);
       ipfsImageUrl = `ipfs://${imageResponse.data.IpfsHash}`;
+      console.log("IPFS Image URL:", ipfsImageUrl);
     } catch (imageUploadError) {
       console.error("Failed to upload image to IPFS:", imageUploadError);
+
+      // Provide more detailed error information
+      const errorDetails = imageUploadError.response
+        ? `Status: ${imageUploadError.response.status}, Data: ${JSON.stringify(
+            imageUploadError.response.data
+          )}`
+        : imageUploadError.message;
+
       return NextResponse.json(
         {
-          error: `Failed to upload image to IPFS: ${imageUploadError.message}`,
+          error: `Failed to upload image to IPFS: ${errorDetails}`,
         },
         { status: 500 }
       );
@@ -114,7 +156,7 @@ export async function POST(req) {
     const tokenMetadata = {
       name: metadata.name,
       description: metadata.description || `Quote token for "${metadata.name}"`,
-      image: ipfsImageUrl,
+      image: ipfsImageUrl, // IMPORTANT: This must use the IPFS URL, not Cloudinary
       attributes: metadata.attributes || [],
     };
 
@@ -132,6 +174,10 @@ export async function POST(req) {
           pinataContent: tokenMetadata,
           pinataMetadata: {
             name: `Quote Metadata - ${metadata.name}`,
+            keyvalues: {
+              timestamp: Date.now().toString(),
+              type: "quote-metadata",
+            },
           },
           pinataOptions: {
             cidVersion: 0,
@@ -139,23 +185,33 @@ export async function POST(req) {
         },
         {
           headers,
+          timeout: 30000, // 30 second timeout
         }
       );
 
       console.log("Metadata uploaded to Pinata:", jsonResponse.data);
       const ipfsMetadataUrl = `ipfs://${jsonResponse.data.IpfsHash}`;
+      console.log("IPFS Metadata URL (to be used for token):", ipfsMetadataUrl);
 
       return NextResponse.json({
         success: true,
-        ipfsUrl: ipfsMetadataUrl,
+        ipfsUrl: ipfsMetadataUrl, // This is the URL that should be used for updateCoinURI
         imageUrl: ipfsImageUrl,
         metadataDetails: tokenMetadata,
       });
     } catch (metadataUploadError) {
       console.error("Failed to upload metadata to IPFS:", metadataUploadError);
+
+      // Provide more detailed error information
+      const errorDetails = metadataUploadError.response
+        ? `Status: ${
+            metadataUploadError.response.status
+          }, Data: ${JSON.stringify(metadataUploadError.response.data)}`
+        : metadataUploadError.message;
+
       return NextResponse.json(
         {
-          error: `Failed to upload metadata to IPFS: ${metadataUploadError.message}`,
+          error: `Failed to upload metadata to IPFS: ${errorDetails}`,
         },
         { status: 500 }
       );

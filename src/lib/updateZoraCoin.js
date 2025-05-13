@@ -68,6 +68,7 @@ export async function updateZoraCoin({
       let metadataData;
       try {
         metadataData = JSON.parse(responseText);
+        console.log("Parsed metadata API response:", metadataData);
       } catch (parseError) {
         console.error(
           "JSON parse error for metadata:",
@@ -79,7 +80,6 @@ export async function updateZoraCoin({
           `Invalid JSON from metadata API: ${parseError.message}`
         );
       }
-
       // Ensure we have a proper URL from the metadata endpoint
       if (!metadataData || !metadataData.ipfsUrl) {
         console.error("Invalid metadata API response:", metadataData);
