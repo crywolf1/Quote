@@ -436,14 +436,20 @@ export default function Card() {
         throw new Error("API response missing valid quote object");
       }
 
-      if (!updatedQuote.imageUrl) {
-        console.error("Missing imageUrl in quote:", updatedQuote);
-        throw new Error("Quote missing imageUrl property");
-      }
+      // Check if imageUrl exists, if not, use the existing URL from the quote we're updating
+      if (updatedQuote.imageUrl) {
+        newImageUrl = updatedQuote.imageUrl;
+        console.log("Successfully retrieved new image URL:", newImageUrl);
+      } else {
+        console.warn("Missing imageUrl in API response, using original URL");
+        newImageUrl = quoteToUpdate.imageUrl;
 
-      // Get the new Cloudinary URL from the quote object
-      newImageUrl = updatedQuote.imageUrl;
-      console.log("Successfully retrieved new image URL:", newImageUrl);
+        // Only continue if we have at least one valid URL to use
+        if (!newImageUrl) {
+          console.error("No valid image URL available", updatedQuote);
+          throw new Error("No valid image URL available for token update");
+        }
+      }
 
       // STEP 3: If this quote has a Zora token, update the token metadata too
       if (quoteToUpdate.zoraTokenAddress && walletClient) {
