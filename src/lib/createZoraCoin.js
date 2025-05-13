@@ -40,6 +40,7 @@ export async function createZoraCoin({
     console.log("Starting token creation process for:", title);
 
     // Generate a special format symbol that is guaranteed unique
+    // but does not affect the display title
     const generateZoraCompatibleSymbol = () => {
       // Use only uppercase letters A-Z (excluding I and O which can be confused with numbers)
       const safeLetters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -67,7 +68,7 @@ export async function createZoraCoin({
     const symbol = generateZoraCompatibleSymbol();
     console.log("Using Zora-compatible symbol:", symbol);
 
-    // Step 1: Create metadata with minimal properties
+    // Step 1: Create metadata with proper title
     console.log("Creating metadata...");
     const metadata = {
       name: title,
@@ -113,9 +114,10 @@ export async function createZoraCoin({
 
     // Add the tickLower parameter as recommended by Zora developer
     const coinParams = {
-      name: symbol, // Use symbol as name
+      // For contract purposes we use the symbol as name, but the title is preserved in metadata
+      name: symbol,
       symbol: symbol,
-      uri: metadataUrl,
+      uri: metadataUrl, // This contains the actual title in the metadata
       payoutRecipient: creatorAddress,
       // Add currency parameter for Base (ETH on Base)
       currency: "0x4200000000000000000000000000000000000006", // ETH on Base
@@ -137,7 +139,7 @@ export async function createZoraCoin({
 
       console.log("Sending transaction with params:", coinParams);
 
-      // Send transaction with retry logic
+      // Send transaction with retry logic and improved timeout handling
       let attempt = 1;
       const maxAttempts = 2;
       let coinResult;
@@ -146,7 +148,16 @@ export async function createZoraCoin({
       while (attempt <= maxAttempts) {
         try {
           console.log(`Attempt ${attempt} of ${maxAttempts}...`);
-          coinResult = await createCoin(coinParams, walletClient, publicClient);
+          // Increase timeout for transaction confirmation
+          coinResult = await createCoin(
+            coinParams,
+            walletClient,
+            publicClient,
+            {
+              confirmations: 1, // Only wait for 1 confirmation
+              timeout: 120000, // 2 minute timeout (up from default)
+            }
+          );
           break; // Success, exit the loop
         } catch (err) {
           lastError = err;
@@ -201,6 +212,10 @@ export async function createZoraCoin({
       const errorDetails = contractError.message || "";
       console.log("Full error details:", contractError);
 
+      // Look for the transaction hash in timeout errors
+      const txHashMatch = errorDetails.match(/hash\s*["']([^"']+)["']/i);
+      const extractedTxHash = txHashMatch ? txHashMatch[1] : null;
+
       // Try to extract specific error signatures for better diagnosis
       const errorSignature =
         errorDetails.match(/signature:\s*(0x[a-f0-9]+)/i)?.[1] || "";
@@ -216,7 +231,23 @@ export async function createZoraCoin({
         errorDetails.includes("timeout") ||
         errorDetails.includes("timed out")
       ) {
-        return { error: "Transaction timed out. Please try again later." };
+        // Special handling for timeout errors that have transaction hashes
+        if (extractedTxHash) {
+          // Transaction was submitted but confirmation is taking time
+          const txExplorerUrl = `https://basescan.org/tx/${extractedTxHash}`;
+
+          return {
+            status: "pending",
+            txHash: extractedTxHash,
+            message:
+              "Transaction submitted but waiting for confirmation. This is normal on busy networks.",
+            explorerUrl: txExplorerUrl,
+            error:
+              "Your token is being created, but confirmation is taking longer than expected. You can check its status on BaseScan.",
+          };
+        } else {
+          return { error: "Transaction timed out. Please try again later." };
+        }
       } else if (
         errorDetails.includes("not available") ||
         errorDetails.includes("wallet client")
