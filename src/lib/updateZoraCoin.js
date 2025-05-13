@@ -23,63 +23,133 @@ export async function updateZoraCoin({
     if (!imageUrl) throw new Error("Image URL required");
     if (!description) throw new Error("Description required");
 
-    console.log("Starting token update process for coin:", coinAddress);
-    console.log("New image URL:", imageUrl);
-    console.log("New description:", description);
+    console.log(
+      "[ZORA UPDATE] Starting token update process for coin:",
+      coinAddress
+    );
+    console.log("[ZORA UPDATE] Wallet address:", walletClient.account.address);
+    console.log("[ZORA UPDATE] New image URL:", imageUrl);
+    console.log("[ZORA UPDATE] New description:", description);
 
-    // Step 1: Create metadata
-    console.log("Creating metadata...");
+    // Step 1: Create metadata with timestamp to force refresh
+    console.log("[ZORA UPDATE] Creating metadata...");
     const metadata = {
       name: title,
       description: `Quote: ${description}`,
       image: imageUrl,
+      updated_at: new Date().toISOString(), // Add timestamp to force cache invalidation
+      attributes: [
+        {
+          trait_type: "Last Updated",
+          value: new Date().toISOString(),
+        },
+      ],
     };
 
     // Step 2: Upload metadata to get URL - follow same pattern as createZoraCoin.js
     let metadataUrl;
     try {
-      console.log("Uploading metadata...");
+      console.log("[ZORA UPDATE] Uploading metadata...", metadata);
       const metadataRes = await fetch("/api/metadata", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(metadata),
+        cache: "no-cache", // Prevent caching
       });
 
       if (!metadataRes.ok) {
         const errorText = await metadataRes.text();
-        console.error("Metadata API error:", errorText);
+        console.error("[ZORA UPDATE] Metadata API error:", errorText);
         throw new Error("Failed to create metadata");
       }
 
-      const metadataData = await metadataRes.json();
-      console.log("Metadata API response:", metadataData);
+      const responseText = await metadataRes.text();
+      console.log("[ZORA UPDATE] Raw metadata API response:", responseText);
+
+      let metadataData;
+      try {
+        metadataData = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error(
+          "[ZORA UPDATE] Failed to parse metadata response:",
+          parseError
+        );
+        throw new Error("Invalid JSON response from metadata API");
+      }
+
+      console.log("[ZORA UPDATE] Parsed metadata API response:", metadataData);
 
       // Check for the URL property
       if (!metadataData.url) {
-        console.error("Missing URL in metadata response:", metadataData);
+        console.error(
+          "[ZORA UPDATE] Missing URL in metadata response:",
+          metadataData
+        );
         throw new Error("Metadata response missing URL property");
       }
 
       metadataUrl = metadataData.url;
-      console.log("Metadata created:", metadataUrl);
+      console.log("[ZORA UPDATE] Metadata created:", metadataUrl);
 
       // Verify if URL starts with https:// (not ideal) or ipfs:// (preferred)
-      if (
-        !metadataUrl.startsWith("https://") &&
-        !metadataUrl.startsWith("ipfs://")
-      ) {
-        console.warn(
-          "Metadata URL format may not be compatible with Zora:",
-          metadataUrl
+      if (!metadataUrl.startsWith("ipfs://")) {
+        // If not IPFS URL, log warning
+        if (metadataUrl.startsWith("https://")) {
+          console.warn(
+            "[ZORA UPDATE] Metadata URL uses HTTPS instead of IPFS (less preferred but supported):",
+            metadataUrl
+          );
+        } else {
+          console.error(
+            "[ZORA UPDATE] Metadata URL format not compatible with Zora:",
+            metadataUrl
+          );
+          throw new Error(
+            "Metadata URL must start with ipfs:// or https:// for Zora"
+          );
+        }
+      }
+
+      // Validate metadata is accessible
+      try {
+        // For IPFS URLs, convert to HTTP gateway URL for checking
+        const checkUrl = metadataUrl.startsWith("ipfs://")
+          ? `https://ipfs.io/ipfs/${metadataUrl.replace("ipfs://", "")}`
+          : metadataUrl;
+
+        console.log(
+          "[ZORA UPDATE] Checking metadata accessibility at:",
+          checkUrl
         );
+
+        const validateRes = await fetch(checkUrl, {
+          method: "HEAD",
+          cache: "no-cache",
+          headers: { Accept: "application/json" },
+        });
+
+        if (!validateRes.ok) {
+          console.warn(
+            "[ZORA UPDATE] Warning: Metadata URL not accessible:",
+            checkUrl
+          );
+        } else {
+          console.log("[ZORA UPDATE] Metadata URL accessible:", checkUrl);
+        }
+      } catch (validateErr) {
+        console.warn(
+          "[ZORA UPDATE] Could not validate metadata URL:",
+          validateErr
+        );
+        // Continue anyway since IPFS URLs might not be immediately accessible
       }
     } catch (metadataError) {
-      console.error("Metadata error:", metadataError);
+      console.error("[ZORA UPDATE] Metadata error:", metadataError);
       throw new Error(`Metadata error: ${metadataError.message}`);
     }
 
     // Step 3: Use updateCoinURI to update the coin's metadata URI
-    console.log("Updating Zora coin URI to:", metadataUrl);
+    console.log("[ZORA UPDATE] Updating Zora coin URI to:", metadataUrl);
 
     // These are the params to pass to the SDK's updateCoinURI function
     const updateParams = {
@@ -88,23 +158,26 @@ export async function updateZoraCoin({
     };
 
     try {
-      console.log("Sending update transaction with params:", updateParams);
+      console.log(
+        "[ZORA UPDATE] Sending update transaction with params:",
+        updateParams
+      );
 
       // Add chain ID verification
       const chainId = await publicClient.getChainId();
-      console.log("Connected to chain ID:", chainId);
+      console.log("[ZORA UPDATE] Connected to chain ID:", chainId);
 
       if (chainId !== 8453) {
         // Base chain ID
         console.error(
-          "Warning: Connected to chain ID",
+          "[ZORA UPDATE] Warning: Connected to chain ID",
           chainId,
           "but Base chain ID is 8453"
         );
       }
 
       // Use the SDK's updateCoinURI function to update the metadata
-      console.log("Calling Zora SDK updateCoinURI...");
+      console.log("[ZORA UPDATE] Calling Zora SDK updateCoinURI...");
       const result = await updateCoinURI(
         updateParams,
         walletClient,
@@ -116,12 +189,32 @@ export async function updateZoraCoin({
       );
 
       const hash = result.hash;
-      console.log("Update transaction sent successfully! Hash:", hash);
+      console.log(
+        "[ZORA UPDATE] Update transaction sent successfully! Hash:",
+        hash
+      );
 
       // Immediately return success with the hash
       const txExplorerUrl = `https://basescan.org/tx/${hash}`;
 
-      console.log("Token update complete, explorer URL:", txExplorerUrl);
+      console.log(
+        "[ZORA UPDATE] Token update complete, explorer URL:",
+        txExplorerUrl
+      );
+
+      // Optionally verify the transaction has been mined after a delay
+      setTimeout(async () => {
+        try {
+          const receipt = await publicClient.getTransactionReceipt({ hash });
+          console.log("[ZORA UPDATE] Transaction receipt:", receipt);
+          console.log("[ZORA UPDATE] Transaction status:", receipt.status);
+        } catch (receiptError) {
+          console.log(
+            "[ZORA UPDATE] Could not get receipt yet (normal for pending tx):",
+            receiptError.message
+          );
+        }
+      }, 10000); // Check after 10 seconds
 
       return {
         status: "pending",
@@ -130,34 +223,38 @@ export async function updateZoraCoin({
         explorerUrl: txExplorerUrl,
       };
     } catch (contractError) {
-      console.error("Contract update error:", contractError);
+      console.error("[ZORA UPDATE] Contract update error:", contractError);
       console.error(
-        "Full error object:",
+        "[ZORA UPDATE] Full error object:",
         JSON.stringify(contractError, null, 2)
       );
 
       const errorDetails = contractError.message || "";
 
-      console.log("Error message details:", errorDetails);
+      console.log("[ZORA UPDATE] Error message details:", errorDetails);
 
       if (errorDetails.includes("OnlyOwner")) {
-        console.error("Access denied: Only the coin owner can update");
+        console.error(
+          "[ZORA UPDATE] Access denied: Only the coin owner can update"
+        );
         return { error: "Only the coin owner can update the metadata." };
       } else if (errorDetails.includes("user rejected")) {
-        console.error("Transaction rejected by user");
+        console.error("[ZORA UPDATE] Transaction rejected by user");
         return { error: "Transaction was rejected in your wallet." };
       } else if (
         errorDetails.includes("timeout") ||
         errorDetails.includes("timed out")
       ) {
         // Handle timeout errors similar to creation function
-        console.log("Transaction timeout - checking for hash in error message");
+        console.log(
+          "[ZORA UPDATE] Transaction timeout - checking for hash in error message"
+        );
         const txHashMatch = errorDetails.match(/hash\s*["']([^"']+)["']/i);
         const extractedTxHash = txHashMatch ? txHashMatch[1] : null;
 
         if (extractedTxHash) {
           console.log(
-            "Found transaction hash in error message:",
+            "[ZORA UPDATE] Found transaction hash in error message:",
             extractedTxHash
           );
           const txExplorerUrl = `https://basescan.org/tx/${extractedTxHash}`;
@@ -168,7 +265,9 @@ export async function updateZoraCoin({
             explorerUrl: txExplorerUrl,
           };
         } else {
-          console.error("Transaction timed out without hash information");
+          console.error(
+            "[ZORA UPDATE] Transaction timed out without hash information"
+          );
           return { error: "Transaction timed out. Please try again later." };
         }
       } else if (errorDetails.includes("insufficient funds")) {
@@ -187,7 +286,7 @@ export async function updateZoraCoin({
             "Gas limit too low. Please try increasing the gas limit in your wallet.",
         };
       } else {
-        console.error("Unhandled contract error");
+        console.error("[ZORA UPDATE] Unhandled contract error");
         return {
           error: "Failed to update token metadata. Please try again later.",
           details: contractError.message || "Unknown error",
@@ -195,7 +294,7 @@ export async function updateZoraCoin({
       }
     }
   } catch (error) {
-    console.error("Coin update process error:", error);
+    console.error("[ZORA UPDATE] Coin update process error:", error);
     return {
       error: "Failed to update token metadata",
       details: error.message || "Unknown error occurred",
