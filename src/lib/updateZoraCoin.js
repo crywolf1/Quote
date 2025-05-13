@@ -25,6 +25,8 @@ export async function updateZoraCoin({
 
     console.log("Starting token update process for coin:", coinAddress);
     console.log("New image URL:", imageUrl);
+    console.log("New description:", description);
+    console.log("Using wallet address:", walletClient.account.address);
 
     // Step 1: Create updated metadata
     console.log("Creating updated metadata...");
@@ -37,12 +39,18 @@ export async function updateZoraCoin({
     // Step 2: Upload metadata to get URL
     let metadataUrl;
     try {
-      console.log("Uploading updated metadata...");
+      console.log("Uploading updated metadata:", metadata);
+
+      // Add debugging to help identify any issues with the fetch call
+      console.log("Calling metadata API endpoint...");
+
       const metadataRes = await fetch("/api/metadata", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(metadata),
       });
+
+      console.log("Metadata API status:", metadataRes.status);
 
       if (!metadataRes.ok) {
         const errorText = await metadataRes.text();
@@ -81,7 +89,7 @@ export async function updateZoraCoin({
       }
 
       metadataUrl = metadataData.url;
-      console.log("Updated metadata created:", metadataUrl);
+      console.log("Updated metadata created with URL:", metadataUrl);
 
       // Verify the URL meets Zora requirements
       if (
@@ -99,7 +107,7 @@ export async function updateZoraCoin({
     }
 
     // Step 3: Use updateCoinURI to update the coin's metadata URI
-    console.log("Updating Zora coin URI...");
+    console.log("Updating Zora coin URI to:", metadataUrl);
 
     // These are the params to pass to the SDK's updateCoinURI function
     const updateParams = {
@@ -110,7 +118,21 @@ export async function updateZoraCoin({
     try {
       console.log("Sending update transaction with params:", updateParams);
 
+      // Add chain ID verification
+      const chainId = await publicClient.getChainId();
+      console.log("Connected to chain ID:", chainId);
+
+      if (chainId !== 8453) {
+        // Base chain ID
+        console.error(
+          "Warning: Connected to chain ID",
+          chainId,
+          "but Base chain ID is 8453"
+        );
+      }
+
       // Use the SDK's updateCoinURI function to update the metadata
+      console.log("Calling Zora SDK updateCoinURI...");
       const result = await updateCoinURI(
         updateParams,
         walletClient,
@@ -127,6 +149,8 @@ export async function updateZoraCoin({
       // Immediately return success with the hash
       const txExplorerUrl = `https://basescan.org/tx/${hash}`;
 
+      console.log("Token update complete, explorer URL:", txExplorerUrl);
+
       return {
         status: "pending",
         txHash: hash,
@@ -135,22 +159,35 @@ export async function updateZoraCoin({
       };
     } catch (contractError) {
       console.error("Contract update error:", contractError);
+      console.error(
+        "Full error object:",
+        JSON.stringify(contractError, null, 2)
+      );
 
       const errorDetails = contractError.message || "";
 
+      console.log("Error message details:", errorDetails);
+
       if (errorDetails.includes("OnlyOwner")) {
+        console.error("Access denied: Only the coin owner can update");
         return { error: "Only the coin owner can update the metadata." };
       } else if (errorDetails.includes("user rejected")) {
+        console.error("Transaction rejected by user");
         return { error: "Transaction was rejected in your wallet." };
       } else if (
         errorDetails.includes("timeout") ||
         errorDetails.includes("timed out")
       ) {
         // Handle timeout errors similar to creation function
+        console.log("Transaction timeout - checking for hash in error message");
         const txHashMatch = errorDetails.match(/hash\s*["']([^"']+)["']/i);
         const extractedTxHash = txHashMatch ? txHashMatch[1] : null;
 
         if (extractedTxHash) {
+          console.log(
+            "Found transaction hash in error message:",
+            extractedTxHash
+          );
           const txExplorerUrl = `https://basescan.org/tx/${extractedTxHash}`;
           return {
             status: "pending",
@@ -159,10 +196,15 @@ export async function updateZoraCoin({
             explorerUrl: txExplorerUrl,
           };
         } else {
+          console.error("Transaction timed out without hash information");
           return { error: "Transaction timed out. Please try again later." };
         }
       } else {
-        return { error: contractError.message || "Contract error occurred" };
+        console.error("Unhandled contract error");
+        return {
+          error: contractError.message || "Contract error occurred",
+          details: contractError.details || "No additional details available",
+        };
       }
     }
   } catch (error) {
