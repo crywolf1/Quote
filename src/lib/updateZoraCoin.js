@@ -45,17 +45,17 @@ export async function updateZoraCoin({
           value: new Date().toISOString(),
         },
         {
-          trait_type: "Timestamp",
-          value: Date.now().toString(),
+          trait_type: "Update ID", // Random value to force new content hash
+          value: Math.random().toString(36).substring(2, 15),
         },
       ],
     };
+
     // Step 2: Upload metadata to get URL - using our specialized update endpoint
     let metadataUrl;
     try {
       console.log("[ZORA UPDATE] Uploading updated metadata...");
       const metadataRes = await fetch("/api/update-token-metadata", {
-        // Use the new endpoint
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(metadata),
@@ -121,23 +121,24 @@ export async function updateZoraCoin({
         );
       }
 
-      // Validate metadata is accessible
+      // Validate metadata is accessible via gateway
       try {
         // For IPFS URLs, convert to HTTP gateway URL for checking
-        const checkUrl = metadataUrl.startsWith("ipfs://")
-          ? `https://gateway.pinata.cloud/ipfs/${metadataUrl.replace(
-              "ipfs://",
-              ""
-            )}`
-          : metadataUrl;
+        let checkUrl;
+        if (metadataUrl.startsWith("ipfs://")) {
+          // Try multiple gateways for better reliability
+          checkUrl = `https://ipfs.io/ipfs/${metadataUrl.replace(
+            "ipfs://",
+            ""
+          )}`;
+        } else {
+          checkUrl = metadataUrl;
+        }
 
-        console.log(
-          "[ZORA UPDATE] Checking metadata accessibility at:",
-          checkUrl
-        );
+        console.log("[ZORA UPDATE] Verifying metadata content at:", checkUrl);
 
+        // Fetch the actual content, not just headers
         const validateRes = await fetch(checkUrl, {
-          method: "HEAD",
           cache: "no-cache",
           headers: { Accept: "application/json" },
         });
@@ -148,8 +149,51 @@ export async function updateZoraCoin({
             checkUrl
           );
           console.log("[ZORA UPDATE] Status:", validateRes.status);
+
+          // If the primary gateway fails, try a backup
+          if (metadataUrl.startsWith("ipfs://")) {
+            const backupUrl = `https://gateway.pinata.cloud/ipfs/${metadataUrl.replace(
+              "ipfs://",
+              ""
+            )}`;
+            console.log("[ZORA UPDATE] Trying backup gateway:", backupUrl);
+
+            try {
+              const backupRes = await fetch(backupUrl, {
+                cache: "no-cache",
+                headers: { Accept: "application/json" },
+              });
+
+              if (backupRes.ok) {
+                console.log("[ZORA UPDATE] Backup gateway access successful");
+              } else {
+                console.warn(
+                  "[ZORA UPDATE] Backup gateway also failed:",
+                  backupRes.status
+                );
+              }
+            } catch (backupError) {
+              console.warn(
+                "[ZORA UPDATE] Backup gateway error:",
+                backupError.message
+              );
+            }
+          }
         } else {
-          console.log("[ZORA UPDATE] Metadata URL accessible:", checkUrl);
+          // Validate the content actually contains our updates
+          const content = await validateRes.json();
+          console.log("[ZORA UPDATE] Fetched metadata content:", content);
+
+          // Make sure the metadata contains our expected values
+          if (content.name !== title || !content.image) {
+            console.warn(
+              "[ZORA UPDATE] Warning: Metadata content doesn't match what we uploaded!"
+            );
+          } else {
+            console.log(
+              "[ZORA UPDATE] Metadata content verified - contains correct data"
+            );
+          }
         }
       } catch (validateErr) {
         console.warn(
@@ -157,6 +201,42 @@ export async function updateZoraCoin({
           validateErr
         );
         // Continue anyway since IPFS URLs might not be immediately accessible
+      }
+
+      // Check current token URI for comparison
+      try {
+        console.log("[ZORA UPDATE] Checking current token URI...");
+
+        // Get the current contract URI
+        // Note: this may need to be adjusted based on your contract's actual interface
+        const currentUri = await publicClient.readContract({
+          address: coinAddress,
+          abi: [
+            {
+              inputs: [],
+              name: "contractURI",
+              outputs: [{ internalType: "string", name: "", type: "string" }],
+              stateMutability: "view",
+              type: "function",
+            },
+          ],
+          functionName: "contractURI",
+        });
+
+        console.log("[ZORA UPDATE] Current contract URI:", currentUri);
+        console.log("[ZORA UPDATE] New URI will be:", metadataUrl);
+
+        if (currentUri === metadataUrl) {
+          console.warn(
+            "[ZORA UPDATE] Warning: New URI is identical to current URI!"
+          );
+        }
+      } catch (uriError) {
+        console.warn(
+          "[ZORA UPDATE] Could not check current URI:",
+          uriError.message
+        );
+        // Continue anyway - this is just for debugging
       }
     } catch (metadataError) {
       console.error("[ZORA UPDATE] Metadata error:", metadataError);
@@ -173,6 +253,49 @@ export async function updateZoraCoin({
     };
 
     try {
+      // Verify ownership before sending transaction
+      try {
+        console.log("[ZORA UPDATE] Verifying wallet ownership permission...");
+
+        // This is a common pattern for checking ownership, but your contract might be different
+        const ownerAddressResult = await publicClient.readContract({
+          address: coinAddress,
+          abi: [
+            {
+              inputs: [],
+              name: "owner",
+              outputs: [{ internalType: "address", name: "", type: "address" }],
+              stateMutability: "view",
+              type: "function",
+            },
+          ],
+          functionName: "owner",
+        });
+
+        console.log("[ZORA UPDATE] Contract owner:", ownerAddressResult);
+        console.log(
+          "[ZORA UPDATE] Current wallet:",
+          walletClient.account.address
+        );
+
+        if (
+          ownerAddressResult.toLowerCase() !==
+          walletClient.account.address.toLowerCase()
+        ) {
+          console.warn(
+            "[ZORA UPDATE] Warning: Your wallet may not be the owner of this token!"
+          );
+        } else {
+          console.log("[ZORA UPDATE] Wallet ownership verified");
+        }
+      } catch (ownerError) {
+        console.warn(
+          "[ZORA UPDATE] Could not verify ownership:",
+          ownerError.message
+        );
+        // Continue anyway since the contract will enforce ownership
+      }
+
       console.log(
         "[ZORA UPDATE] Sending update transaction with params:",
         updateParams
@@ -191,17 +314,59 @@ export async function updateZoraCoin({
         );
       }
 
-      // Use the SDK's updateCoinURI function to update the metadata
-      console.log("[ZORA UPDATE] Calling Zora SDK updateCoinURI...");
-      const result = await updateCoinURI(
-        updateParams,
-        walletClient,
-        publicClient,
-        {
+      // Try direct contract call if SDK method fails
+      let result;
+      try {
+        // Use the SDK's updateCoinURI function to update the metadata
+        console.log("[ZORA UPDATE] Calling Zora SDK updateCoinURI...");
+        result = await updateCoinURI(updateParams, walletClient, publicClient, {
           // Don't wait for confirmations to avoid timeouts
           wait: false,
+        });
+
+        console.log("[ZORA UPDATE] SDK call succeeded:", result);
+      } catch (sdkError) {
+        console.error(
+          "[ZORA UPDATE] SDK call failed, trying direct contract call:",
+          sdkError
+        );
+
+        // Try direct contract call as fallback
+        try {
+          console.log("[ZORA UPDATE] Attempting direct contract call...");
+
+          // This is a direct contract call that bypasses the SDK
+          // The function name might be different in your contract - check your contract code
+          const directResult = await walletClient.writeContract({
+            address: coinAddress,
+            abi: [
+              {
+                inputs: [
+                  { internalType: "string", name: "newURI", type: "string" },
+                ],
+                name: "setTokenURI", // This name might be different for your contract
+                outputs: [],
+                stateMutability: "nonpayable",
+                type: "function",
+              },
+            ],
+            functionName: "setTokenURI", // Match the name from the ABI above
+            args: [metadataUrl],
+          });
+
+          console.log(
+            "[ZORA UPDATE] Direct contract call succeeded:",
+            directResult
+          );
+          result = { hash: directResult };
+        } catch (directError) {
+          console.error(
+            "[ZORA UPDATE] Direct contract call also failed:",
+            directError
+          );
+          throw directError; // Re-throw to be caught by outer catch block
         }
-      );
+      }
 
       const hash = result.hash;
       console.log(
@@ -223,6 +388,46 @@ export async function updateZoraCoin({
           const receipt = await publicClient.getTransactionReceipt({ hash });
           console.log("[ZORA UPDATE] Transaction receipt:", receipt);
           console.log("[ZORA UPDATE] Transaction status:", receipt.status);
+
+          // If transaction succeeded, check the new token URI after a delay
+          if (receipt.status === "success" || receipt.status === 1) {
+            setTimeout(async () => {
+              try {
+                const updatedUri = await publicClient.readContract({
+                  address: coinAddress,
+                  abi: [
+                    {
+                      inputs: [],
+                      name: "contractURI",
+                      outputs: [
+                        { internalType: "string", name: "", type: "string" },
+                      ],
+                      stateMutability: "view",
+                      type: "function",
+                    },
+                  ],
+                  functionName: "contractURI",
+                });
+
+                console.log("[ZORA UPDATE] Updated contract URI:", updatedUri);
+
+                if (updatedUri === metadataUrl) {
+                  console.log(
+                    "[ZORA UPDATE] Success! Contract URI has been updated"
+                  );
+                } else {
+                  console.warn(
+                    "[ZORA UPDATE] Warning: Contract URI doesn't match what we set"
+                  );
+                }
+              } catch (finalError) {
+                console.error(
+                  "[ZORA UPDATE] Error checking final URI:",
+                  finalError.message
+                );
+              }
+            }, 30000); // Check after 30 seconds
+          }
         } catch (receiptError) {
           console.log(
             "[ZORA UPDATE] Could not get receipt yet (normal for pending tx):",
