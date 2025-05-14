@@ -39,15 +39,17 @@ export async function updateZoraCoin({
       name: title,
       description: `Quote: ${description}`,
       image: imageUrl,
-      updated_at: new Date().toISOString(), // Add timestamp to force cache invalidation
       attributes: [
         {
           trait_type: "Last Updated",
           value: new Date().toISOString(),
         },
+        {
+          trait_type: "Timestamp",
+          value: Date.now().toString(),
+        },
       ],
     };
-
     // Step 2: Upload metadata to get URL - using our specialized update endpoint
     let metadataUrl;
     try {
