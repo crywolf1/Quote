@@ -8,6 +8,7 @@ const quoteSchema = new mongoose.Schema(
     zoraTokenAddress: { type: String },
     zoraTxHash: { type: String }, // Store the transaction hash too
     tokenMetadataUrl: { type: String }, // Store the IPFS metadata URL
+    dexscreenerUrl: { type: String },
     creatorAddress: { type: String, required: true },
     fid: Number,
     username: String,

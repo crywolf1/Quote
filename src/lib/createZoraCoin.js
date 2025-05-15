@@ -220,6 +220,9 @@ async function updateQuoteWithTokenAddress(
       metadataUrl,
     });
 
+    const dexscreenerUrl = `https://dexscreener.com/base/${coinAddress}`;
+    console.log("DEX Screener URL:", dexscreenerUrl);
+
     const response = await fetch(`/api/quote/${quoteId}`, {
       method: "PATCH",
       headers: {
@@ -229,6 +232,7 @@ async function updateQuoteWithTokenAddress(
         zoraTokenAddress: coinAddress,
         zoraTxHash: txHash,
         tokenMetadataUrl: metadataUrl,
+        dexscreenerUrl: dexscreenerUrl, // Add this field
       }),
     });
 

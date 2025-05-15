@@ -145,6 +145,7 @@ export async function PATCH(req, { params }) {
       "zoraTokenAddress",
       "zoraTxHash",
       "tokenMetadataUrl",
+      "dexscreenerUrl",
     ];
 
     // Filter out any fields that aren't in the allowed list
