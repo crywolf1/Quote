@@ -6,6 +6,8 @@ const quoteSchema = new mongoose.Schema(
     title: { type: String, required: true },
     text: { type: String, required: true },
     zoraTokenAddress: { type: String },
+    zoraTxHash: { type: String }, // Store the transaction hash too
+    tokenMetadataUrl: { type: String }, // Store the IPFS metadata URL
     creatorAddress: { type: String, required: true },
     fid: Number,
     username: String,
@@ -20,8 +22,7 @@ const quoteSchema = new mongoose.Schema(
       },
     },
     dateKey: { type: String, required: true },
-
-    image: String, // <-- Add this line to store the image data URL
+    image: String, // Store the image data URL
   },
   { timestamps: true }
 );

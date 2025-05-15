@@ -261,8 +261,8 @@ export default function Card() {
           title: title.trim(),
           imageUrl: cloudinaryImageUrl,
           creatorAddress: address,
+          quoteId: saved.quote._id, // Add this line to pass the quote ID
         });
-
         console.log("Token creation result:", result);
 
         // Check if result indicates a pending transaction

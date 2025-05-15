@@ -131,6 +131,49 @@ export async function PUT(req, { params }) {
   }
 }
 
+// Add this PATCH handler in your file
+export async function PATCH(req, { params }) {
+  try {
+    await dbConnect();
+    const { id } = params;
+
+    // Parse the update data from request body
+    const updateData = await req.json();
+
+    // List of allowed fields for security (prevent arbitrary field updates)
+    const allowedFields = [
+      "zoraTokenAddress",
+      "zoraTxHash",
+      "tokenMetadataUrl",
+    ];
+
+    // Filter out any fields that aren't in the allowed list
+    const sanitizedUpdate = Object.entries(updateData)
+      .filter(([key]) => allowedFields.includes(key))
+      .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+
+    // Find and update the quote
+    const updatedQuote = await Quote.findByIdAndUpdate(
+      id,
+      sanitizedUpdate,
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedQuote) {
+      return NextResponse.json({ error: "Quote not found" }, { status: 404 });
+    }
+
+    // Return the updated quote
+    return NextResponse.json({ quote: updatedQuote });
+  } catch (error) {
+    console.error("Error updating quote:", error);
+    return NextResponse.json(
+      { error: `Failed to update quote: ${error.message}` },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(req, { params }) {
   await dbConnect();
   try {
