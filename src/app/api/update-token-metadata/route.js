@@ -103,8 +103,17 @@ export async function POST(req) {
         description: metadata.description || `Quote: ${metadata.name}`,
         image: ipfsImageUrl, // Use the IPFS URL, not Cloudinary
         attributes: metadata.attributes || [],
-        updated_at: new Date().toISOString(),
       };
+      if (
+        !tokenMetadata.attributes.some(
+          (attr) => attr.trait_type === "Last Updated"
+        )
+      ) {
+        tokenMetadata.attributes.push({
+          trait_type: "Last Updated",
+          value: new Date().toISOString(),
+        });
+      }
 
       console.log("Creating metadata JSON with IPFS image URL");
 
