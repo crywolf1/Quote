@@ -1389,7 +1389,6 @@ export default function Card() {
                       {isSaving ? <FaSpinner className="spin" /> : "Let It Fly"}
                     </button>
                   </div>
-                  {notification && <p className="message">{notification}</p>}
                 </div>
               </div>
             </div>
