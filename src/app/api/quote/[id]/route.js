@@ -132,6 +132,8 @@ export async function PUT(req, { params }) {
 }
 
 // Add this PATCH handler in your file
+// Update your PATCH handler to handle isPending state
+
 export async function PATCH(req, { params }) {
   try {
     await dbConnect();
@@ -139,19 +141,31 @@ export async function PATCH(req, { params }) {
 
     // Parse the update data from request body
     const updateData = await req.json();
+    console.log("PATCH update data received:", updateData);
 
     // List of allowed fields for security (prevent arbitrary field updates)
     const allowedFields = [
       "zoraTokenAddress",
-      "zoraTxHash",
+      "zoraTokenTxHash", // Make sure this matches what your frontend is sending
       "tokenMetadataUrl",
       "dexscreenerUrl",
+      "isPending", // Add isPending to allowed fields
     ];
 
     // Filter out any fields that aren't in the allowed list
     const sanitizedUpdate = Object.entries(updateData)
       .filter(([key]) => allowedFields.includes(key))
       .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+
+    // If we're updating token data, automatically set isPending to false
+    if (
+      (updateData.zoraTokenAddress || updateData.zoraTokenTxHash) &&
+      sanitizedUpdate.isPending === undefined
+    ) {
+      sanitizedUpdate.isPending = false;
+    }
+
+    console.log("Applying updates:", sanitizedUpdate);
 
     // Find and update the quote
     const updatedQuote = await Quote.findByIdAndUpdate(
@@ -164,6 +178,12 @@ export async function PATCH(req, { params }) {
       return NextResponse.json({ error: "Quote not found" }, { status: 404 });
     }
 
+    console.log("Quote updated successfully:", {
+      id: updatedQuote._id,
+      isPending: updatedQuote.isPending,
+      hasTokenAddress: !!updatedQuote.zoraTokenAddress,
+    });
+
     // Return the updated quote
     return NextResponse.json({ quote: updatedQuote });
   } catch (error) {
@@ -174,7 +194,6 @@ export async function PATCH(req, { params }) {
     );
   }
 }
-
 export async function DELETE(req, { params }) {
   await dbConnect();
   try {
@@ -237,9 +256,10 @@ export async function DELETE(req, { params }) {
 
 export async function GET(req, { params }) {
   try {
-    await connectToDatabase();
+    await dbConnect(); // Fix this line - was using connectToDatabase()
 
     const { id } = params;
+    console.log("GET request for quote ID:", id);
 
     const quote = await Quote.findById(id);
 

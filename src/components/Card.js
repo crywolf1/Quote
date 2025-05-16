@@ -11,6 +11,7 @@ import { publicClient, isWalletReady, getWalletClient } from "@/lib/viemConfig";
 import CustomConnectButton from "./CustomConnectButton";
 import { updateZoraCoin } from "@/lib/updateZoraCoin";
 import { motion, AnimatePresence } from "framer-motion";
+import Notification from "./Notification";
 import "../styles/style.css";
 import {
   FaEdit,
@@ -43,7 +44,6 @@ export default function Card() {
   const [quotes, setQuotes] = useState([]);
   const [editIndex, setEditIndex] = useState(null);
   const [editedText, setEditedText] = useState("");
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [ready, setReady] = useState(false);
   const [quoteOfTheDay, setQuoteOfTheDay] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -53,6 +53,10 @@ export default function Card() {
   const [creatingTokens, setCreatingTokens] = useState([]);
   const [checkingTokens, setCheckingTokens] = useState([]);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [notification, setNotification] = useState(null);
+  const [notificationType, setNotificationType] = useState("info");
+
   // Fetch quotes from API
   const fetchQuoteOfTheDay = async () => {
     if (!address) return;
@@ -63,12 +67,46 @@ export default function Card() {
       if (res.ok) {
         setQuoteOfTheDay(data.quote);
       } else {
-        setMessage(data.error || "Failed to fetch quote of the day.");
+        showNotification(data.error || "Failed to fetch quote of the day.");
       }
     } catch (error) {
-      setMessage("Error fetching quote of the day.");
+      showNotification("Error fetching quote of the day.");
     }
   };
+
+  const showNotification = (message, type = "info") => {
+    setNotification(message);
+    setNotificationType(type);
+
+    // Auto-hide after 5 seconds unless it's an error
+    if (type !== "error") {
+      setTimeout(() => {
+        setNotification(null);
+      }, 5000);
+    }
+  };
+
+  // Function to close the notification
+  const closeNotification = () => {
+    setNotification(null);
+  };
+
+  useEffect(() => {
+    if (creatingTokens.length === 0) return;
+
+    const checkAllPending = async () => {
+      for (let id of creatingTokens) {
+        const q = quotes.find((q) => q._id === id);
+        if (q?.zoraTokenTxHash) {
+          await checkTokenStatus(id, q.zoraTokenTxHash);
+        }
+      }
+    };
+
+    checkAllPending();
+    const iv = setInterval(checkAllPending, 15000);
+    return () => clearInterval(iv);
+  }, [creatingTokens, quotes]);
 
   useEffect(() => {
     fetchQuoteOfTheDay();
@@ -86,19 +124,24 @@ export default function Card() {
   const fetchQuotes = async () => {
     if (!address) return;
 
+    setIsRefreshing(true); // Set to true when starting
+
     try {
       const res = await fetch(`/api/quote?creatorAddress=${address}`);
       const data = await res.json();
       if (res.ok) {
-        setQuotes(data.quotes);
-        if (data.quotes.length > 0) {
-          setCurrentIndex(Math.floor(Math.random() * data.quotes.length));
-        }
-      } else {
-        setMessage("Failed to fetch quotes.");
+        // Ensure quotes are sorted newest-first
+        const sorted = [...data.quotes].sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0);
+          const dateB = new Date(b.createdAt || 0);
+          return dateB - dateA; // newest first
+        });
+        setQuotes(sorted);
       }
     } catch (error) {
-      setMessage("Failed to fetch quotes.");
+      console.error("Error fetching quotes:", error);
+    } finally {
+      setIsRefreshing(false); // Always set to false when done
     }
   };
 
@@ -196,7 +239,7 @@ export default function Card() {
       // If we don't have a token address in our DB, check directly on the blockchain
       if (txHash) {
         try {
-          const explorerUrl = `https://explorer.zora.energy/api/v2/transactions/${txHash}`;
+          const explorerUrl = `https://explorer.zora.energy/api/v2/tx/${txHash}`;
           const explorerRes = await fetch(explorerUrl);
 
           if (explorerRes.ok) {
@@ -256,7 +299,7 @@ export default function Card() {
                   prevQuotes.filter((q) => q._id !== quoteId)
                 );
                 // Show message
-                setMessage("Quote removed - transaction was canceled");
+                showNotification("Quote removed - transaction was canceled");
               }
 
               // Remove from pending states
@@ -305,13 +348,15 @@ export default function Card() {
 
     // Log wallet client status for debugging
     if (isWalletLoading) {
-      setMessage("Please wait while connecting to wallet...");
+      showNotification("Please wait while connecting to wallet...");
       setIsSaving(false);
       return;
     }
 
     if (isWalletError || !walletClient) {
-      setMessage("Wallet connection error. Please reconnect your wallet.");
+      showNotification(
+        "Wallet connection error. Please reconnect your wallet."
+      );
       console.error("Wallet client error:", isWalletError);
       setIsSaving(false);
       return;
@@ -319,17 +364,17 @@ export default function Card() {
 
     // Validate basic inputs before proceeding
     if (!isConnected || !address) {
-      setMessage("Please connect your wallet");
+      showNotification("Please connect your wallet");
       setIsSaving(false);
       return;
     }
     if (!title.trim()) {
-      setMessage("Please enter a title");
+      showNotification("Please enter a title");
       setIsSaving(false);
       return;
     }
     if (!quote.trim()) {
-      setMessage("Quote cannot be empty!");
+      showNotification("Quote cannot be empty!");
       setIsSaving(false);
       return;
     }
@@ -340,7 +385,7 @@ export default function Card() {
 
     try {
       // STEP 1: Generate the quote image using the OG endpoint
-      setMessage("Generating quote image...");
+      showNotification("Generating quote image...");
       const ogUrl =
         `/api/og?quote=${encodeURIComponent(quote)}` +
         `&username=${encodeURIComponent(username)}` +
@@ -367,7 +412,7 @@ export default function Card() {
       ).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
       // STEP 2: Save quote to database with a 'draft' status
-      setMessage("Preparing your quote...");
+      showNotification("Preparing your quote...");
       const createRes = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -394,6 +439,16 @@ export default function Card() {
 
       // Get the saved quote data from response
       const saved = await createRes.json();
+      const draft = {
+        ...saved.quote,
+        isPending: true,
+        zoraTokenTxHash: null,
+        zoraTokenAddress: null,
+      };
+      // show it instantly (newest first)
+      setQuotes((prev) => [draft, ...prev]);
+      // start polling it
+      setCreatingTokens((prev) => [...prev, saved.quote._id]);
       savedQuoteData = saved.quote;
 
       // Extract the Cloudinary URL from the response to avoid duplicate uploads
@@ -401,18 +456,11 @@ export default function Card() {
       console.log("Quote prepared, image URL:", cloudinaryImageUrl);
 
       // Add the quote to local state with a pending status
-      setQuotes((prevQuotes) => {
-        const newQuote = {
-          ...saved.quote,
-          isPending: true, // Mark as pending until token is created
-        };
-        return [newQuote, ...prevQuotes];
-      });
 
       // Verify wallet client availability before token creation
       if (!walletClient) {
         console.error("Wallet client is not available");
-        setMessage(
+        showNotification(
           "Quote prepared! Token creation failed: Wallet client not available."
         );
 
@@ -436,7 +484,7 @@ export default function Card() {
 
       // STEP 4: Mint token using Zora if wallet client is available
       try {
-        setMessage("Creating token for your quote...");
+        showNotification("Creating token for your quote...");
         console.log("Starting token creation with:", {
           walletAddress: address,
           imageUrl: cloudinaryImageUrl,
@@ -463,7 +511,7 @@ export default function Card() {
           result.error?.includes("user rejected")
         ) {
           console.log("Transaction was rejected by user");
-          setMessage("Quote creation canceled.");
+          showNotification("Quote creation canceled.");
 
           // Delete the draft quote since the user canceled the transaction
           await fetch(`/api/quote/${saved.quote._id}`, {
@@ -502,11 +550,11 @@ export default function Card() {
           });
 
           if (updateRes.ok) {
-            setMessage(
+            showNotification(
               `Quote saved! Your token is being created. You can track progress at: ${result.explorerUrl}`
             );
           } else {
-            setMessage("Quote saved! Token transaction is processing.");
+            showNotification("Quote saved! Token transaction is processing.");
           }
 
           // Set up a timer to periodically check for token address updates
@@ -558,7 +606,9 @@ export default function Card() {
                       setQuotes((prevQuotes) =>
                         prevQuotes.filter((q) => q._id !== saved.quote._id)
                       );
-                      setMessage("Quote removed - transaction was canceled");
+                      showNotification(
+                        "Quote removed - transaction was canceled"
+                      );
                     }
 
                     // Remove from creating tokens state
@@ -676,7 +726,7 @@ export default function Card() {
               prevQuotes.filter((q) => q._id !== saved.quote._id)
             );
 
-            setMessage("Quote creation canceled by user.");
+            showNotification("Quote creation canceled by user.");
 
             // Reset form state
             setQuote("");
@@ -706,7 +756,7 @@ export default function Card() {
         );
 
         if (updateRes.ok) {
-          setMessage("Quote and token created successfully!");
+          showNotification("Quote and token created successfully!");
 
           // Update the quote in state with the token address
           setQuotes((prevQuotes) => {
@@ -718,7 +768,7 @@ export default function Card() {
           });
         } else {
           // Token created but failed to update DB record
-          setMessage(
+          showNotification(
             "Quote saved and token created! (Token info update failed)"
           );
         }
@@ -744,10 +794,10 @@ export default function Card() {
             prevQuotes.filter((q) => q._id !== savedQuoteData._id)
           );
 
-          setMessage("Quote creation canceled.");
+          showNotification("Quote creation canceled.");
         } else {
           // Still saved the quote, just failed token creation for other reasons
-          setMessage(
+          showNotification(
             `Quote saved successfully! (Token creation failed: ${tokenError.message})`
           );
         }
@@ -779,7 +829,7 @@ export default function Card() {
         }
       }
 
-      setMessage(`Failed to save quote: ${err.message}`);
+      showNotification(`Failed to save quote: ${err.message}`);
     } finally {
       // Ensure isSaving is reset regardless of success/failure
       setIsSaving(false);
@@ -797,7 +847,7 @@ export default function Card() {
     setIsUpdating(true);
 
     if (!editedText.trim()) {
-      setMessage("Quote cannot be empty!");
+      showNotification("Quote cannot be empty!");
       setIsUpdating(false);
       return;
     }
@@ -808,7 +858,7 @@ export default function Card() {
     let newImageUrl = null;
 
     try {
-      setMessage("Updating quote...");
+      showNotification("Updating quote...");
 
       // STEP 1: Generate new image with updated text
       const ogUrl =
@@ -940,7 +990,7 @@ export default function Card() {
 
       // STEP 3: If this quote has a Zora token, update the token metadata too
       if (quoteToUpdate.zoraTokenAddress && walletClient) {
-        setMessage("Updating token metadata...");
+        showNotification("Updating token metadata...");
 
         // Call the updateZoraCoin function
         const tokenUpdateResult = await updateZoraCoin({
@@ -956,26 +1006,26 @@ export default function Card() {
 
         if (tokenUpdateResult.error) {
           // Still consider quote update successful, but notify about token update failure
-          setMessage(
+          showNotification(
             `Quote updated! Note: Token metadata update failed: ${tokenUpdateResult.error}`
           );
         } else if (tokenUpdateResult.status === "pending") {
-          setMessage(
+          showNotification(
             `Quote updated! Token metadata update in progress. Track it here: ${tokenUpdateResult.explorerUrl}`
           );
         } else {
-          setMessage("Quote and token metadata updated successfully!");
+          showNotification("Quote and token metadata updated successfully!");
         }
       } else {
         // No token to update
-        setMessage("Quote updated successfully!");
+        showNotification("Quote updated successfully!");
       }
 
       setEditIndex(null);
       fetchQuotes();
     } catch (error) {
       console.error("Update error:", error);
-      setMessage(`Update failed: ${error.message}`);
+      showNotification(`Update failed: ${error.message}`);
     } finally {
       setIsUpdating(false);
       setQuote(originalText); // Restore original quote state
@@ -990,13 +1040,13 @@ export default function Card() {
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage("Quote deleted successfully!");
+        showNotification("Quote deleted successfully!");
         fetchQuotes();
       } else {
-        setMessage(data.error || "Failed to delete quote.");
+        showNotification(data.error || "Failed to delete quote.");
       }
     } catch (error) {
-      setMessage("Something went wrong. Try again.");
+      showNotification("Something went wrong. Try again.");
     }
   };
 
@@ -1016,9 +1066,45 @@ export default function Card() {
 
   return (
     <div className={isConnected ? "card" : ""} data-state={activeSection}>
+      <AnimatePresence>
+        {notification && (
+          <Notification
+            message={notification}
+            type={notificationType}
+            onClose={closeNotification}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {notification && (
+          <Notification
+            message={notification}
+            type={notificationType}
+            onClose={closeNotification}
+          />
+        )}
+      </AnimatePresence>
       {isConnected ? (
         <>
+          <AnimatePresence>
+            {notification && (
+              <Notification
+                message={notification}
+                type={notificationType}
+                onClose={closeNotification}
+              />
+            )}
+          </AnimatePresence>
           <div className="card-main">
+            <AnimatePresence>
+              {notification && (
+                <Notification
+                  message={notification}
+                  type={notificationType}
+                  onClose={closeNotification}
+                />
+              )}
+            </AnimatePresence>
             {/* Quote Display Section */}
             <div
               className={`card-section ${
@@ -1091,7 +1177,10 @@ export default function Card() {
               id="experience"
             >
               <div className="card-content">
-                <div className="card-subtitle">All Quotes</div>
+                <div className="card-subtitle" style={{ marginBottom: "15px" }}>
+                  All Quotes
+                </div>
+
                 <div className="quotes-list">
                   <AnimatePresence>
                     {quotes.length > 0 ? (
@@ -1145,54 +1234,47 @@ export default function Card() {
                                       <FaSpinner className="spin" /> PENDING
                                     </span>
 
-                                    <div className="pending-token-container">
-                                      <div className="token-progress-bar">
-                                        <div className="token-progress-bar-fill"></div>
+                                    {quote.zoraTokenTxHash && (
+                                      <div
+                                        style={{
+                                          marginTop: "8px",
+                                          display: "flex",
+                                          gap: "10px",
+                                        }}
+                                      >
+                                        <a
+                                          href={`https://explorer.zora.energy/tx/${quote.zoraTokenTxHash}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="view-transaction-link"
+                                        >
+                                          View Transaction
+                                        </a>
+                                        <button
+                                          className="check-status-button"
+                                          onClick={() =>
+                                            checkTokenStatus(
+                                              quote._id,
+                                              quote.zoraTokenTxHash
+                                            )
+                                          }
+                                          disabled={checkingTokens.includes(
+                                            quote._id
+                                          )}
+                                        >
+                                          {checkingTokens.includes(
+                                            quote._id
+                                          ) ? (
+                                            <>
+                                              <FaSpinner className="spin" />{" "}
+                                              Checking...
+                                            </>
+                                          ) : (
+                                            "Check Status"
+                                          )}
+                                        </button>
                                       </div>
-                                      <span className="token-status-text">
-                                        {checkingTokens.includes(quote._id)
-                                          ? "Checking token status..."
-                                          : "Token creation in progress..."}
-                                      </span>
-                                      {quote.zoraTokenTxHash && (
-                                        <>
-                                          <a
-                                            href={`https://explorer.zora.energy/tx/${quote.zoraTokenTxHash}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="view-transaction-link"
-                                          >
-                                            View Transaction
-                                          </a>
-                                          <button
-                                            className="check-status-button"
-                                            onClick={() =>
-                                              checkTokenStatus(
-                                                quote._id,
-                                                quote.zoraTokenTxHash
-                                              )
-                                            }
-                                            disabled={checkingTokens.includes(
-                                              quote._id
-                                            )}
-                                          >
-                                            {checkingTokens.includes(
-                                              quote._id
-                                            ) ? (
-                                              <>
-                                                <FaSpinner className="spin" />{" "}
-                                                Checking...
-                                              </>
-                                            ) : (
-                                              "Check Status Now"
-                                            )}
-                                          </button>
-                                          <span className="auto-refresh-text">
-                                            Auto-refreshing every 15 seconds
-                                          </span>
-                                        </>
-                                      )}
-                                    </div>
+                                    )}
                                   </>
                                 ) : (
                                   <strong className="quote-title">
@@ -1307,7 +1389,7 @@ export default function Card() {
                       {isSaving ? <FaSpinner className="spin" /> : "Let It Fly"}
                     </button>
                   </div>
-                  {message && <p className="message">{message}</p>}
+                  {notification && <p className="message">{notification}</p>}
                 </div>
               </div>
             </div>

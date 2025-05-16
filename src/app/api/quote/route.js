@@ -35,6 +35,7 @@ export async function POST(req) {
       verifiedAddresses,
       dateKey,
       image,
+      isPending,
     } = body;
 
     console.log("Processing image upload");
@@ -88,6 +89,7 @@ export async function POST(req) {
       verifiedAddresses,
       dateKey,
       image: imageUrl, // This is the Cloudinary URL
+      isPending: !!isPending, // ← persist true|false
     });
 
     // Save to database
@@ -110,20 +112,17 @@ export async function POST(req) {
     );
   }
 }
-
 export async function GET(req) {
   await dbConnect();
-
   const { searchParams } = new URL(req.url);
   const creatorAddress = searchParams.get("creatorAddress");
 
   try {
-    let quotes;
-    if (creatorAddress) {
-      quotes = await Quote.find({ creatorAddress });
-    } else {
-      quotes = await Quote.find({});
-    }
+    let query = {};
+    if (creatorAddress) query.creatorAddress = creatorAddress;
+
+    // add .sort({ createdAt: -1 }) for newest first
+    const quotes = await Quote.find(query).sort({ createdAt: -1 });
 
     return NextResponse.json({ quotes }, { status: 200 });
   } catch (error) {

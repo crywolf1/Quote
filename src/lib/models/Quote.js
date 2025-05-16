@@ -6,7 +6,7 @@ const quoteSchema = new mongoose.Schema(
     title: { type: String, required: true },
     text: { type: String, required: true },
     zoraTokenAddress: { type: String },
-    zoraTxHash: { type: String }, // Store the transaction hash too
+    zoraTokenTxHash: { type: String }, // Changed from zoraTxHash for consistency
     tokenMetadataUrl: { type: String }, // Store the IPFS metadata URL
     dexscreenerUrl: { type: String },
     creatorAddress: { type: String, required: true },
@@ -24,6 +24,9 @@ const quoteSchema = new mongoose.Schema(
     },
     dateKey: { type: String, required: true },
     image: String, // Store the image data URL
+    
+    // Add these fields for token creation status tracking
+    isPending: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
