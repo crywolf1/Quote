@@ -1,7 +1,8 @@
 import { createCoin, getCoinCreateFromLogs } from "@zoralabs/coins-sdk";
+import { createSplitContract } from "./createSplitContract";
 
 /**
- * Creates a Zora token using the SDK with minimal required parameters
+ * Creates a Zora token using the SDK with revenue sharing
  */
 export async function createZoraCoin({
   walletClient,
@@ -9,7 +10,8 @@ export async function createZoraCoin({
   title,
   imageUrl,
   creatorAddress,
-  quoteId, // Add quote ID parameter
+  quoteId,
+  enableSplit = true, // Default to true to always enable splits
 }) {
   try {
     // Basic validation
@@ -24,6 +26,29 @@ export async function createZoraCoin({
 
     console.log("Starting token creation process for:", title);
     console.log("Creating token for quote ID:", quoteId);
+
+    // Create split contract first for revenue sharing if enabled
+    let payoutRecipient = creatorAddress;
+    let splitContractInfo = null;
+
+    if (enableSplit) {
+      try {
+        console.log("Creating split contract for revenue sharing...");
+        splitContractInfo = await createSplitContract({
+          walletClient,
+          creatorAddress,
+        });
+
+        // Use the split contract address as payment recipient
+        payoutRecipient = splitContractInfo.splitAddress;
+        console.log(
+          `Using split contract ${payoutRecipient} for payments distribution`
+        );
+      } catch (splitError) {
+        console.error("Failed to create split contract:", splitError);
+        console.log("Falling back to creator address only for payments");
+      }
+    }
 
     // Step 1: Create metadata
     console.log("Creating metadata...");
@@ -55,16 +80,15 @@ export async function createZoraCoin({
       throw new Error(`Metadata error: ${metadataError.message}`);
     }
 
-    // Step 3: Create coin with minimal required parameters
-    console.log("Creating Zora coin with minimal parameters...");
+    // Step 3: Create coin with parameters
+    console.log("Creating Zora coin with parameters...");
 
     // These are the params to pass to the SDK's createCoin function
     const coinParams = {
-      name: title, // Using title directly for name
-      symbol: title, // Using title directly for symbol
+      name: title,
+      symbol: title,
       uri: metadataUrl,
-      payoutRecipient: creatorAddress,
-      // Use the recommended tickLower value from Zora dev
+      payoutRecipient: payoutRecipient, // Using either split contract or creator directly
       tickLower: -208200,
     };
 
@@ -85,10 +109,11 @@ export async function createZoraCoin({
         publicClient,
         hash,
         quoteId,
-        metadataUrl
+        metadataUrl,
+        splitContractInfo
       );
 
-      // Immediately return success with the hash
+      // Return success with the hash and split info if applicable
       const txExplorerUrl = `https://basescan.org/tx/${hash}`;
 
       return {
@@ -96,6 +121,7 @@ export async function createZoraCoin({
         txHash: hash,
         message: "Transaction submitted! It will be confirmed shortly.",
         explorerUrl: txExplorerUrl,
+        splitInfo: splitContractInfo,
       };
     } catch (contractError) {
       console.error("Contract execution error:", contractError);
@@ -123,7 +149,8 @@ async function waitForTransactionAndUpdateQuote(
   publicClient,
   txHash,
   quoteId,
-  metadataUrl
+  metadataUrl,
+  splitContractInfo
 ) {
   try {
     console.log("Waiting for transaction confirmation:", txHash);
@@ -154,7 +181,8 @@ async function waitForTransactionAndUpdateQuote(
                 quoteId,
                 txHash,
                 coinAddress,
-                metadataUrl
+                metadataUrl,
+                splitContractInfo
               );
             } else {
               console.error("Failed to extract coin address from receipt");
@@ -188,7 +216,8 @@ async function waitForTransactionAndUpdateQuote(
                   quoteId,
                   txHash,
                   coinAddress,
-                  metadataUrl
+                  metadataUrl,
+                  splitContractInfo
                 );
               }
             }
@@ -204,13 +233,14 @@ async function waitForTransactionAndUpdateQuote(
 }
 
 /**
- * Update quote record with token address details
+ * Update quote record with token address details and split info
  */
 async function updateQuoteWithTokenAddress(
   quoteId,
   txHash,
   coinAddress,
-  metadataUrl
+  metadataUrl,
+  splitContractInfo
 ) {
   try {
     console.log("Updating quote with token details:", {
@@ -223,17 +253,28 @@ async function updateQuoteWithTokenAddress(
     const dexscreenerUrl = `https://dexscreener.com/base/${coinAddress}`;
     console.log("DEX Screener URL:", dexscreenerUrl);
 
+    // Build update data with token details
+    const updateData = {
+      zoraTokenAddress: coinAddress,
+      zoraTxHash: txHash,
+      tokenMetadataUrl: metadataUrl,
+      dexscreenerUrl: dexscreenerUrl,
+    };
+
+    // Add split contract info if available
+    if (splitContractInfo) {
+      updateData.splitContractAddress = splitContractInfo.splitAddress;
+      updateData.splitContractTxHash = splitContractInfo.txHash;
+      updateData.platformPercentage = splitContractInfo.platformPercentage;
+      updateData.creatorPercentage = splitContractInfo.creatorPercentage;
+    }
+
     const response = await fetch(`/api/quote/${quoteId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        zoraTokenAddress: coinAddress,
-        zoraTxHash: txHash,
-        tokenMetadataUrl: metadataUrl,
-        dexscreenerUrl: dexscreenerUrl, // Add this field
-      }),
+      body: JSON.stringify(updateData),
     });
 
     if (response.ok) {
