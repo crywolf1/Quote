@@ -234,3 +234,25 @@ export async function DELETE(req, { params }) {
     );
   }
 }
+
+export async function GET(req, { params }) {
+  try {
+    await connectToDatabase();
+
+    const { id } = params;
+
+    const quote = await Quote.findById(id);
+
+    if (!quote) {
+      return NextResponse.json({ error: "Quote not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ quote });
+  } catch (error) {
+    console.error("Error fetching quote:", error);
+    return NextResponse.json(
+      { error: `Failed to fetch quote: ${error.message}` },
+      { status: 500 }
+    );
+  }
+}
