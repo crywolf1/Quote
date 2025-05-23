@@ -38,9 +38,15 @@ export async function GET(request) {
   if (!quotes.length) {
     return NextResponse.json({ error: "No quotes found" }, { status: 404 });
   }
+
   // Pick a random quote
   const randomIndex = Math.floor(Math.random() * quotes.length);
   const quote = quotes[randomIndex];
+
+  // IMPORTANT: Delete any older cache entries for this user before creating a new one
+  await QuoteOfTheDayCache.deleteMany({
+    key: { $regex: `^${userAddress}_` }, // Delete all caches for this address
+  });
 
   // Store in persistent cache for this 12h window
   await QuoteOfTheDayCache.create({ key, quoteId: quote._id });
