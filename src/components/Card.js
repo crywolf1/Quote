@@ -1527,32 +1527,45 @@ export default function Card() {
                           onChange={(e) => setTitle(e.target.value)}
                         />
                         <div className="style-selector">
-                          <div
-                            className={`style-btn ${
-                              selectedStyle === "dark" ? "selected" : ""
-                            }`}
-                            onClick={() => setSelectedStyle("dark")}
-                            title="Dark Style"
-                          >
-                            <div className="dark-style"></div>
+                          <div className="style-selector-row">
+                            <div
+                              className={`style-btn ${
+                                selectedStyle === "dark" ? "selected" : ""
+                              }`}
+                              onClick={() => setSelectedStyle("dark")}
+                              title="Dark Style"
+                            >
+                              <div className="dark-style"></div>
+                            </div>
+                            <div
+                              className={`style-btn ${
+                                selectedStyle === "white" ? "selected" : ""
+                              }`}
+                              onClick={() => setSelectedStyle("white")}
+                              title="White Style"
+                            >
+                              <div className="white-style"></div>
+                            </div>
                           </div>
-                          <div
-                            className={`style-btn ${
-                              selectedStyle === "pink" ? "selected" : ""
-                            }`}
-                            onClick={() => setSelectedStyle("pink")}
-                            title="Pink Style"
-                          >
-                            <div className="pink-style"></div>
-                          </div>
-                          <div
-                            className={`style-btn ${
-                              selectedStyle === "green" ? "selected" : ""
-                            }`}
-                            onClick={() => setSelectedStyle("green")}
-                            title="Nature Style"
-                          >
-                            <div className="green-style"></div>
+                          <div className="style-selector-row">
+                            <div
+                              className={`style-btn ${
+                                selectedStyle === "pink" ? "selected" : ""
+                              }`}
+                              onClick={() => setSelectedStyle("pink")}
+                              title="Pink Style"
+                            >
+                              <div className="pink-style"></div>
+                            </div>
+                            <div
+                              className={`style-btn ${
+                                selectedStyle === "green" ? "selected" : ""
+                              }`}
+                              onClick={() => setSelectedStyle("green")}
+                              title="Nature Style"
+                            >
+                              <div className="green-style"></div>
+                            </div>
                           </div>
                         </div>
                       </div>

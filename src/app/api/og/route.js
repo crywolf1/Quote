@@ -45,6 +45,10 @@ export async function GET(req) {
     let contentBorder = "rgba(50, 50, 50, 0.8)";
     let accentGlow = "rgba(90,90,255,0.08)";
     let patternChar = "Z";
+    let textColor = "#fff";
+    let userInfoBg = "rgba(20,20,20,0.7)";
+    let brandingBg = "rgba(20,20,20,0.7)";
+    let pfpBorder = "rgba(255,255,255,0.5)";
 
     // Apply style variations
     if (style === "pink") {
@@ -60,6 +64,17 @@ export async function GET(req) {
       accentGlow = "rgba(88, 214, 141, 0.15)";
       patternChar = "☘";
     }
+    if (style === "white") {
+      background = "linear-gradient(to right, #f0f4ff, #ffffff)"; // Subtle blue tint to white
+      contentBg = "rgba(255, 255, 255, 0.95)";
+      contentBorder = "rgba(0, 82, 255, 0.2)"; // Light blue border
+      accentGlow = "rgba(0, 82, 255, 0.12)"; // Brighter blue glow
+      patternChar = "◇";
+      textColor = "#0052FF"; // Keep the blue text
+      userInfoBg = "rgba(240, 246, 255, 0.95)"; // Very light blue background
+      brandingBg = "rgba(0, 82, 255, 0.08)"; // Light blue background for branding
+      pfpBorder = "rgb(0, 82, 255)"; // Keep the blue profile pic border
+    }
 
     return new ImageResponse(
       (
@@ -68,7 +83,7 @@ export async function GET(req) {
             width,
             height,
             background: background,
-            color: "#fff",
+            color: textColor,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -84,7 +99,7 @@ export async function GET(req) {
                 position: "absolute",
                 width: 30 + (i % 20),
                 height: 30 + (i % 20),
-                color: "rgba(255, 255, 255, 0.1)",
+                color: "rgba(0, 0, 0, 0.1)",
                 top: `${(i * 37 + patternSeed * 11) % 100}%`,
                 left: `${(i * 23 + patternSeed * 7) % 100}%`,
                 display: "flex",
@@ -123,7 +138,7 @@ export async function GET(req) {
               justifyContent: "center",
               borderRadius: 24,
               padding: "36px 40px 44px 40px",
-              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
               background: contentBg,
               backdropFilter: "blur(5px)",
               border: `1px solid ${contentBorder}`,
@@ -141,6 +156,7 @@ export async function GET(req) {
                 opacity: 0.15,
                 fontFamily: "Georgia, serif",
                 display: "flex",
+                color: style === "white" ? "#0066cc" : textColor,
               }}
             >
               "
@@ -157,7 +173,10 @@ export async function GET(req) {
                 marginBottom: 20,
                 display: "flex",
                 flexDirection: "column",
-                textShadow: "0 1px 2px rgba(0,0,0,0.2)",
+                textShadow:
+                  style === "white"
+                    ? "0 1px 1px rgba(0,0,0,0.1)"
+                    : "0 1px 2px rgba(0,0,0,0.2)",
                 wordBreak: "break-word",
                 overflowWrap: "break-word",
               }}
@@ -172,9 +191,11 @@ export async function GET(req) {
                 alignItems: "center",
                 justifyContent: "center",
                 marginTop: 8,
-                background: "rgba(20,20,20,0.7)",
+                background: userInfoBg,
                 padding: "12px 24px",
                 borderRadius: 50,
+                boxShadow:
+                  style === "white" ? "0 2px 8px rgba(0,0,0,0.05)" : "none",
               }}
             >
               <img
@@ -184,7 +205,7 @@ export async function GET(req) {
                 style={{
                   borderRadius: "50%",
                   objectFit: "cover",
-                  border: "3px solid rgba(255,255,255,0.5)",
+                  border: `3px solid ${pfpBorder}`,
                   marginRight: 16,
                 }}
               />
@@ -231,7 +252,7 @@ export async function GET(req) {
             >
               <span
                 style={{
-                  background: "rgba(20,20,20,0.7)",
+                  background: brandingBg,
                   padding: "4px 12px",
                   borderRadius: 12,
                   display: "flex",
@@ -257,6 +278,7 @@ export async function GET(req) {
   } catch (error) {
     console.error("OG Image error:", error);
 
+    // Keep the fallback as is - no changes needed
     return new ImageResponse(
       (
         <div

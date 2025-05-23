@@ -24,7 +24,11 @@ const quoteSchema = new mongoose.Schema(
     },
     dateKey: { type: String, required: true },
     image: String, // Store the image data URL
-    style: { type: String, enum: ["dark", "pink", "green"], default: "dark" }, // Add this line
+    style: {
+      type: String,
+      enum: ["dark", "pink", "green", "white"],
+      default: "dark",
+    }, // Add this line
 
     // Add these fields for token creation status tracking
     isPending: { type: Boolean, default: false },
