@@ -80,16 +80,22 @@ export async function GET(request) {
       ? `@${quoteOfTheDay.username}`
       : quoteOfTheDay.displayName || "Unknown";
 
-    const title = `$${
-      quoteOfTheDay.title?.toUpperCase() || "QUOTED"
-    }`.substring(0, 32);
+    // Use a simpler, consistent title
+    const title = "QUOTED";
 
+    // Updated intro messages without "quote of the day" references
     const introMessages = [
-      "📜 Today's wisdom: ",
-      "💫 Quote of the day: ",
-      "✨ Today's inspiration: ",
-      "🌟 Wisdom for today: ",
-      "📣 Daily quote: ",
+      "💫 For your inspiration: ",
+      "✨ A thought to ponder: ",
+      "🌟 Worth remembering: ",
+      "💭 Consider this: ",
+      "🔥 Powerful words: ",
+      "⚡️ Think about this: ",
+      "💎 Gem of wisdom: ",
+      "🧠 Food for thought: ",
+      "🌈 Something special: ",
+      "📌 Take note: ",
+      "🎯 Just for you: ",
     ];
 
     const introMessage =
@@ -102,6 +108,13 @@ export async function GET(request) {
         : quoteOfTheDay.text;
 
     const body = `${introMessage}"${truncatedQuote}" — ${quoteOwner}`;
+
+    // Log the notification content for debugging
+    console.log("Notification content:", {
+      title,
+      bodyLength: body.length,
+      body,
+    });
 
     const BASE_URL =
       process.env.NEXT_PUBLIC_BASE_URL || "https://quote-dusky.vercel.app";
