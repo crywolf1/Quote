@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OG Image Style Previewer</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+      }
+
+      body {
+        background-color: #0f0f0f;
+        color: #fff;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      .controls {
+        margin-bottom: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        padding: 20px;
+        background: #1a1a1a;
+        border-radius: 10px;
+      }
+
+      .control-group {
+        flex: 1;
+        min-width: 300px;
+      }
+
+      .control-label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+      }
+
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 10px;
+        background: #2a2a2a;
+        border: 1px solid #444;
+        border-radius: 5px;
+        color: #fff;
+        font-size: 16px;
+      }
+
+      textarea {
+        min-height: 80px;
+        resize: vertical;
+      }
+
+      .style-selector {
+        display: flex;
+        gap: 10px;
+      }
+
+      .style-btn {
+        width: 40px;
+        height: 40px;
+        border: 2px solid #444;
+        border-radius: 5px;
+        cursor: pointer;
+        position: relative;
+      }
+
+      .style-btn.selected {
+        border-color: white;
+      }
+
+      .dark-style {
+        background: linear-gradient(to right, #141414, #222222);
+      }
+
+      .pink-style {
+        background: linear-gradient(to right, #ff80bf, #ff1a8c);
+      }
+
+      .green-style {
+        background: linear-gradient(to right, #145a32, #196f3d);
+      }
+
+      .preview-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin-top: 40px;
+      }
+
+      .og-preview {
+        width: 800px;
+        height: 420px;
+        position: relative;
+        overflow: hidden;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        /* Will be set by JS */
+        background: linear-gradient(to right, #141414, #222222);
+      }
+
+      .pattern-elements {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+      }
+
+      .pattern-element {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: rgba(255, 255, 255, 0.1);
+      }
+
+      .glow-effect {
+        position: absolute;
+        width: 40%;
+        height: 40%;
+        top: 30%;
+        left: 30%;
+        filter: blur(60px);
+        z-index: 1;
+        /* Will be set by JS */
+        background: radial-gradient(
+          circle,
+          rgba(90, 90, 255, 0.08) 0%,
+          transparent 70%
+        );
+      }
+
+      .content-container {
+        width: 90%;
+        height: 85%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-radius: 24px;
+        padding: 36px 40px 44px 40px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        z-index: 10;
+        /* Will be set by JS */
+        background: rgba(30, 30, 30, 0.8);
+        border: 1px solid rgba(50, 50, 50, 0.8);
+      }
+
+      .quote-mark {
+        position: absolute;
+        top: 20px;
+        left: 30px;
+        font-size: 120px;
+        opacity: 0.15;
+        font-family: Georgia, serif;
+      }
+
+      .quote-text {
+        font-weight: 700;
+        text-align: center;
+        line-height: 1.4;
+        max-width: 90%;
+        margin-bottom: 20px;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        word-break: break-word;
+        overflow-wrap: break-word;
+        /* Font size will be set by JS */
+        font-size: 35px;
+      }
+
+      .user-info {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 8px;
+        background: rgba(20, 20, 20, 0.7);
+        padding: 12px 24px;
+        border-radius: 50px;
+      }
+
+      .profile-pic {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid rgba(255, 255, 255, 0.5);
+        margin-right: 16px;
+      }
+
+      .user-details {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .display-name {
+        font-size: 24px;
+        font-weight: 700;
+      }
+
+      .username {
+        font-size: 18px;
+        opacity: 0.9;
+      }
+
+      .token-tag {
+        position: absolute;
+        bottom: 20px;
+        right: 30px;
+        font-size: 18px;
+        font-weight: 700;
+        opacity: 0.6;
+      }
+
+      .token-tag span {
+        background: rgba(20, 20, 20, 0.7);
+        padding: 4px 12px;
+        border-radius: 12px;
+        display: flex;
+      }
+
+      .buttons {
+        margin-top: 30px;
+        display: flex;
+        gap: 10px;
+      }
+
+      button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        background: #3b82f6;
+        color: white;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 500;
+      }
+
+      button:hover {
+        background: #2563eb;
+      }
+
+      .copy-button {
+        background: #4b5563;
+      }
+
+      .copy-button:hover {
+        background: #374151;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>OG Image Style Previewer</h1>
+
+      <div class="controls">
+        <div class="control-group">
+          <label class="control-label" for="quote-input">Quote Text</label>
+          <textarea id="quote-input" placeholder="Enter your quote text...">
+This is a sample quote that will be displayed on the OG image. You can change this text to see how different quotes look.</textarea
+          >
+        </div>
+
+        <div class="control-group">
+          <label class="control-label" for="title-input">Token Title</label>
+          <input
+            type="text"
+            id="title-input"
+            placeholder="Enter token title/symbol..."
+            value="QUOTED"
+          />
+        </div>
+
+        <div class="control-group">
+          <label class="control-label" for="username-input">Username</label>
+          <input
+            type="text"
+            id="username-input"
+            placeholder="username"
+            value="quoteduser"
+          />
+        </div>
+
+        <div class="control-group">
+          <label class="control-label" for="displayname-input"
+            >Display Name</label
+          >
+          <input
+            type="text"
+            id="displayname-input"
+            placeholder="Display Name"
+            value="Sample User"
+          />
+        </div>
+
+        <div class="control-group">
+          <label class="control-label" for="pfp-input"
+            >Profile Picture URL</label
+          >
+          <input
+            type="text"
+            id="pfp-input"
+            placeholder="https://example.com/image.jpg"
+            value="https://placehold.co/256x256/222222/white?text=Q"
+          />
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Style</label>
+          <div class="style-selector">
+            <div class="style-btn dark-style selected" data-style="dark"></div>
+            <div class="style-btn pink-style" data-style="pink"></div>
+            <div class="style-btn green-style" data-style="green"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="preview-area">
+        <div class="og-preview">
+          <div class="pattern-elements" id="pattern-container">
+            <!-- Patterns will be dynamically generated -->
+          </div>
+
+          <div class="glow-effect" id="glow"></div>
+
+          <div class="content-container" id="content-container">
+            <div class="quote-mark">"</div>
+
+            <div class="quote-text" id="quote-display">
+              This is a sample quote that will be displayed on the OG image. You
+              can change this text to see how different quotes look.
+            </div>
+
+            <div class="user-info">
+              <img
+                src="https://placehold.co/256x256/222222/white?text=Q"
+                alt="Profile"
+                class="profile-pic"
+                id="profile-pic"
+              />
+              <div class="user-details">
+                <div class="display-name" id="display-name">Sample User</div>
+                <div class="username" id="username">@quoteduser</div>
+              </div>
+            </div>
+
+            <div class="token-tag">
+              <span id="token-title">$QUOTED</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="buttons">
+          <button id="generate-api-url">Generate API URL</button>
+          <button class="copy-button" id="copy-api-url">Copy API URL</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Style configurations
+      const styles = {
+        dark: {
+          background: "linear-gradient(to right, #141414, #222222)",
+          contentBg: "rgba(30, 30, 30, 0.8)",
+          contentBorder: "rgba(50, 50, 50, 0.8)",
+          accentGlow: "rgba(90,90,255,0.08)",
+          patternChar: "Z",
+        },
+        pink: {
+          background: "linear-gradient(to right, #ff80bf, #ff1a8c)",
+          contentBg: "rgba(50, 20, 40, 0.85)",
+          contentBorder: "rgba(255, 153, 204, 0.4)",
+          accentGlow: "rgba(255, 102, 178, 0.2)",
+          patternChar: "♥",
+        },
+        green: {
+          background: "linear-gradient(to right, #145a32, #196f3d)",
+          contentBg: "rgba(20, 50, 30, 0.85)",
+          contentBorder: "rgba(46, 139, 87, 0.4)",
+          accentGlow: "rgba(88, 214, 141, 0.15)",
+          patternChar: "☘",
+        },
+      };
+
+      // DOM Elements
+      const quoteInput = document.getElementById("quote-input");
+      const titleInput = document.getElementById("title-input");
+      const usernameInput = document.getElementById("username-input");
+      const displayNameInput = document.getElementById("displayname-input");
+      const pfpInput = document.getElementById("pfp-input");
+      const styleButtons = document.querySelectorAll(".style-btn");
+
+      const quoteDisplay = document.getElementById("quote-display");
+      const tokenTitle = document.getElementById("token-title");
+      const username = document.getElementById("username");
+      const displayName = document.getElementById("display-name");
+      const profilePic = document.getElementById("profile-pic");
+      const ogPreview = document.querySelector(".og-preview");
+      const contentContainer = document.getElementById("content-container");
+      const glow = document.getElementById("glow");
+      const patternContainer = document.getElementById("pattern-container");
+
+      const generateApiUrlBtn = document.getElementById("generate-api-url");
+      const copyApiUrlBtn = document.getElementById("copy-api-url");
+
+      // State
+      let currentStyle = "dark";
+      let generatedApiUrl = "";
+
+      // Initialize pattern elements
+      function generatePatternElements() {
+        patternContainer.innerHTML = "";
+        const patternSeed = usernameInput.value?.length || 5;
+        const patternDensity = 5 + (patternSeed % 4);
+        const patternChar = styles[currentStyle].patternChar;
+
+        for (let i = 0; i < patternDensity; i++) {
+          const element = document.createElement("div");
+          element.className = "pattern-element";
+          element.innerText = patternChar;
+
+          // Position and style
+          element.style.width = `${30 + (i % 20)}px`;
+          element.style.height = `${30 + (i % 20)}px`;
+          element.style.top = `${(i * 37 + patternSeed * 11) % 100}%`;
+          element.style.left = `${(i * 23 + patternSeed * 7) % 100}%`;
+          element.style.fontSize = `${24 + (i % 16)}px`;
+          element.style.opacity = `${0.1 + (i % 10) / 30}`;
+
+          patternContainer.appendChild(element);
+        }
+      }
+
+      // Update the preview based on current inputs
+      function updatePreview() {
+        // Update text content
+        quoteDisplay.innerText = quoteInput.value;
+        tokenTitle.innerText = titleInput.value.startsWith("$")
+          ? titleInput.value
+          : `$${titleInput.value.toUpperCase()}`;
+        username.innerText = `@${usernameInput.value}`;
+        displayName.innerText = displayNameInput.value;
+        profilePic.src =
+          pfpInput.value || "https://placehold.co/256x256/222222/white?text=Q";
+
+        // Update style
+        const style = styles[currentStyle];
+        ogPreview.style.background = style.background;
+        contentContainer.style.background = style.contentBg;
+        contentContainer.style.border = `1px solid ${style.contentBorder}`;
+        glow.style.background = `radial-gradient(circle, ${style.accentGlow} 0%, transparent 70%)`;
+
+        // Update quote font size based on length
+        const quoteLength = quoteInput.value.length;
+        let fontSize;
+        if (quoteLength > 180) fontSize = "26px";
+        else if (quoteLength > 120) fontSize = "30px";
+        else if (quoteLength > 60) fontSize = "35px";
+        else fontSize = "40px";
+
+        quoteDisplay.style.fontSize = fontSize;
+
+        // Regenerate pattern elements
+        generatePatternElements();
+      }
+
+      // Generate API URL
+      function generateApiUrl() {
+        const baseUrl = window.location.origin;
+        const params = new URLSearchParams();
+
+        params.append("quote", quoteInput.value);
+        params.append("username", usernameInput.value);
+        params.append("displayName", displayNameInput.value);
+        params.append("pfpUrl", pfpInput.value);
+        params.append("title", titleInput.value);
+        params.append("style", currentStyle);
+
+        generatedApiUrl = `${baseUrl}/api/og?${params.toString()}`;
+        alert(`API URL Generated: ${generatedApiUrl}`);
+        return generatedApiUrl;
+      }
+
+      // Copy API URL to clipboard
+      function copyApiUrl() {
+        const url = generatedApiUrl || generateApiUrl();
+        navigator.clipboard
+          .writeText(url)
+          .then(() => {
+            const originalText = copyApiUrlBtn.innerText;
+            copyApiUrlBtn.innerText = "Copied!";
+            setTimeout(() => {
+              copyApiUrlBtn.innerText = originalText;
+            }, 2000);
+          })
+          .catch((err) => {
+            console.error("Failed to copy: ", err);
+            alert("Failed to copy URL to clipboard");
+          });
+      }
+
+      // Add event listeners
+      quoteInput.addEventListener("input", updatePreview);
+      titleInput.addEventListener("input", updatePreview);
+      usernameInput.addEventListener("input", updatePreview);
+      displayNameInput.addEventListener("input", updatePreview);
+      pfpInput.addEventListener("input", updatePreview);
+
+      styleButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          // Update selection UI
+          styleButtons.forEach((b) => b.classList.remove("selected"));
+          btn.classList.add("selected");
+
+          // Update style
+          currentStyle = btn.dataset.style;
+          updatePreview();
+        });
+      });
+
+      generateApiUrlBtn.addEventListener("click", generateApiUrl);
+      copyApiUrlBtn.addEventListener("click", copyApiUrl);
+
+      // Initialize the preview
+      updatePreview();
+    </script>
+  </body>
+</html>

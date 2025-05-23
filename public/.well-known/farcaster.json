@@ -1,0 +1,20 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjM0NDIwMywidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDUyMjAyODE2QUNGMWY2RGVjMTZGMzkxZDkxY2NhYUQ2QTI2MkY1NUQifQ",
+    "payload": "eyJkb21haW4iOiJxdW90ZS1kdXNreS52ZXJjZWwuYXBwIn0",
+    "signature": "MHg5OTU5MjY3YThlM2Q0N2I4Mjk0NmJiM2EwMTVhYjk2ODBlNTZiNzAzOWJmZjQ2NTFlNzQ2Y2FlNGYxYWI4M2Q1NjllMjUzMGZhNTBkZmJlMTZkOWUxOGQzNzk5M2UzYTYxZjE5YTE3ODEyYTE3NTk5MmM0NTdhZDRiNDEwMGM1OTFj"
+  },
+  "frame": {
+    "version": "1",
+    "name": "Quote",
+    "iconUrl": "https://quote-dusky.vercel.app/QuoteIcon.png",
+    "homeUrl": "https://quote-dusky.vercel.app",
+    "imageUrl": "https://quote-dusky.vercel.app/image-ui.png",
+    "buttonTitle": "Quote",
+    "splashImageUrl": "https://quote-dusky.vercel.app/QuoteIcon.png",
+    "splashBackgroundColor": "#9c33ff",
+    "webhookUrl": "https://api.neynar.com/f/app/fa10e403-b269-4fdb-981a-0f39b8eed945/event"
+  }
+}
+
+

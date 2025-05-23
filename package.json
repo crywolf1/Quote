@@ -1,0 +1,69 @@
+{
+  "name": "quoted",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "resolutions": {
+    "@neynar/nodejs-sdk": "2.25.1"
+  },
+  "dependencies": {
+    "@0xsplits/splits-sdk": "^5.1.0",
+    "@0xsplits/splits-sdk-react": "^3.1.0",
+    "@chakra-ui/react": "^3.19.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@farcaster/auth-client": "^0.3.0",
+    "@farcaster/auth-kit": "^0.6.0",
+    "@farcaster/core": "^0.16.0",
+    "@farcaster/frame-node": "^0.0.29",
+    "@farcaster/frame-sdk": "^0.0.48",
+    "@farcaster/frame-wagmi-connector": "^0.0.22",
+    "@neynar/nodejs-sdk": "^2.44.0",
+    "@neynar/react": "^1.2.0",
+    "@pigment-css/react": "^0.0.30",
+    "@pinata/sdk": "^2.1.0",
+    "@rainbow-me/rainbowkit": "^2.2.4",
+    "@tanstack/react-query": "^5.72.2",
+    "@walletconnect/modal": "^2.7.0",
+    "@zoralabs/coins-sdk": "^0.0.5",
+    "@zoralabs/protocol-sdk": "^0.13.5",
+    "axios": "^1.9.0",
+    "cloudinary": "^2.6.0",
+    "dom-to-image-more": "^3.5.0",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.14.1",
+    "form-data": "^4.0.2",
+    "framer-motion": "^12.11.4",
+    "hls.js": "^1.6.2",
+    "html2canvas": "^1.4.1",
+    "mongodb": "^6.16.0",
+    "mongoose": "^8.12.1",
+    "next": "15.2.2",
+    "next-auth": "^4.24.11",
+    "nft.storage": "^7.2.0",
+    "pinata-sdk": "^0.1.7",
+    "pino-pretty": "^13.0.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-icons": "^5.5.0",
+    "react-toastify": "^11.0.5",
+    "sonner": "^2.0.3",
+    "swr": "^2.3.3",
+    "threejs-components": "^0.0.17",
+    "uuid": "^11.1.0",
+    "viem": "^2.28.1",
+    "wagmi": "^2.15.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4"
+  }
+}

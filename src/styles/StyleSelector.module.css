@@ -1,0 +1,170 @@
+.styleSelector {
+  margin-bottom: 1.5rem;
+}
+
+.heading {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+  color: #888;
+}
+
+.styleOptions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.styleButton {
+  width: 80px;
+  height: 80px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.styleButton:hover {
+  transform: translateY(-5px);
+}
+
+.selected {
+  box-shadow: 0 0 0 3px #3b82f6;
+}
+
+.stylePreview {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.darkPreview {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, #141414, #222222);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pinkPreview {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, #ff80bf, #ff1a8c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.greenPreview {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, #145a32, #196f3d);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Add 3D cube effect */
+.darkButton,
+.pinkButton,
+.greenButton {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.darkButton:before,
+.pinkButton:before,
+.greenButton:before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 8px;
+  bottom: -8px;
+  left: 0;
+  transform-origin: top;
+  transform: rotateX(-90deg);
+  opacity: 0.7;
+}
+
+.darkButton:before {
+  background-color: #0a0a0a;
+}
+
+.pinkButton:before {
+  background-color: #cc0066;
+}
+
+.greenButton:before {
+  background-color: #0b5345;
+}
+
+.darkButton:active,
+.pinkButton:active,
+.greenButton:active {
+  transform: translateY(4px);
+}
+/* Add to your style.css */
+.style-selector-buttons {
+  display: flex;
+  gap: 5px;
+  margin-left: 8px;
+}
+
+.style-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  background: #2a2a2a;
+  outline: none;
+}
+
+.style-btn:hover {
+  transform: translateY(-2px);
+}
+
+.style-btn.selected {
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px rgba(59, 130, 246, 0.7);
+}
+
+.dark-btn {
+  background: linear-gradient(to bottom right, #141414, #2c2c2c);
+}
+
+.pink-btn {
+  background: linear-gradient(to bottom right, #ff80bf, #ff1a8c);
+}
+
+.green-btn {
+  background: linear-gradient(to bottom right, #145a32, #196f3d);
+}
+
+.style-icon {
+  font-size: 14px;
+}
+
+.input-stylebtn-container {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.title-input {
+  flex: 1;
+}
