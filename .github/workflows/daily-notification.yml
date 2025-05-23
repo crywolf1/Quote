@@ -1,0 +1,15 @@
+# .github/workflows/daily-notification.yml
+name: Daily Quote Notification
+
+on:
+  schedule:
+    # Runs at 11:45 UTC every day
+    - cron: "00 12 * * *"
+
+jobs:
+  trigger-notification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger notification endpoint
+        run: |
+          curl -X GET "https://quote-dusky.vercel.app/api/cron/daily-notifications"
