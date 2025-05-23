@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import dbConnect from "../../../../lib/db";
-import Quote from "../../../../lib/models/Quote";
-import NotificationToken from "../../../../lib/models/NotificationToken";
-import NotificationHistory from "../../../../lib/models/NotificationHistory";
-import neynarClient from "../../../../lib/NeynarClient";
+import dbConnect from "../../../lib/db";
+import Quote from "../../../lib/models/Quote";
+import NotificationToken from "../../../lib/models/NotificationToken";
+import NotificationHistory from "../../../lib/models/NotificationHistory";
+import neynarClient from "../../../lib/NeynarClient";
 import { randomUUID } from "crypto";
 
 export const dynamic = "force-dynamic";
