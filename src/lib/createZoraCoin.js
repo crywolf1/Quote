@@ -72,11 +72,15 @@ export async function createZoraCoin({
       !!process.env.PLATFORM_REFERRER
     );
 
+    const platformAddress =
+      process.env.NEXT_PUBLIC_PLATFORM_ADDRESS || creatorAddress;
+    console.log("Using platform address:", platformAddress);
+
     const coinParams = {
       name: title,
       symbol: title,
       uri: metadataUrl,
-      owners: [process.env.PLATFORM_ADDRESS || process.env.PLATFORM_ADDRESS], // Use platform address if available
+      owners: [platformAddress], // Use platform address if available
       payoutRecipient: creatorAddress, // Initially set creator to receive first tokens
       platformReferrer: process.env.PLATFORM_REFERRER, // Optional: Set platform referrer if needed
       mintToCreator: true, // Explicitly ensure first tokens go to creator
@@ -309,14 +313,16 @@ async function updatePayoutRecipientToPlatform(
     console.log(`Confirmed creator address: ${creatorAddress}`);
 
     // Get platform address from env or use a default
-    const platformAddress = process.env.PLATFORM_ADDRESS;
+    const platformAddress = process.env.NEXT_PUBLIC_PLATFORM_ADDRESS;
 
     if (!platformAddress) {
       console.error("Platform address not found in environment variables");
       throw new Error("Platform address not configured");
     }
 
-    console.log(`Platform address: ${platformAddress}`);
+    console.log(
+      `Updating payout recipient to platform address: ${platformAddress}`
+    );
 
     // Step 1: Create a 50/50 split contract using Splits Protocol SDK
     console.log("Creating split contract...");
