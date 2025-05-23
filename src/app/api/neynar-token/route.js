@@ -35,7 +35,7 @@ export async function GET() {
       notification_sent: notificationResponse,
       manifest_url: `${
         process.env.NEXT_PUBLIC_BASE_URL || "https://quote-dusky.vercel.app"
-      }/.well-known/farcaster.json`,
+      }.well-known/farcaster.json`,
       next_steps: [
         "1. Verify your farcaster.json has the correct webhookUrl",
         "2. Force refresh your manifest in Warpcast (Settings > Developer Tools)",
