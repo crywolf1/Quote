@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "../../../lib/db";
 import Quote from "../../../lib/models/Quote";
 import NotificationToken from "../../../lib/models/NotificationToken";
-import NotificationHistory from "../../../lib/models/NotificationHistory"; // You may need to create this model
+import NotificationHistory from "../../../lib/models/NotificationHistory";
 import neynarClient from "../../../lib/NeynarClient";
 import { randomUUID } from "crypto";
 
@@ -31,16 +31,22 @@ export async function POST(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get active notification tokens
-    const activeTokens = await NotificationToken.find({ isActive: true });
+    // Get active notification tokens - ONLY get ones with valid FIDs
+    const activeTokens = await NotificationToken.find({
+      isActive: true,
+      fid: { $exists: true, $ne: null }, // Make sure we have valid FIDs
+    });
+
     console.log(`Found ${activeTokens.length} active notification subscribers`);
 
     if (activeTokens.length === 0) {
-      console.log("No active subscribers, skipping notification");
+      console.log(
+        "No active subscribers with valid FIDs, skipping notification"
+      );
       return NextResponse.json(
         {
           success: false,
-          message: "No active subscribers",
+          message: "No active subscribers with valid FIDs",
         },
         { status: 404 }
       );
@@ -107,8 +113,29 @@ export async function POST(request) {
       quoteOfTheDay._id
     }&campaign=daily&ts=${Date.now()}`;
 
-    // Get fids from active tokens
-    const targetFids = activeTokens.map((token) => token.fid);
+    // Get fids from active tokens - ensure they're all numeric (valid FIDs)
+    const targetFids = activeTokens
+      .map((token) => token.fid)
+      .filter(
+        (fid) =>
+          typeof fid === "number" ||
+          (typeof fid === "string" && !isNaN(Number(fid)))
+      );
+
+    if (targetFids.length === 0) {
+      console.log(
+        "No valid FIDs found in active tokens, skipping notification"
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          message: "No valid FIDs found in active tokens",
+        },
+        { status: 404 }
+      );
+    }
+
+    console.log(`Filtered to ${targetFids.length} valid FIDs for notification`);
 
     // Create a notification ID that's stable for this quote on this day
     // This helps prevent duplicate notifications if the function runs multiple times
@@ -182,6 +209,17 @@ export async function POST(request) {
       });
     } catch (error) {
       console.error("Error sending notifications via Neynar:", error);
+
+      // Log more detailed error info
+      if (error.response) {
+        try {
+          const errorData = await error.response.json();
+          console.error("Neynar error details:", errorData);
+        } catch (e) {
+          console.error("Could not parse error response:", error.response);
+        }
+      }
+
       return NextResponse.json(
         { error: "Failed to send notifications", message: error.message },
         { status: 500 }
