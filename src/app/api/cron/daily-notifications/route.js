@@ -9,11 +9,8 @@ export async function GET(request) {
 
   try {
     const API_KEY = process.env.NOTIFICATION_API_KEY;
-    // Use request URL to determine the base URL dynamically
-    const url = new URL(request.url);
-    const BASE_URL = `${url.protocol}//${url.host}`;
-
-    console.log(`Using dynamically determined BASE_URL: ${BASE_URL}`);
+    const BASE_URL =
+      process.env.NEXT_PUBLIC_BASE_URL || "https://quote-dusky.vercel.app";
 
     if (!API_KEY) {
       console.error("Missing NOTIFICATION_API_KEY in environment variables");
@@ -35,40 +32,20 @@ export async function GET(request) {
       cache: "no-store",
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(
-        `Error response from notifications endpoint: ${response.status}`,
-        errorText
-      );
-      return NextResponse.json(
-        {
-          error: `Notification request failed with status: ${response.status}`,
-          details: errorText,
-        },
-        { status: 500 }
-      );
-    }
-
-    // Parse the JSON response
     const data = await response.json();
-    console.log("Notification request completed successfully", {
+    console.log("Notification request completed", {
       status: response.status,
-      sent: data.sent || 0,
-      total: data.total || 0,
+      hasTokens: data.message !== "No active notification tokens",
     });
 
-    // Return a proper response
     return NextResponse.json({
       success: true,
-      message: "Daily notifications processed",
-      timestamp: new Date().toISOString(),
-      results: data,
+      data,
     });
   } catch (error) {
     console.error("Error triggering notifications:", error);
     return NextResponse.json(
-      { error: "Failed to trigger notifications", details: error.message },
+      { error: "Failed to trigger notifications" },
       { status: 500 }
     );
   }

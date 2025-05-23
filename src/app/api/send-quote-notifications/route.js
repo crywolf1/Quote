@@ -1,216 +1,76 @@
 import { NextResponse } from "next/server";
 import dbConnect from "../../../lib/db";
 import Quote from "../../../lib/models/Quote";
-import NotificationToken from "../../../lib/models/NotificationToken";
-import NotificationHistory from "../../../lib/models/NotificationHistory";
 import neynarClient from "../../../lib/NeynarClient";
 import { randomUUID } from "crypto";
+// Initialize Neynar client with your API key using the v2 format
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+// Helper function to create a stable notification ID for deduplication
+function getNotificationId() {
+  return randomUUID();
+}
 
-// This endpoint can be triggered by a cron job
-export async function GET(request) {
-  console.log("Daily notifications cron triggered", new Date().toISOString());
+export async function POST(request) {
+  await dbConnect();
 
   try {
-    // IMPORTANT: Instead of making a fetch request,
-    // we'll implement the notification logic directly
-    await dbConnect();
+    console.log("Starting notification process:", new Date().toISOString());
 
-    console.log("Connected to database, starting notification process");
-
-    // Get active notification tokens with valid FIDs
-    const activeTokens = await NotificationToken.find({
-      isActive: true,
-      fid: { $exists: true, $ne: null },
-    });
-
-    console.log(`Found ${activeTokens.length} active notification subscribers`);
-
-    if (activeTokens.length === 0) {
-      console.log("No active subscribers, skipping notification");
-      return NextResponse.json(
-        {
-          success: false,
-          message: "No active subscribers with valid FIDs",
-        },
-        { status: 404 }
-      );
-    }
-
-    // Get quotes that haven't been sent recently
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    let quoteQuery = {
-      $or: [
-        { lastSent: { $exists: false } },
-        { lastSent: { $lt: thirtyDaysAgo } },
-      ],
-    };
-
-    let quotes = await Quote.find(quoteQuery);
-
-    if (!quotes.length) {
-      console.log("No unused quotes in the last 30 days, using all quotes");
-      quotes = await Quote.find({});
-    }
-
+    // Get today's Quote of the Day
+    const quotes = await Quote.find({});
     if (!quotes.length) {
       console.error("No quotes found in database");
       return NextResponse.json({ error: "No quotes found" }, { status: 404 });
     }
-
-    console.log(`Found ${quotes.length} eligible quotes`);
+    console.log(`Found ${quotes.length} quotes`);
 
     // Pick a random quote for today
     const randomIndex = Math.floor(Math.random() * quotes.length);
     const quoteOfTheDay = quotes[randomIndex];
     console.log(`Selected quote ID: ${quoteOfTheDay._id}`);
 
-    // Update the quote's lastSent date
-    await Quote.findByIdAndUpdate(quoteOfTheDay._id, {
-      lastSent: new Date(),
-      sendCount: (quoteOfTheDay.sendCount || 0) + 1,
-    });
-
-    // Format notification content
+    // Format notification content with length limits
     const quoteOwner = quoteOfTheDay.username
       ? `@${quoteOfTheDay.username}`
       : quoteOfTheDay.displayName || "Unknown";
 
-    // Use a simpler, consistent title
-    const title = "QUOTED";
+    // Ensure title is max 32 chars
+    const title = `$${
+      quoteOfTheDay.title?.toUpperCase() || "QUOTED"
+    }`.substring(0, 32);
 
-    // Updated intro messages without "quote of the day" references
-    const introMessages = [
-      "💫 For your inspiration: ",
-      "✨ A thought to ponder: ",
-      "🌟 Worth remembering: ",
-      "💭 Consider this: ",
-      "🔥 Powerful words: ",
-      "⚡️ Think about this: ",
-      "💎 Gem of wisdom: ",
-      "🧠 Food for thought: ",
-      "🌈 Something special: ",
-      "📌 Take note: ",
-      "🎯 Just for you: ",
-    ];
-
-    const introMessage =
-      introMessages[Math.floor(Math.random() * introMessages.length)];
-
-    const maxQuoteLength = 128 - introMessage.length - quoteOwner.length - 5;
+    // Ensure body is max 128 chars including the attribution
+    const maxQuoteLength = 128 - quoteOwner.length - 5; // 5 chars for quote marks and dash
     const truncatedQuote =
       quoteOfTheDay.text.length > maxQuoteLength
         ? quoteOfTheDay.text.substring(0, maxQuoteLength - 3) + "..."
         : quoteOfTheDay.text;
-
-    const body = `${introMessage}"${truncatedQuote}" — ${quoteOwner}`;
-
-    // Log the notification content for debugging
-    console.log("Notification content:", {
-      title,
-      bodyLength: body.length,
-      body,
-    });
+    const body = `"${truncatedQuote}" — ${quoteOwner}`;
 
     const BASE_URL =
       process.env.NEXT_PUBLIC_BASE_URL || "https://quote-dusky.vercel.app";
-    const targetUrl = `${BASE_URL}/?source=notification&quoteId=${
-      quoteOfTheDay._id
-    }&campaign=daily&ts=${Date.now()}`;
+    const targetUrl = `${BASE_URL}/?source=notification&quoteId=${quoteOfTheDay._id}`;
 
-    // Get valid FIDs
-    const targetFids = activeTokens
-      .map((token) => token.fid)
-      .filter(
-        (fid) =>
-          typeof fid === "number" ||
-          (typeof fid === "string" && !isNaN(Number(fid)))
-      );
-
-    if (targetFids.length === 0) {
-      console.log("No valid FIDs found in active tokens");
-      return NextResponse.json(
-        {
-          success: false,
-          message: "No valid FIDs found in active tokens",
-        },
-        { status: 404 }
-      );
-    }
-
-    console.log(`Filtered to ${targetFids.length} valid FIDs for notification`);
-
-    // Create stable notification ID
-    const today = new Date().toISOString().split("T")[0];
-    const notificationId = `quote-${quoteOfTheDay._id}-${today}`;
-
-    // Send notification
-    console.log(
-      `Sending notification to ${targetFids.length} users via Neynar...`
-    );
-
+    // Use Neynar's publishFrameNotifications API
     try {
+      console.log("Sending notification via Neynar...");
+
       const response = await neynarClient.publishFrameNotifications({
-        targetFids: targetFids,
+        targetFids: [], // Empty array means send to all users with notifications enabled
         notification: {
           title: title,
           body: body,
           target_url: targetUrl,
-          uuid: notificationId,
+          uuid: getNotificationId(), // Add this to prevent duplicate notifications
         },
       });
 
-      console.log("Neynar response received");
-
-      // Track notification metrics
-      const successCount =
-        response.notification_deliveries?.filter(
-          (delivery) => delivery.status === "success"
-        ).length || 0;
-
-      // Save notification history
-      try {
-        await NotificationHistory.create({
-          quoteId: quoteOfTheDay._id,
-          sentAt: new Date(),
-          title,
-          body,
-          targetUrl,
-          targetFidCount: targetFids.length,
-          successCount,
-          notificationId,
-          deliveryDetails: response.notification_deliveries,
-        });
-      } catch (historyError) {
-        console.error("Error saving notification history:", historyError);
-      }
-
-      // Update lastNotified timestamp
-      const successfulFids =
-        response.notification_deliveries
-          ?.filter((delivery) => delivery.status === "success")
-          .map((delivery) => delivery.fid) || [];
-
-      if (successfulFids.length > 0) {
-        await NotificationToken.updateMany(
-          { fid: { $in: successfulFids } },
-          { $set: { lastNotified: new Date() } }
-        );
-      }
+      console.log("Neynar response:", JSON.stringify(response, null, 2));
 
       return NextResponse.json({
         success: true,
         message: "Notification process completed",
-        sent: successCount,
-        total: targetFids.length,
-        quote: {
-          id: quoteOfTheDay._id,
-          truncated: truncatedQuote !== quoteOfTheDay.text,
-        },
+        results: response,
       });
     } catch (error) {
       console.error("Error sending notifications via Neynar:", error);
@@ -220,9 +80,9 @@ export async function GET(request) {
       );
     }
   } catch (error) {
-    console.error("Error in daily notifications cron:", error);
+    console.error("Error processing notifications:", error);
     return NextResponse.json(
-      { error: "Failed to trigger notifications", details: error.message },
+      { error: "Failed to send notifications" },
       { status: 500 }
     );
   }
