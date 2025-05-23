@@ -50,27 +50,25 @@ export async function GET(request) {
       );
     }
 
+    // Parse the JSON response
     const data = await response.json();
-    console.log("Notification request completed", {
+    console.log("Notification request completed successfully", {
       status: response.status,
-      hasTokens: data.message !== "No active notification tokens",
-      data: JSON.stringify(data).substring(0, 200) + "...", // Log part of the response
+      sent: data.sent || 0,
+      total: data.total || 0,
     });
 
+    // Return a proper response
     return NextResponse.json({
       success: true,
+      message: "Daily notifications processed",
       timestamp: new Date().toISOString(),
-      data,
+      results: data,
     });
   } catch (error) {
     console.error("Error triggering notifications:", error);
-    console.error("Error details:", error.message, error.stack);
     return NextResponse.json(
-      {
-        error: "Failed to trigger notifications",
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      },
+      { error: "Failed to trigger notifications", details: error.message },
       { status: 500 }
     );
   }
