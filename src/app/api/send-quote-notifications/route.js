@@ -1,48 +1,35 @@
 import { NextResponse } from "next/server";
-import dbConnect from "../../../lib/db";
-import Quote from "../../../lib/models/Quote";
-import NotificationToken from "../../../lib/models/NotificationToken";
-import NotificationHistory from "../../../lib/models/NotificationHistory";
-import neynarClient from "../../../lib/NeynarClient";
+import dbConnect from "../../../../lib/db";
+import Quote from "../../../../lib/models/Quote";
+import NotificationToken from "../../../../lib/models/NotificationToken";
+import NotificationHistory from "../../../../lib/models/NotificationHistory";
+import neynarClient from "../../../../lib/NeynarClient";
 import { randomUUID } from "crypto";
 
-// Helper function to create a stable notification ID for deduplication
-function getNotificationId() {
-  return randomUUID();
-}
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-export async function POST(request) {
-  await dbConnect();
+// This endpoint can be triggered by a cron job
+export async function GET(request) {
+  console.log("Daily notifications cron triggered", new Date().toISOString());
 
   try {
-    console.log("Starting notification process:", new Date().toISOString());
+    // IMPORTANT: Instead of making a fetch request,
+    // we'll implement the notification logic directly
+    await dbConnect();
 
-    // Check authorization if needed
-    const authHeader = request.headers.get("Authorization");
-    const API_KEY = process.env.NOTIFICATION_API_KEY;
+    console.log("Connected to database, starting notification process");
 
-    if (
-      API_KEY &&
-      (!authHeader ||
-        !authHeader.startsWith("Bearer ") ||
-        authHeader.slice(7) !== API_KEY)
-    ) {
-      console.error("Unauthorized notification attempt");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get active notification tokens - ONLY get ones with valid FIDs
+    // Get active notification tokens with valid FIDs
     const activeTokens = await NotificationToken.find({
       isActive: true,
-      fid: { $exists: true, $ne: null }, // Make sure we have valid FIDs
+      fid: { $exists: true, $ne: null },
     });
 
     console.log(`Found ${activeTokens.length} active notification subscribers`);
 
     if (activeTokens.length === 0) {
-      console.log(
-        "No active subscribers with valid FIDs, skipping notification"
-      );
+      console.log("No active subscribers, skipping notification");
       return NextResponse.json(
         {
           success: false,
@@ -52,7 +39,7 @@ export async function POST(request) {
       );
     }
 
-    // Get quotes that haven't been sent recently (in the last 30 days)
+    // Get quotes that haven't been sent recently
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -65,7 +52,6 @@ export async function POST(request) {
 
     let quotes = await Quote.find(quoteQuery);
 
-    // If no quotes are available that haven't been sent recently, fall back to all quotes
     if (!quotes.length) {
       console.log("No unused quotes in the last 30 days, using all quotes");
       quotes = await Quote.find({});
@@ -89,23 +75,33 @@ export async function POST(request) {
       sendCount: (quoteOfTheDay.sendCount || 0) + 1,
     });
 
-    // Format notification content with length limits
+    // Format notification content
     const quoteOwner = quoteOfTheDay.username
       ? `@${quoteOfTheDay.username}`
       : quoteOfTheDay.displayName || "Unknown";
 
-    // Ensure title is max 32 chars
     const title = `$${
       quoteOfTheDay.title?.toUpperCase() || "QUOTED"
     }`.substring(0, 32);
 
-    // Ensure body is max 128 chars including the attribution
-    const maxQuoteLength = 128 - quoteOwner.length - 5; // 5 chars for quote marks and dash
+    const introMessages = [
+      "📜 Today's wisdom: ",
+      "💫 Quote of the day: ",
+      "✨ Today's inspiration: ",
+      "🌟 Wisdom for today: ",
+      "📣 Daily quote: ",
+    ];
+
+    const introMessage =
+      introMessages[Math.floor(Math.random() * introMessages.length)];
+
+    const maxQuoteLength = 128 - introMessage.length - quoteOwner.length - 5;
     const truncatedQuote =
       quoteOfTheDay.text.length > maxQuoteLength
         ? quoteOfTheDay.text.substring(0, maxQuoteLength - 3) + "..."
         : quoteOfTheDay.text;
-    const body = `"${truncatedQuote}" — ${quoteOwner}`;
+
+    const body = `${introMessage}"${truncatedQuote}" — ${quoteOwner}`;
 
     const BASE_URL =
       process.env.NEXT_PUBLIC_BASE_URL || "https://quote-dusky.vercel.app";
@@ -113,7 +109,7 @@ export async function POST(request) {
       quoteOfTheDay._id
     }&campaign=daily&ts=${Date.now()}`;
 
-    // Get fids from active tokens - ensure they're all numeric (valid FIDs)
+    // Get valid FIDs
     const targetFids = activeTokens
       .map((token) => token.fid)
       .filter(
@@ -123,9 +119,7 @@ export async function POST(request) {
       );
 
     if (targetFids.length === 0) {
-      console.log(
-        "No valid FIDs found in active tokens, skipping notification"
-      );
+      console.log("No valid FIDs found in active tokens");
       return NextResponse.json(
         {
           success: false,
@@ -137,18 +131,18 @@ export async function POST(request) {
 
     console.log(`Filtered to ${targetFids.length} valid FIDs for notification`);
 
-    // Create a notification ID that's stable for this quote on this day
-    // This helps prevent duplicate notifications if the function runs multiple times
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    // Create stable notification ID
+    const today = new Date().toISOString().split("T")[0];
     const notificationId = `quote-${quoteOfTheDay._id}-${today}`;
 
-    try {
-      console.log(
-        `Sending notification to ${targetFids.length} users via Neynar...`
-      );
+    // Send notification
+    console.log(
+      `Sending notification to ${targetFids.length} users via Neynar...`
+    );
 
+    try {
       const response = await neynarClient.publishFrameNotifications({
-        targetFids: targetFids, // Target specific users with active tokens
+        targetFids: targetFids,
         notification: {
           title: title,
           body: body,
@@ -157,7 +151,7 @@ export async function POST(request) {
         },
       });
 
-      console.log("Neynar response:", JSON.stringify(response, null, 2));
+      console.log("Neynar response received");
 
       // Track notification metrics
       const successCount =
@@ -180,10 +174,9 @@ export async function POST(request) {
         });
       } catch (historyError) {
         console.error("Error saving notification history:", historyError);
-        // Don't fail the whole request if history saving fails
       }
 
-      // Update lastNotified timestamp for users who received notifications
+      // Update lastNotified timestamp
       const successfulFids =
         response.notification_deliveries
           ?.filter((delivery) => delivery.status === "success")
@@ -205,30 +198,18 @@ export async function POST(request) {
           id: quoteOfTheDay._id,
           truncated: truncatedQuote !== quoteOfTheDay.text,
         },
-        results: response,
       });
     } catch (error) {
       console.error("Error sending notifications via Neynar:", error);
-
-      // Log more detailed error info
-      if (error.response) {
-        try {
-          const errorData = await error.response.json();
-          console.error("Neynar error details:", errorData);
-        } catch (e) {
-          console.error("Could not parse error response:", error.response);
-        }
-      }
-
       return NextResponse.json(
         { error: "Failed to send notifications", message: error.message },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error("Error processing notifications:", error);
+    console.error("Error in daily notifications cron:", error);
     return NextResponse.json(
-      { error: "Failed to send notifications", details: error.message },
+      { error: "Failed to trigger notifications", details: error.message },
       { status: 500 }
     );
   }
