@@ -11,16 +11,18 @@ const chains = [base];
 // Get the correct app URL for WalletConnect metadata
 const getAppUrl = () => {
   if (typeof window !== "undefined") {
-    // Use the current URL without any trailing slash
-    return window.location.origin;
+    // Remove trailing slash to prevent URL mismatch errors
+    return window.location.origin.replace(/\/$/, "");
   }
-  // Fallback URL for server-side rendering
+  // Fallback URL without trailing slash for server-side rendering
   return "https://quote-dusky.vercel.app";
 };
 
-// Enhanced Farcaster environment detection with frame context support
+// Enhanced Farcaster environment detection
 const isFarcasterEnvironment = () => {
-  if (typeof window !== "undefined") {
+  if (typeof window === "undefined") return false;
+
+  try {
     // Check user agent (safe method)
     if (navigator.userAgent.includes("Warpcast")) {
       return true;
@@ -31,39 +33,40 @@ const isFarcasterEnvironment = () => {
       return true;
     }
 
-    // Frame context detection - more reliable approach
-    try {
-      // Check for Farcaster SDK frame context indicator
-      if (
-        window.__FARCASTER_FRAME_CONTEXT__ ||
-        window.parent?.__FARCASTER_FRAME_CONTEXT__
-      ) {
-        return true;
-      }
-
-      // Additional check for frame SDK if available
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has("fc-frame") || urlParams.has("farcaster")) {
-        return true;
-      }
-
-      // Check for Farcaster message channel
-      if (window.parent && window.parent !== window) {
-        return true; // Likely in an iframe which could be a Farcaster frame
-      }
-    } catch (e) {
-      // Silently ignore cross-origin errors
-      console.debug("Frame detection error (safe to ignore):", e.message);
+    // Frame context detection
+    if (
+      window.__FARCASTER_FRAME_CONTEXT__ ||
+      window.parent?.__FARCASTER_FRAME_CONTEXT__
+    ) {
+      return true;
     }
+
+    // URL parameter checks
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has("fc-frame") || urlParams.has("farcaster")) {
+      return true;
+    }
+  } catch (e) {
+    console.debug("Frame detection error (safe to ignore):", e.message);
   }
+
   return false;
 };
 
-// Define the custom logger to filter out common errors
+// Custom logger to filter noise
 const customLogger = {
-  debug: () => {}, // No-op for debug logs
-  info: () => {}, // No-op for info logs
-  warn: console.warn.bind(console),
+  debug: () => {},
+  info: () => {},
+  warn: (message) => {
+    // Filter out known warning messages
+    if (
+      String(message).includes("WalletConnect Core is already initialized") ||
+      String(message).includes("metadata.url")
+    ) {
+      return;
+    }
+    console.warn(message);
+  },
   error: (...args) => {
     const errorStr = String(args[0] || "");
 
@@ -75,72 +78,103 @@ const customLogger = {
       errorStr.includes("chrome.runtime") ||
       errorStr.includes("Failed to read") ||
       errorStr.includes("farcaster") ||
-      errorStr.includes("useEmbeddedWallet")
+      errorStr.includes("useEmbeddedWallet") ||
+      errorStr.includes("Cannot set property ethereum")
     ) {
-      return; // Suppress these errors
+      return;
     }
 
     console.error(...args);
   },
 };
 
-// Set up default connectors with additional options for better error handling
-const { connectors: defaultConnectors } = getDefaultWallets({
-  appName: "Quoted App",
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-  chains,
-  // Fix WalletConnect metadata to match actual URL
-  walletConnectOptions: {
+// Only initialize wallets/connections once with a flag
+let walletInitialized = false;
+
+// Set up wallet connectors
+const setupWallets = () => {
+  if (walletInitialized) {
+    return { connectors: defaultConnectors };
+  }
+
+  walletInitialized = true;
+
+  // Get app metadata URL without trailing slash
+  const appUrl = getAppUrl();
+
+  const { connectors: defaultConnectors } = getDefaultWallets({
+    appName: "Quoted App",
     projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-    showQrModal: true,
-    metadata: {
+    chains,
+    walletConnectOptions: {
+      projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+      showQrModal: true,
+      metadata: {
+        name: "Quoted App",
+        description: "Share your thoughts as quotes",
+        url: appUrl,
+        icons: [`${appUrl}/QuoteIcon.png`],
+      },
+    },
+  });
+
+  return { connectors: defaultConnectors };
+};
+
+// Get default connectors with initialization protection
+const { connectors: defaultConnectors } = setupWallets();
+
+// Safely create Farcaster connector
+const createFarcasterConnector = () => {
+  return farcasterFrame({
+    chains,
+    options: {
+      projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+      shimDisconnect: true,
       name: "Quoted App",
-      description: "Share your thoughts as quotes",
-      url: getAppUrl(),
-      icons: ["https://quote-dusky.vercel.app/QuoteIcon.png"],
-    },
-  },
-});
+      // Use a factory function to avoid immediate execution and property conflicts
+      getProvider: async () => {
+        if (typeof window === "undefined") return null;
 
-// Configure Farcaster connector with improved options
-const farcasterConnector = farcasterFrame({
-  chains,
-  options: {
-    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-    // These additional options help with browser compatibility
-    shimDisconnect: true,
-    name: "Quoted App",
-    getProvider: () => {
-      // Handle both direct SDK access and fallback
-      if (typeof window !== "undefined" && window?.farcaster?.ethereum) {
-        return window.farcaster.ethereum;
-      }
-      return null;
-    },
-  },
-});
+        try {
+          // Wait a moment to ensure the page is fully loaded
+          if (window.farcaster?.ethereum) {
+            return window.farcaster.ethereum;
+          } else if (window.ethereum) {
+            // If farcaster ethereum doesn't exist but window.ethereum does,
+            // and we're in a Farcaster environment, use window.ethereum
+            if (isFarcasterEnvironment()) {
+              return window.ethereum;
+            }
+          }
+        } catch (e) {
+          console.debug("Farcaster provider access error:", e.message);
+        }
 
-// Always include the Farcaster connector, but conditionally set its priority
+        return null;
+      },
+    },
+  });
+};
+
+// Conditionally add the Farcaster connector based on environment
+const farcasterConnector = createFarcasterConnector();
 const connectors = isFarcasterEnvironment()
   ? [farcasterConnector, ...defaultConnectors]
-  : [...defaultConnectors, farcasterConnector]; // Add as fallback
+  : [...defaultConnectors, farcasterConnector];
 
-// Create config with http transport - Wagmi v2 syntax
+// Create wagmi config
 export const wagmiConfig = createConfig({
   chains,
   connectors,
   transports: {
     [base.id]: http(),
   },
-  // Add logger to filter runtime.sendMessage errors
   logger: customLogger,
-  // Add batching for more efficient RPC calls
   batch: {
     multicall: true,
   },
-  // Reduce extension communication errors with better timeouts
   pollingInterval: 4000,
-  // Auto-connect can help ensure wallet state persists, but configurable
   autoConnect: true,
 });
 
