@@ -76,9 +76,9 @@ export async function POST(request) {
 
     // Select random inspirational message for body (NO quote text)
     const randomMessageIndex = Math.floor(
-      Math.random() * inspirationalMessages.length
+      Math.random() * darkerMessages.length
     );
-    const body = inspirationalMessages[randomMessageIndex];
+    const body = darkerMessages[randomMessageIndex];
 
     const BASE_URL =
       process.env.NEXT_PUBLIC_BASE_URL || "https://quote-dusky.vercel.app";

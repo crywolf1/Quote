@@ -1268,6 +1268,13 @@
 .action-spacer {
   flex: 1;
 }
+.refresh-btn {
+  cursor: pointer;
+}
+
+.like-btn {
+  cursor: pointer;
+}
 
 .qod-action-btn.refresh-btn {
   background: linear-gradient(135deg, #7a40a3, #6c31e9);
