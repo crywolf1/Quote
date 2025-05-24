@@ -34,7 +34,6 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        {process.env.NODE_ENV !== "production" && <WalletDebugger />}
         <WagmiProviderWrapper>
           <FarcasterFrameProvider>
             <NeynarContextProvider
