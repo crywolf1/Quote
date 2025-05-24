@@ -2516,3 +2516,160 @@
 .like-count.updated {
   animation: pulse-count 0.3s ease-in-out;
 }
+
+/* Cast button style */
+.vibes-cast-btn {
+  background: linear-gradient(135deg, #8844ee, #6e3ad6);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.vibes-cast-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(136, 68, 238, 0.3);
+}
+
+.vibes-cast-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(136, 68, 238, 0.2);
+}
+
+/* Ensure the buttons align properly */
+.vibes-token-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Modern Token Button Styles */
+.token-panel {
+  margin-top: 16px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.token-panel__actions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  width: fit-content;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Base Token Button Styles */
+.token-btn {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #111;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: visible;
+}
+
+.token-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+}
+
+.token-btn:active {
+  transform: translateY(-1px);
+}
+
+/* Button Icon */
+.token-btn__icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+/* Button Variants with cleaner gradients */
+.token-btn--copy {
+  background: linear-gradient(135deg, #e8f8f3, white);
+  color: #059669;
+  border: 1px solid rgba(5, 150, 105, 0.2);
+}
+
+.token-btn--zora {
+  background: white;
+  border: 1px solid rgba(113, 35, 185, 0.2);
+}
+
+.token-btn--dex {
+  background: white;
+  border: 1px solid rgba(41, 65, 94, 0.2);
+}
+
+.token-btn--cast {
+  background: linear-gradient(135deg, #eef2ff, white);
+  color: #7b3fe4;
+  border: 1px solid rgba(79, 70, 229, 0.2);
+}
+
+/* Improved tooltip on hover */
+.token-btn__tooltip {
+  position: absolute;
+  bottom: -32px;
+  background: #000;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: all 0.2s ease;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.token-btn:hover .token-btn__tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Enhanced ripple effect on click */
+.token-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.8) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  border-radius: inherit;
+  transform: scale(0);
+  transition: transform 0.4s ease, opacity 0.3s ease;
+}
+
+.token-btn:active::after {
+  opacity: 0.3;
+  transform: scale(2);
+  transition: 0s;
+}
+

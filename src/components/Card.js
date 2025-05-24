@@ -327,6 +327,37 @@ export default function Card() {
     });
   };
 
+  // Add this function to your Card component
+  const handleCastToken = async (quote) => {
+    if (!quote?.zoraTokenAddress) {
+      showNotification("No token found to share", "error");
+      return;
+    }
+
+    try {
+      // Format the Zora URL for the token
+      const zoraUrl = `https://zora.co/coin/base:${quote.zoraTokenAddress}`;
+
+      // Create suggested text for the cast
+      const castText = `Check out my $${
+        quote.title?.toUpperCase() || "TOKEN"
+      }!\n\n"${quote.text}"`;
+
+      // Call the composeCast SDK action
+      const result = await sdk.actions.composeCast({
+        text: castText,
+        embeds: [zoraUrl], // Include the Zora token URL as an embed
+      });
+
+      if (result?.cast) {
+        showNotification("Successfully shared on Farcaster!", "success");
+      }
+    } catch (error) {
+      console.error("Error casting token:", error);
+      showNotification("Failed to share on Farcaster", "error");
+    }
+  };
+
   // Modified sendQuote function to add debugging and fix wallet client issues
   // Function to check token status and handle cancellations
   const checkTokenStatus = async (quoteId, txHash) => {
@@ -1606,10 +1637,11 @@ export default function Card() {
                                 </div>
                               </div>
                               {quote.zoraTokenAddress && (
-                                <div className="vibes-token-container">
-                                  <div className="vibes-token-buttons">
+                                <div className="token-panel">
+                                  <div className="token-panel__actions">
+                                    {/* Copy Contract Button */}
                                     <button
-                                      className="vibes-copy-btn"
+                                      className="token-btn token-btn--copy"
                                       onClick={() => {
                                         navigator.clipboard.writeText(
                                           quote.zoraTokenAddress
@@ -1622,53 +1654,98 @@ export default function Card() {
                                       title="Copy Contract"
                                     >
                                       <svg
-                                        className="vibes-copy-icon"
+                                        className="token-btn__icon"
+                                        width="20"
+                                        height="20"
                                         viewBox="0 0 24 24"
                                         fill="none"
                                         xmlns="http://www.w3.org/2000/svg"
                                       >
-                                        <path
-                                          d="M16 3H4C3.45 3 3 3.45 3 4V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V4C17 3.45 16.55 3 16 3Z"
-                                          stroke="white"
+                                        <rect
+                                          x="4"
+                                          y="4"
+                                          width="12"
+                                          height="12"
+                                          rx="1"
+                                          stroke="currentColor"
                                           strokeWidth="2"
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
                                         />
                                         <path
-                                          d="M17 8H20C20.55 8 21 8.45 21 9V20C21 20.55 20.55 21 20 21H9C8.45 21 8 20.55 8 20V17"
-                                          stroke="white"
+                                          d="M8 16v2a2 2 0 002 2h10a2 2 0 002-2V8a2 2 0 00-2-2h-2"
+                                          stroke="currentColor"
                                           strokeWidth="2"
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
                                         />
                                       </svg>
+                                      <span className="token-btn__tooltip">
+                                        Copy
+                                      </span>
                                     </button>
+
+                                    {/* Zora Button */}
                                     <a
                                       href={`https://zora.co/coin/base:${quote.zoraTokenAddress}?referrer=${address}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="vibes-zora-btn"
+                                      className="token-btn token-btn--zora"
                                       title="Trade on Zora"
                                     >
                                       <img
                                         src="/Zorb.png"
                                         alt="Zora"
-                                        className="vibes-btn-icon"
+                                        className="token-btn__icon"
                                       />
+                                      <span className="token-btn__tooltip">
+                                        Trade
+                                      </span>
                                     </a>
+
+                                    {/* DEX Screener Button */}
                                     <a
                                       href={`https://dexscreener.com/base/${quote.zoraTokenAddress}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="vibes-dex-btn"
+                                      className="token-btn token-btn--dex"
                                       title="View Chart"
                                     >
                                       <img
                                         src="/dex.jpeg"
                                         alt="DEXScreener"
-                                        className="vibes-btn-icon"
+                                        className="token-btn__icon"
                                       />
+                                      <span className="token-btn__tooltip">
+                                        Chart
+                                      </span>
                                     </a>
+
+                                    {/* Cast Button */}
+                                    <button
+                                      className="token-btn token-btn--cast"
+                                      onClick={() => handleCastToken(quote)}
+                                      title="Share on Farcaster"
+                                    >
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="token-btn__icon"
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 256 256"
+                                        style={{ color: "currentcolor" }}
+                                      >
+                                        <rect
+                                          width="256"
+                                          height="256"
+                                          rx="56"
+                                          fill="currentColor"
+                                        ></rect>
+                                        <path
+                                          d="M183.296 71.68H211.968L207.872 94.208H200.704V180.224L201.02 180.232C204.266 180.396 206.848 183.081 206.848 186.368V191.488L207.164 191.496C210.41 191.66 212.992 194.345 212.992 197.632V202.752H155.648V197.632C155.648 194.345 158.229 191.66 161.476 191.496L161.792 191.488V186.368C161.792 183.081 164.373 180.396 167.62 180.232L167.936 180.224V138.24C167.936 116.184 150.056 98.304 128 98.304C105.944 98.304 88.0638 116.184 88.0638 138.24V180.224L88.3798 180.232C91.6262 180.396 94.2078 183.081 94.2078 186.368V191.488L94.5238 191.496C97.7702 191.66 100.352 194.345 100.352 197.632V202.752H43.0078V197.632C43.0078 194.345 45.5894 191.66 48.8358 191.496L49.1518 191.488V186.368C49.1518 183.081 51.7334 180.396 54.9798 180.232L55.2958 180.224V94.208H48.1278L44.0318 71.68H72.7038V54.272H183.296V71.68Z"
+                                          fill="white"
+                                        ></path>
+                                      </svg>
+                                      <span className="token-btn__tooltip">
+                                        Cast
+                                      </span>
+                                    </button>
                                   </div>
                                 </div>
                               )}

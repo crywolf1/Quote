@@ -26,6 +26,7 @@
     "@farcaster/frame-node": "^0.0.29",
     "@farcaster/frame-sdk": "^0.0.48",
     "@farcaster/frame-wagmi-connector": "^0.0.22",
+    "@geist-ui/react-icons": "^1.0.1",
     "@neynar/nodejs-sdk": "^2.44.0",
     "@neynar/react": "^1.2.0",
     "@pigment-css/react": "^0.0.30",
