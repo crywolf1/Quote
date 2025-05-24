@@ -59,6 +59,31 @@ const isFarcasterEnvironment = () => {
   return false;
 };
 
+// Define the custom logger to filter out common errors
+const customLogger = {
+  debug: () => {}, // No-op for debug logs
+  info: () => {}, // No-op for info logs
+  warn: console.warn.bind(console),
+  error: (...args) => {
+    const errorStr = String(args[0] || "");
+
+    // Filter out known harmless errors
+    if (
+      errorStr.includes("runtime.sendMessage") ||
+      errorStr.includes("cross-origin frame") ||
+      errorStr.includes("Error in invocation") ||
+      errorStr.includes("chrome.runtime") ||
+      errorStr.includes("Failed to read") ||
+      errorStr.includes("farcaster") ||
+      errorStr.includes("useEmbeddedWallet")
+    ) {
+      return; // Suppress these errors
+    }
+
+    console.error(...args);
+  },
+};
+
 // Set up default connectors with additional options for better error handling
 const { connectors: defaultConnectors } = getDefaultWallets({
   appName: "Quoted App",
@@ -87,7 +112,7 @@ const farcasterConnector = farcasterFrame({
     name: "Quoted App",
     getProvider: () => {
       // Handle both direct SDK access and fallback
-      if (window?.farcaster?.ethereum) {
+      if (typeof window !== "undefined" && window?.farcaster?.ethereum) {
         return window.farcaster.ethereum;
       }
       return null;
