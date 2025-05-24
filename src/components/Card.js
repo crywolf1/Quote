@@ -1522,7 +1522,7 @@ export default function Card() {
                           type="text"
                           placeholder="Title / Token Symbol"
                           className="title-input"
-                          maxLength={20}
+                          maxLength={24}
                           value={title}
                           onChange={(e) => setTitle(e.target.value)}
                         />
