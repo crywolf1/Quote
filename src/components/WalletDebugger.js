@@ -1,21 +1,86 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAccount, useConnect } from "wagmi";
+import { useState, useEffect, useRef } from "react";
 
 export default function WalletDebugger() {
   const [isVisible, setIsVisible] = useState(false);
   const [walletInfo, setWalletInfo] = useState({});
-  const { address, isConnected, connector } = useAccount();
-  const { connectors } = useConnect();
+  const [wagmiAvailable, setWagmiAvailable] = useState(false);
 
+  // Default empty values
+  const accountRef = useRef({});
+  const connectRef = useRef({ connectors: [] });
+
+  // Check WagmiProvider availability on mount only
+  useEffect(() => {
+    let mounted = true;
+
+    const checkWagmiProvider = async () => {
+      try {
+        // Dynamically import wagmi hooks to avoid errors when component is rendered
+        // outside of WagmiProvider context during server-side rendering
+        const { useConfig, useAccount, useConnect } = await import("wagmi");
+
+        // Attempt to get the Wagmi config
+        const Config = useConfig;
+
+        if (!Config) {
+          return;
+        }
+
+        // If we get here without error, WagmiProvider is available
+        if (mounted) {
+          setWagmiAvailable(true);
+
+          // Now it's safe to use wagmi hooks via the imported modules
+          const Account = useAccount;
+          const Connect = useConnect;
+
+          if (Account && Connect) {
+            const accountData = Account();
+            const connectData = Connect();
+
+            accountRef.current = accountData || {};
+            connectRef.current = connectData || { connectors: [] };
+          }
+        }
+      } catch (error) {
+        if (mounted) {
+          // We're not in a WagmiProvider context
+          console.warn(
+            "WalletDebugger: Not in WagmiProvider context - checked once",
+            error.message
+          );
+          setWagmiAvailable(false);
+        }
+      }
+    };
+
+    // Check once on mount
+    checkWagmiProvider();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Extract values safely
+  const address = accountRef.current?.address;
+  const isConnected = accountRef.current?.isConnected;
+  const connector = accountRef.current?.connector;
+  const connectors = connectRef.current?.connectors || [];
+
+  // Update wallet information when dependencies change
   useEffect(() => {
     // Collect wallet information
     const info = {
-      isConnected,
-      connectedAddress: address,
-      currentConnector: connector?.id,
-      availableConnectors: connectors.map((c) => c.id),
+      wagmiAvailable,
+      isConnected: !!isConnected,
+      connectedAddress: address || null,
+      currentConnector: connector?.id || null,
+      availableConnectors: Array.isArray(connectors)
+        ? connectors.map((c) => c?.id || "unknown").filter(Boolean)
+        : [],
       providerDetails: {
         hasFarcasterProvider:
           typeof window !== "undefined" && !!window.farcaster?.ethereum,
@@ -40,7 +105,7 @@ export default function WalletDebugger() {
     };
 
     setWalletInfo(info);
-  }, [address, isConnected, connector, connectors]);
+  }, [address, isConnected, connector, connectors, wagmiAvailable]);
 
   if (!isVisible) {
     return (
@@ -65,6 +130,7 @@ export default function WalletDebugger() {
     );
   }
 
+  // Rest of your component remains the same
   return (
     <div
       style={{
@@ -84,6 +150,7 @@ export default function WalletDebugger() {
         boxShadow: "0 0 10px rgba(0,0,0,0.5)",
       }}
     >
+      {/* Header section */}
       <div
         style={{
           display: "flex",
@@ -105,6 +172,14 @@ export default function WalletDebugger() {
         </button>
       </div>
 
+      {/* Warning when WagmiProvider is not available */}
+      {!walletInfo.wagmiAvailable && (
+        <div style={{ color: "#f44336", marginBottom: "8px" }}>
+          ⚠️ WagmiProvider not available! Some features will be limited.
+        </div>
+      )}
+
+      {/* Connected status */}
       <div style={{ marginBottom: "8px" }}>
         <span style={{ color: walletInfo.isConnected ? "#4caf50" : "#f44336" }}>
           {walletInfo.isConnected ? "✓ Connected" : "✗ Disconnected"}
@@ -116,6 +191,7 @@ export default function WalletDebugger() {
         )}
       </div>
 
+      {/* Connector info */}
       <div style={{ marginBottom: "8px" }}>
         <div>Current: {walletInfo.currentConnector || "none"}</div>
         <div>
@@ -123,6 +199,7 @@ export default function WalletDebugger() {
         </div>
       </div>
 
+      {/* Provider details */}
       <div style={{ marginBottom: "8px" }}>
         <div>Providers:</div>
         {walletInfo.providerDetails &&
@@ -133,6 +210,7 @@ export default function WalletDebugger() {
           ))}
       </div>
 
+      {/* Environment info */}
       <div>
         <div>Environment:</div>
         {walletInfo.environment &&
