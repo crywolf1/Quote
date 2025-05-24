@@ -1,10 +1,20 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { injected } from "wagmi/connectors";
+import { connectToWallet } from "../lib/connectToWallet";
 
 const FarcasterContext = createContext();
+
+export function useFarcaster() {
+  return useContext(FarcasterContext);
+}
 
 export function FarcasterFrameProvider({ children }) {
   const [userData, setUserData] = useState(null);
@@ -14,42 +24,84 @@ export function FarcasterFrameProvider({ children }) {
   const [error, setError] = useState("");
   const [neynarAuthData, setNeynarAuthData] = useState(null);
 
+  // Use Wagmi hooks properly
   const { address, isConnected } = useAccount();
-  const { connect } = useConnect({
-    connector: new injected(),
-  });
+  const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
 
+  // SDK initialization with proper error handling
   useEffect(() => {
     async function loadSdk() {
       if (typeof window !== "undefined") {
         try {
+          console.log("Initializing Farcaster SDK...");
           const module = await import("@farcaster/frame-sdk");
           setSdk(module.sdk);
-          await module.sdk.actions.ready({ disableNativeGestures: true }); // Call ready as soon as SDK is loaded
+
+          await module.sdk.actions.ready({
+            disableNativeGestures: true,
+            preventDefaultFarcasterHandlers: false,
+          });
+
+          console.log("SDK ready status confirmed");
           setIsInitialized(true);
-          setLoading(false); // Set loading to false once ready is called
+          setLoading(false);
         } catch (err) {
           console.error("Failed to load Farcaster SDK:", err);
+          setError(`SDK initialization failed: ${err.message}`);
+          setLoading(false);
         }
       }
     }
+
     loadSdk();
   }, []);
 
-  const connectWallet = async () => {
+  // Enhanced wallet connection function that passes SDK
+  const connectWallet = useCallback(async () => {
     try {
-      await connect();
-      return true;
+      setLoading(true);
+      setError("");
+
+      // PROPER APPROACH: Use the farcasterFrame connector directly
+      const frameConnector = connectors.find((c) => c.id === "farcasterFrame");
+
+      if (frameConnector) {
+        console.log("Connecting with farcasterFrame connector...");
+        await connect({ connector: frameConnector });
+        setLoading(false);
+        return true;
+      }
+
+      // FALLBACK: Use our utility if connector isn't found
+      const connected = await connectToWallet(sdk);
+      setLoading(false);
+      return connected;
     } catch (error) {
       console.error("Error connecting wallet:", error);
       setError("Failed to connect wallet. Please try again.");
+      setLoading(false);
       return false;
     }
-  };
+  }, [connect, connectors, sdk]);
 
+  // Auto-connect when SDK is initialized if not already connected
+  useEffect(() => {
+    if (sdk && isInitialized && !isConnected) {
+      // Give a small delay to ensure everything is ready
+      const timer = setTimeout(() => {
+        connectWallet().then((success) => {
+          console.log("Auto-connection attempt result:", success);
+        });
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [sdk, isInitialized, isConnected, connectWallet]);
+
+  // Your existing tryGetUserData function
   const tryGetUserData = async () => {
-    if (!sdk) return;
+    if (!sdk) return false;
 
     setLoading(true);
     setError("");
@@ -127,9 +179,9 @@ export function FarcasterFrameProvider({ children }) {
         setLoading(false);
         return true;
       } else {
-        // No wallet connected - just set a null state instead of throwing
+        // No wallet connected
         console.log("No wallet connected, waiting for connection");
-        setUserData(null); // Set to null so your UI can show connect button
+        setUserData(null);
         setLoading(false);
         return false;
       }
@@ -160,12 +212,14 @@ export function FarcasterFrameProvider({ children }) {
     }
   };
 
+  // Call tryGetUserData when SDK is initialized
   useEffect(() => {
     if (sdk) {
       tryGetUserData();
     }
   }, [sdk]);
 
+  // Call tryGetUserData when wallet is connected
   useEffect(() => {
     if (isConnected && address && sdk) {
       tryGetUserData();
@@ -185,14 +239,10 @@ export function FarcasterFrameProvider({ children }) {
         isConnected,
         setNeynarAuthData,
         neynarAuthData,
-        sdk
+        sdk,
       }}
     >
       {children}
     </FarcasterContext.Provider>
   );
-}
-
-export function useFarcaster() {
-  return useContext(FarcasterContext);
 }
