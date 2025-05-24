@@ -1,3 +1,5 @@
+/*
+
 import { NextResponse } from "next/server";
 import { SplitsClient } from "@0xsplits/splits-sdk";
 import { createWalletClient, createPublicClient, http } from "viem";
@@ -150,3 +152,5 @@ export async function POST(req) {
 export async function OPTIONS() {
   return NextResponse.json({}, { status: 200 });
 }
+
+*///This code is for creating a split using the Splits SDK v1.

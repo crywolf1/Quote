@@ -1,3 +1,5 @@
+/*
+
 import { NextResponse } from "next/server";
 import axios from "axios";
 
@@ -55,3 +57,5 @@ export async function POST(req) {
     );
   }
 }
+
+*///  This code is for creating a split using the Splits SDK v1.

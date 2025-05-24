@@ -72,6 +72,7 @@ export async function createZoraCoin({
       !!process.env.PLATFORM_REFERRER
     );
 
+    // MODIFIED: Use creator address directly instead of platform address
     const platformAddress =
       process.env.NEXT_PUBLIC_PLATFORM_ADDRESS || creatorAddress;
     console.log("Using platform address:", platformAddress);
@@ -80,8 +81,8 @@ export async function createZoraCoin({
       name: title,
       symbol: title,
       uri: metadataUrl,
-      owners: [platformAddress], // Use platform address if available
-      payoutRecipient: creatorAddress, // Initially set creator to receive first tokens
+      owners: [creatorAddress], // MODIFIED: Set owner to creator directly
+      payoutRecipient: creatorAddress, // Keep creator as payoutRecipient
       platformReferrer: process.env.PLATFORM_REFERRER, // Optional: Set platform referrer if needed
       mintToCreator: true, // Explicitly ensure first tokens go to creator
       tickLower: -208200,
@@ -152,7 +153,7 @@ export async function createZoraCoin({
 
 /**
  * Wait for transaction confirmation and update quote with token address
- * Then automatically update payoutRecipient to platform address
+ * (No longer updates payoutRecipient to maintain creator ownership)
  */
 async function waitForTransactionAndUpdateQuote(
   publicClient,
@@ -184,7 +185,7 @@ async function waitForTransactionAndUpdateQuote(
             if (coinAddress) {
               console.log("Extracted coin address:", coinAddress);
 
-              // First update the quote record with the token address
+              // Update the quote record with the token address
               await updateQuoteWithTokenAddress(
                 quoteId,
                 txHash,
@@ -193,13 +194,17 @@ async function waitForTransactionAndUpdateQuote(
                 creatorAddress
               );
 
-              // Then update the payoutRecipient to the platform address
+              // COMMENTED OUT: Keeping creator as payout recipient
+              // The following function has been disabled to ensure all trading fees go to the token creator
+              // May be re-enabled in the future if revenue sharing is desired
+              /*
               await updatePayoutRecipientToPlatform(
                 coinAddress,
                 publicClient,
                 quoteId,
                 creatorAddress // Pass creatorAddress explicitly
               );
+              */
             } else {
               console.error("Failed to extract coin address from receipt");
             }
@@ -236,13 +241,16 @@ async function waitForTransactionAndUpdateQuote(
                   creatorAddress
                 );
 
-                // Also retry the payoutRecipient update
+                // COMMENTED OUT: Keeping creator as payout recipient
+                // The following function has been disabled to ensure all trading fees go to the token creator
+                /*
                 await updatePayoutRecipientToPlatform(
                   coinAddress,
                   publicClient,
                   quoteId,
                   creatorAddress
                 );
+                */
               }
             }
           } catch (finalError) {
@@ -256,11 +264,19 @@ async function waitForTransactionAndUpdateQuote(
   }
 }
 
+/**
+ * COMMENTED OUT: This function has been temporarily disabled to maintain creator ownership
+ * It may be used in the future to enable revenue sharing between creators and the platform.
+ *
+ * The function creates a 50/50 split contract and updates the token's payout recipient to
+ * distribute trading fees between the creator and platform.
+ */
+/*
 async function updatePayoutRecipientToPlatform(
   coinAddress,
   publicClient,
   quoteId,
-  directCreatorAddress // Parameter passed from transaction handler
+  directCreatorAddress
 ) {
   try {
     console.log(`Setting up 50/50 split for token: ${coinAddress}`);
@@ -404,6 +420,8 @@ async function updatePayoutRecipientToPlatform(
     throw error;
   }
 }
+*/
+
 /**
  * Update quote with payout recipient info
  */

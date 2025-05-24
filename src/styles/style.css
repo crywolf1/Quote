@@ -156,10 +156,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 10px;
   width: 100%;
   height: 100%;
-  margin-bottom: 8px;
 }
 .card-buttons button {
   display: flex;
@@ -796,7 +794,6 @@
   }
 }
 .quote-text {
-  font-size: 1rem;
   line-height: 1.6;
   margin-bottom: 5px;
   color: #2b2c48;
@@ -805,16 +802,35 @@
   overflow-y: auto; /* Add scrolling if needed */
   scrollbar-width: thin;
   padding-right: 5px;
+  /* Dynamic font sizing based on text length */
+  font-size: 1.4rem; /* Larger default for short quotes */
+  text-align: center; /* Center align the text */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.quote-text.medium-length,
+.quote-text.long-length {
+  text-align: center;
 }
 
+/* Smaller font size for medium-length quotes */
+.quote-text.medium-length {
+  font-size: 1.25rem;
+}
+
+/* Smallest font size for long quotes */
+.quote-text.long-length {
+  font-size: 1.1rem;
+}
 .quote-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
   flex-direction: column;
   width: 100%;
-  min-height: 200px; /* Ensure minimum height for proper centering */
-  margin-top: -20px;
+  min-height: 300px; /* Ensure minimum height for proper centering */
+  margin-top: -35px;
   z-index: 10;
   position: relative; /* Added for absolute positioning of children */
 }
@@ -874,18 +890,31 @@
   margin-top: 6px;
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
-  background: rgba(138, 132, 255, 0.05);
-  border-radius: 4px;
-  border-left: 2px solid #8400ff;
-  font-size: 0.8rem; /* Smaller size */
+  padding: 6px 12px;
+  background: rgba(138, 132, 255, 0.1);
+  border-radius: 6px;
+  border-left: 3px solid #8400ff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.quote-title:hover {
+  background: rgba(138, 132, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+.quote-title:active {
+  transform: translateY(0);
 }
 
 .dollar-sign {
   color: #a200ff;
-  font-weight: 600;
-  font-size: 0.8rem; /* Smaller size */
-  margin-right: 2px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-right: 3px;
 }
 
 .title-text {
@@ -893,6 +922,28 @@
   letter-spacing: 0.5px;
   color: #2b2c48;
   font-size: 0.8rem; /* Smaller size */
+}
+
+.quote-title::after {
+  content: "🔗";
+  font-size: 0.8rem;
+  margin-left: 6px;
+  opacity: 0.7;
+}
+
+.quote-title:hover::before {
+  content: "Click to copy contract address";
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  z-index: 10;
 }
 
 .token-badge {
@@ -1211,8 +1262,79 @@
   justify-content: flex-start; /* Changed from center to flex-start */
   gap: 10px;
   width: 100%;
-  margin-top: 12px;
-  margin-left: 20px; /* Added left margin for better spacing */
+  padding: 0px 15px;
+}
+
+.action-spacer {
+  flex: 1;
+}
+
+.qod-action-btn.refresh-btn {
+  background: linear-gradient(135deg, #7a40a3, #6c31e9);
+  transition: transform 0.2s ease, background 0.3s ease;
+  transform-origin: center;
+}
+.qod-action-btn.refresh-btn:active:not(.spinning-button) {
+  transform: scale(0.95);
+}
+
+.spinning-button {
+  animation: spin-button 1.2s linear infinite;
+}
+
+.qod-action-btn.refresh-btn:hover {
+  background: linear-gradient(135deg, #7a40a3, #6c31e9);
+  box-shadow: 0 4px 8px rgba(106, 48, 147, 0.5);
+}
+
+.qod-action-btn.refresh-btn:active {
+  transform: translateY(0) rotate(180deg);
+  transition: transform 0.5s ease;
+}
+
+.qod-action-btn.like-btn {
+  background: linear-gradient(135deg, #6a3093, #5b20d8);
+  box-shadow: 0 2px 6px rgba(106, 48, 147, 0.4);
+  transition: all 0.25s ease;
+}
+
+.qod-action-btn.like-btn:hover {
+  background: linear-gradient(135deg, #7a40a3, #6c31e9);
+  box-shadow: 0 4px 8px rgba(106, 48, 147, 0.5);
+}
+
+.qod-action-btn.like-btn.liked {
+  background: linear-gradient(135deg, #a044ff, #6a3093);
+  animation: pulse-heart 0.4s ease-out;
+  box-shadow: 0 2px 8px rgba(160, 68, 255, 0.5);
+}
+
+/* Enhanced pulse animation */
+@keyframes pulse-heart {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.vibes-spinner {
+  animation: spin 1.5s linear infinite;
+  color: white; /* Make it white to show well on the purple button */
+  font-size: 14px;
+}
+
+@keyframes spin-button {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
 }
 
 .qod-action-btn {
@@ -1555,58 +1677,71 @@
 /* Action buttons */
 .vibes-action-buttons {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 10px;
+  right: 10px;
   display: flex;
-  gap: 8px;
-  z-index: 2;
+  gap: 6px;
+  z-index: 5;
+}
+.vibes-quote-bubble:hover .vibes-action-buttons {
+  opacity: 1; /* Show on hover */
 }
 
 .vibes-edit-btn,
 .vibes-delete-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
   cursor: pointer;
-  transition: all 0.2s;
-  background: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 
 .vibes-edit-btn {
+  background: rgba(52, 152, 219, 0.2);
   color: #3498db;
 }
 
 .vibes-edit-btn:hover:not(:disabled) {
-  background: #3498db;
-  color: white;
+  background: rgba(52, 152, 219, 0.2);
+  color: #3498db;
   transform: translateY(-2px);
+  opacity: 1;
 }
 
 .vibes-delete-btn {
+  background: rgba(231, 76, 60, 0.1);
   color: #e74c3c;
 }
 
 .vibes-delete-btn:hover:not(:disabled) {
-  background: #e74c3c;
-  color: white;
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
   transform: translateY(-2px);
+  opacity: 1;
 }
 
 .vibes-edit-btn:disabled,
 .vibes-delete-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.3;
   cursor: not-allowed;
+  transform: none;
+}
+
+.vibes-edit-btn:hover:not(:disabled),
+.vibes-delete-btn:hover:not(:disabled) {
+  transform: scale(1.1);
 }
 
 /* Edit mode */
 .vibes-edit-container {
   width: 100%;
   display: flex;
+  margin-right: 70px;
   flex-direction: column;
   gap: 10px;
 }
@@ -1636,15 +1771,18 @@
   background: #7b3fe4;
   color: white;
   border: none;
-  border-radius: 8px;
-  padding: 8px 16px;
+  border-radius: 6px; /* Reduced from 8px */
+  padding: 6px 12px; /* Reduced from 8px 16px */
   font-weight: 500;
-  font-size: 14px;
+  font-size: 12px; /* Reduced from 14px */
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 4px; /* Reduced from 6px */
+  min-width: 50px; /* Set minimum width */
+  white-space: nowrap; /* Prevent text from wrapping */
 }
 
 .vibes-save-btn:hover:not(:disabled) {
@@ -2160,4 +2298,214 @@
     border-radius: 5px;
     box-shadow: 0 0 3px 1px rgba(0, 0, 0, 0.5); /* More pronounced shadow */
   }
+}
+
+.edit-style-selector {
+  margin: 15px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.edit-style-label {
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #aaa;
+}
+
+.style-selector-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vibes-edit-container .style-selector-row {
+  display: flex;
+  gap: 8px;
+}
+
+.vibes-edit-container .style-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 3px;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.vibes-edit-container .style-btn.selected {
+  border-color: #6c31e9;
+  transform: scale(1.1);
+}
+
+.vibes-edit-container .dark-style,
+.vibes-edit-container .blue-style,
+.vibes-edit-container .purple-style,
+.vibes-edit-container .harvey-style {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+}
+
+.vibes-edit-container .dark-style {
+  background: linear-gradient(135deg, #222, #444);
+}
+
+.vibes-edit-container .blue-style {
+  background: linear-gradient(135deg, #0a2463, #247ba0);
+}
+
+.vibes-edit-container .purple-style {
+  background: linear-gradient(135deg, #7a40a3, #6c31e9);
+}
+
+.vibes-edit-container .harvey-style {
+  background: linear-gradient(135deg, #2f4f4f, #1d7874);
+}
+
+.edit-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  gap: 6px; /* Reduced from 10px */
+  width: 100%;
+}
+
+.edit-style-compact {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 4px 8px; /* Reduced from 6px 10px */
+  border-radius: 6px;
+  gap: 6px; /* Reduced from 8px */
+  flex: 1; /* Take available space */
+}
+.style-label {
+  font-size: 12px;
+  color: #aaa;
+  white-space: nowrap;
+}
+.style-options-row {
+  display: flex;
+  gap: 6px;
+}
+
+.style-option {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 2px;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.style-option.selected {
+  border-color: #6c31e9;
+  transform: scale(1.1);
+}
+
+.style-option .dark-style,
+.style-option .blue-style,
+.style-option .purple-style,
+.style-option .harvey-style {
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+}
+
+/* Ensure the spinner animation works properly */
+.vibes-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Ensure button looks good during update */
+.vibes-save-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Container for like button and count */
+.qod-action-btn-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* Like count styling */
+/* Container for like button and count */
+.qod-action-btn-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* Like count styling */
+.like-count {
+  position: absolute;
+  top: 100%;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgb(0, 0, 0);
+  background: rgba(242, 238, 245, 0.993);
+  border-radius: 8px;
+  padding: 0 4px;
+  line-height: 16px;
+  margin-top: 2px;
+  min-width: 16px;
+  text-align: center;
+}
+
+/* Remove the bottom margin that was causing issues */
+.qod-action-btn.like-btn {
+  margin-bottom: 0;
+}
+
+/* Adjust container spacing to accommodate the count */
+.token-actions {
+  margin-bottom: 18px;
+}
+/* Remove the bottom margin that was causing issues */
+.qod-action-btn.like-btn {
+  margin-bottom: 0;
+}
+
+/* Adjust container spacing to accommodate the count */
+.token-actions {
+  margin-bottom: 18px;
+}
+
+@keyframes pulse-count {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.like-count.updated {
+  animation: pulse-count 0.3s ease-in-out;
 }

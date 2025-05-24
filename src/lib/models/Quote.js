@@ -28,7 +28,11 @@ const quoteSchema = new mongoose.Schema(
       type: String,
       enum: ["dark", "purple", "harvey", "blue"],
       default: "dark",
-    }, // Add this line
+    },
+
+    // Add like functionality
+    likedBy: [String], // Array of user addresses who liked this quote
+    likeCount: { type: Number, default: 0 }, // Counter for likes
 
     // Add these fields for token creation status tracking
     isPending: { type: Boolean, default: false },

@@ -29,30 +29,33 @@ export async function POST(request) {
 
     // Array of possible title words (without $ prefix)
     const possibleTitles = [
-      "WISDOM",
-      "INSIGHT",
-      "REFLECT",
-      "PONDER",
-      "INSPIRE",
-      "THOUGHT",
-      "MOMENT",
-      "CLARITY",
-      "SPARK",
-      "FOCUS",
+      "THE LAW",
+      "THE CUT",
+      "A TRUTH",
+      "DAILY EDGE",
+      "COLD FACT",
+      "THE STRATEGY",
+      "A LESSON",
+      "THE SIGNAL",
+      "NOISELESS",
+      "THE DROP",
+      "THE SHIFT",
+      "A WARNING",
+      "TODAY'S MOVE",
+      "THE PLAY",
     ];
-
     // Array of inspirational messages (without quote content)
-    const inspirationalMessages = [
-      "Your daily wisdom is ready! Tap to discover today's insight.",
-      "New inspiration awaits you! Open to reveal today's thought.",
-      "Time for reflection! We've selected something special for you today.",
-      "Your daily dose of wisdom has arrived. Tap to explore.",
-      "Take a moment to reflect with today's featured quote.",
-      "New perspective for your day! Tap to see what we've curated.",
-      "Fresh insight awaits! Open to discover today's featured thought.",
-      "Wisdom delivered! Check out what we've selected just for you.",
-      "Today's inspiration is ready for you. Tap to view.",
-      "A new thought to ponder has arrived. Open to see more.",
+    const darkerMessages = [
+      "Today's law is written. Tap to learn or ignore.",
+      "Insight arrives without warning. Be ready.",
+      "The truth doesn’t care if you open it.",
+      "Power speaks softly today. Will you hear it?",
+      "A cold quote just landed. Look — or don’t.",
+      "One sentence. One shift. One edge.",
+      "Open if you dare. It cuts.",
+      "A quote to disarm or armor you.",
+      "Don’t just scroll. Read with intent.",
+      "Something real made it through. Tap to see.",
     ];
 
     // Get all quotes for fallback if needed

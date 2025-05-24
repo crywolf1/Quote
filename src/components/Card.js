@@ -24,7 +24,7 @@ export default function Card() {
     isError: isWalletError,
   } = useWalletClient();
   const { disconnect } = useDisconnect();
-  const { profile, isLoading } = useProfile();
+  const { profile, isLoading: isProfileLoading } = useProfile();
   // Use fallback values if userData is not loaded yet
   const username = userData?.username || userData?.displayName || "Guest";
   const pfpUrl = userData?.pfpUrl || "/QuoteIcon.png";
@@ -50,6 +50,8 @@ export default function Card() {
   const [notificationType, setNotificationType] = useState("info");
   const [isHydrated, setIsHydrated] = useState(false);
   const [selectedStyle, setSelectedStyle] = useState("dark");
+  const [editedStyle, setEditedStyle] = useState("dark");
+  const [isLoading, setIsLoading] = useState(false);
 
   // Fetch quotes from API
   const fetchQuoteOfTheDay = async () => {
@@ -59,6 +61,7 @@ export default function Card() {
       const res = await fetch(`/api/quote-of-the-day?userAddress=${address}`);
       const data = await res.json();
       if (res.ok) {
+        console.log("Quote fetched with like status:", data.quote.isLiked); // Add this debug line
         setQuoteOfTheDay(data.quote);
       } else {
         showNotification(data.error || "Failed to fetch quote of the day.");
@@ -176,6 +179,112 @@ export default function Card() {
       console.error("Error fetching quotes:", error);
     } finally {
       setIsRefreshing(false); // Always set to false when done
+    }
+  };
+
+  // Updated fetchNewQuote function in Card.js
+  const fetchNewQuote = async () => {
+    if (!address) return;
+
+    try {
+      // Show loading state
+      setIsLoading(true);
+
+      // Fetch a new quote from your API with refresh=true
+      const response = await fetch(
+        `/api/refresh-quote?refresh=true&address=${address}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setQuoteOfTheDay(data.quote);
+        showNotification("Found a fresh quote for you!", "success");
+      } else {
+        showNotification(
+          data.message || "Failed to fetch a new quote",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching new quote:", error);
+      showNotification("An error occurred while fetching a new quote", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // In your client-side code
+  // Updated likeQuote function
+  const likeQuote = async (quoteId) => {
+    if (!quoteId || !address) return;
+
+    // Store the current state before toggling
+    const currentLikeState = quoteOfTheDay?.isLiked;
+    const currentLikeCount = quoteOfTheDay?.likeCount || 0;
+
+    try {
+      // Optimistically update UI for both isLiked and likeCount
+      setQuoteOfTheDay((prev) => ({
+        ...prev,
+        isLiked: !currentLikeState,
+        likeCount: currentLikeState
+          ? Math.max(0, currentLikeCount - 1) // Decrease count when unliking
+          : currentLikeCount + 1, // Increase count when liking
+      }));
+
+      // Add a CSS animation class to the like count
+      const likeCountElement = document.querySelector(".like-count");
+      if (likeCountElement) {
+        likeCountElement.classList.add("updated");
+        setTimeout(() => {
+          likeCountElement.classList.remove("updated");
+        }, 300);
+      }
+
+      // Send like/unlike request to your API using PUT method
+      const response = await fetch("/api/like-quote", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          quoteId,
+          action: currentLikeState ? "unlike" : "like",
+          address,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        // Revert optimistic update if there was an error (both isLiked and likeCount)
+        setQuoteOfTheDay((prev) => ({
+          ...prev,
+          isLiked: currentLikeState,
+          likeCount: currentLikeCount,
+        }));
+        showNotification("Failed to update like status", "error");
+      } else {
+        // Show subtle feedback (optional)
+        showNotification(
+          currentLikeState ? "Quote unliked" : "Quote liked!",
+          "success"
+        );
+      }
+    } catch (error) {
+      console.error("Error liking/unliking quote:", error);
+      // Revert optimistic update (both isLiked and likeCount)
+      setQuoteOfTheDay((prev) => ({
+        ...prev,
+        isLiked: currentLikeState,
+        likeCount: currentLikeCount,
+      }));
+      showNotification("An error occurred", "error");
     }
   };
 
@@ -387,6 +496,20 @@ export default function Card() {
 
     return () => clearInterval(interval);
   }, [creatingTokens, quotes, autoRefreshEnabled]);
+
+  // Add this function in your component
+  const getQuoteLengthClass = (text) => {
+    if (!text) return "";
+    const length = text.length;
+
+    if (length < 100) {
+      return ""; // Default large font for short quotes
+    } else if (length < 180) {
+      return "medium-length";
+    } else {
+      return "long-length";
+    }
+  };
 
   const sendQuote = async () => {
     if (isSaving) return; // Prevent multiple simultaneous submissions
@@ -890,6 +1013,8 @@ export default function Card() {
   const handleEdit = (index) => {
     setEditIndex(index);
     setEditedText(quotes[index].text);
+    // Initialize with the quote's current style or default to "dark"
+    setEditedStyle(quotes[index].style || "dark");
   };
 
   const handleClickOutside = (e) => {
@@ -930,7 +1055,9 @@ export default function Card() {
         `/api/og?quote=${encodeURIComponent(editedText)}` +
         `&username=${encodeURIComponent(username)}` +
         `&displayName=${encodeURIComponent(displayName)}` +
-        `&pfpUrl=${encodeURIComponent(pfpUrl)}`;
+        `&pfpUrl=${encodeURIComponent(pfpUrl)}` +
+        `&title=${encodeURIComponent(quoteToUpdate.title || "")}` +
+        `&style=${editedStyle}`; // Include the edited style
 
       const response = await fetch(ogUrl);
       if (!response.ok) {
@@ -947,8 +1074,9 @@ export default function Card() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: editedText,
+          style: editedStyle, // Include the style in the update
           image: base64Image,
-          existingImageUrl: quoteToUpdate.imageUrl || quoteToUpdate.image, // Try both possible fields
+          existingImageUrl: quoteToUpdate.imageUrl || quoteToUpdate.image,
           updateImage: true,
         }),
       });
@@ -1217,9 +1345,38 @@ export default function Card() {
                 <div className="quote-display-content">
                   {quoteOfTheDay ? (
                     <div className="quote-wrapper">
-                      <p className="quote-text">{quoteOfTheDay.text}</p>
+                      <p
+                        className={`quote-text ${getQuoteLengthClass(
+                          quoteOfTheDay.text
+                        )}`}
+                      >
+                        {quoteOfTheDay.text}
+                      </p>
                       {quoteOfTheDay?.title && (
-                        <div className="quote-title">
+                        <div
+                          className="quote-title"
+                          onClick={() => {
+                            if (quoteOfTheDay?.zoraTokenAddress) {
+                              navigator.clipboard.writeText(
+                                quoteOfTheDay.zoraTokenAddress
+                              );
+                              showNotification(
+                                "Contract address copied to clipboard!",
+                                "success"
+                              );
+                            }
+                          }}
+                          style={{
+                            cursor: quoteOfTheDay?.zoraTokenAddress
+                              ? "pointer"
+                              : "default",
+                          }}
+                          title={
+                            quoteOfTheDay?.zoraTokenAddress
+                              ? "Click to copy contract address"
+                              : ""
+                          }
+                        >
                           <span className="dollar-sign">$</span>
                           <span className="title-text">
                             {quoteOfTheDay.title.toUpperCase()}
@@ -1296,17 +1453,67 @@ export default function Card() {
                                 }}
                                 maxLength={240}
                               />
-                              <button
-                                onClick={handleUpdateQuote}
-                                disabled={isUpdating}
-                                className="vibes-save-btn"
-                              >
-                                {isUpdating ? (
-                                  <FaSpinner className="vibes-spinner" />
-                                ) : (
-                                  "Save Changes"
-                                )}
-                              </button>
+
+                              {/* Action row with style selector and save button side by side */}
+                              <div className="edit-action-row">
+                                <div className="edit-style-compact">
+                                  <span className="style-label">Style:</span>
+                                  <div className="style-options-row">
+                                    <div
+                                      className={`style-option ${
+                                        editedStyle === "dark" ? "selected" : ""
+                                      }`}
+                                      onClick={() => setEditedStyle("dark")}
+                                      title="Dark Style"
+                                    >
+                                      <div className="dark-style"></div>
+                                    </div>
+                                    <div
+                                      className={`style-option ${
+                                        editedStyle === "blue" ? "selected" : ""
+                                      }`}
+                                      onClick={() => setEditedStyle("blue")}
+                                      title="Blue Style"
+                                    >
+                                      <div className="blue-style"></div>
+                                    </div>
+                                    <div
+                                      className={`style-option ${
+                                        editedStyle === "purple"
+                                          ? "selected"
+                                          : ""
+                                      }`}
+                                      onClick={() => setEditedStyle("purple")}
+                                      title="Purple Style"
+                                    >
+                                      <div className="purple-style"></div>
+                                    </div>
+                                    <div
+                                      className={`style-option ${
+                                        editedStyle === "harvey"
+                                          ? "selected"
+                                          : ""
+                                      }`}
+                                      onClick={() => setEditedStyle("harvey")}
+                                      title="harvey Style"
+                                    >
+                                      <div className="harvey-style"></div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <button
+                                  onClick={handleUpdateQuote}
+                                  disabled={isUpdating}
+                                  className="vibes-save-btn"
+                                >
+                                  {isUpdating ? (
+                                    <FaSpinner className="vibes-spinner" />
+                                  ) : (
+                                    "Save"
+                                  )}
+                                </button>
+                              </div>
                             </div>
                           ) : (
                             <>
@@ -1372,6 +1579,31 @@ export default function Card() {
                               </div>
                               <div className="vibes-quote-bubble">
                                 <p className="vibes-quote-text">{quote.text}</p>
+                                <div className="vibes-action-buttons">
+                                  <button
+                                    className="vibes-edit-btn"
+                                    onClick={() => handleEdit(index)}
+                                    disabled={
+                                      quote.isPending ||
+                                      creatingTokens.includes(quote._id)
+                                    }
+                                    aria-label="Edit quote"
+                                  >
+                                    <FaEdit />
+                                  </button>
+                                  <button
+                                    className="vibes-delete-btn"
+                                    onClick={() => handleDelete(index)}
+                                    disabled={
+                                      quote.isPending ||
+                                      creatingTokens.includes(quote._id) ||
+                                      quote.zoraTokenAddress
+                                    }
+                                    aria-label="Delete quote"
+                                  >
+                                    <FaTrashAlt />
+                                  </button>
+                                </div>
                               </div>
                               {quote.zoraTokenAddress && (
                                 <div className="vibes-token-container">
@@ -1442,31 +1674,6 @@ export default function Card() {
                               )}
                             </>
                           )}
-                          <div className="vibes-action-buttons">
-                            <button
-                              className="vibes-edit-btn"
-                              onClick={() => handleEdit(index)}
-                              disabled={
-                                quote.isPending ||
-                                creatingTokens.includes(quote._id)
-                              }
-                              aria-label="Edit quote"
-                            >
-                              <FaEdit />
-                            </button>
-                            <button
-                              className="vibes-delete-btn"
-                              onClick={() => handleDelete(index)}
-                              disabled={
-                                quote.isPending ||
-                                creatingTokens.includes(quote._id) ||
-                                quote.zoraTokenAddress
-                              }
-                              aria-label="Delete quote"
-                            >
-                              <FaTrashAlt />
-                            </button>
-                          </div>
                         </motion.div>
                       ))
                     ) : (
@@ -1627,12 +1834,101 @@ export default function Card() {
                           className="qod-btn-icon"
                         />
                       </a>
+
+                      {/* Spacer div to push the new icons to the right */}
+                      <div className="action-spacer"></div>
+
+                      {/* Refresh button */}
+                      {/* Refresh button that spins while loading */}
+                      <button
+                        className={`qod-action-btn refresh-btn ${
+                          isLoading ? "spinning-button" : ""
+                        }`}
+                        onClick={fetchNewQuote}
+                        disabled={isLoading}
+                        title="Fetch new quote"
+                        aria-label="Refresh quote"
+                      >
+                        <svg
+                          className="qod-btn-icon"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M4 4V9H9"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M20 20V15H15"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M16.5 7.5C15.7492 6.75 14.8408 6.1672 13.8346 5.79447C12.8283 5.42175 11.7535 5.26664 10.6834 5.34091C9.61329 5.41519 8.57741 5.71695 7.64922 6.22512C6.72104 6.7333 5.92208 7.43382 5.3 8.275"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M7.5 16.5C8.25076 17.25 9.15925 17.8328 10.1654 18.2055C11.1717 18.5783 12.2465 18.7334 13.3166 18.6591C14.3867 18.5848 15.4226 18.283 16.3508 17.7749C17.279 17.2667 18.0779 16.5662 18.7 15.725"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+
+                      {/* Like button */}
+                      <div className="qod-action-btn-container">
+                        <button
+                          className={`qod-action-btn like-btn ${
+                            quoteOfTheDay?.isLiked ? "liked" : ""
+                          }`}
+                          onClick={() => likeQuote(quoteOfTheDay?._id)}
+                          title={
+                            quoteOfTheDay?.isLiked
+                              ? "Unlike quote"
+                              : "Like quote"
+                          }
+                          aria-label={
+                            quoteOfTheDay?.isLiked
+                              ? "Unlike quote"
+                              : "Like quote"
+                          }
+                        >
+                          <svg
+                            className="qod-btn-icon"
+                            viewBox="0 0 24 24"
+                            fill={quoteOfTheDay?.isLiked ? "white" : "none"}
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                              stroke="white"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                        <span className="like-count">
+                          {quoteOfTheDay?.likeCount || 0}
+                        </span>
+                      </div>
                     </div>
                   )}
                   <div className="profile-info">
                     <button
                       className="cast-btn custom-btn"
-                      disabled={!quoteOfTheDay || isLoading}
+                      disabled={!quoteOfTheDay || isProfileLoading}
                       onClick={handleCastQuoteOfTheDay}
                     >
                       Cast

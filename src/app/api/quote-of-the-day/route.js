@@ -30,7 +30,22 @@ export async function GET(request) {
   // Check persistent cache first
   let cache = await QuoteOfTheDayCache.findOne({ key }).populate("quoteId");
   if (cache && cache.quoteId) {
-    return NextResponse.json({ quote: cache.quoteId });
+    // Check if user has liked this quote and add isLiked property
+    const cachedQuote = cache.quoteId;
+    const isLiked =
+      cachedQuote.likedBy && cachedQuote.likedBy.includes(userAddress);
+
+    // Convert to plain object and add isLiked property
+    const quoteObj = cachedQuote.toObject
+      ? cachedQuote.toObject()
+      : cachedQuote;
+
+    return NextResponse.json({
+      quote: {
+        ...quoteObj,
+        isLiked,
+      },
+    });
   }
 
   // Get all quotes
@@ -51,5 +66,16 @@ export async function GET(request) {
   // Store in persistent cache for this 12h window
   await QuoteOfTheDayCache.create({ key, quoteId: quote._id });
 
-  return NextResponse.json({ quote });
+  // Check if user has liked this quote and add isLiked property
+  const isLiked = quote.likedBy && quote.likedBy.includes(userAddress);
+
+  // Convert to plain object and add isLiked property
+  const quoteObj = quote.toObject ? quote.toObject() : quote;
+
+  return NextResponse.json({
+    quote: {
+      ...quoteObj,
+      isLiked,
+    },
+  });
 }

@@ -173,7 +173,7 @@ export async function GET(req) {
               zIndex: 10,
             }}
           >
-            {/* Elegant quote marks */}
+            {/* Elegant quote marks - unchanged */}
             <div
               style={{
                 position: "absolute",
@@ -189,7 +189,7 @@ export async function GET(req) {
               "
             </div>
 
-            {/* Quote text - with dynamic font size and word break */}
+            {/* Quote text - unchanged */}
             <div
               style={{
                 fontSize: quoteFontSize,
@@ -211,24 +211,25 @@ export async function GET(req) {
               <span style={{ display: "block" }}>{safeQuote}</span>
             </div>
 
-            {/* User info section */}
+            {/* User info section - MODIFIED: Positioned at bottom-left */}
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                marginTop: 8,
                 background: userInfoBg,
                 padding: "12px 24px",
                 borderRadius: 50,
                 boxShadow:
                   style === "white" ? "0 2px 8px rgba(0,0,0,0.05)" : "none",
+                position: "absolute",
+                bottom: 20,
+                left: 30,
               }}
             >
               <img
                 src={actualPfpUrl}
-                width="64"
-                height="64"
+                width="56"
+                height="56"
                 style={{
                   borderRadius: "50%",
                   objectFit: "cover",
@@ -264,7 +265,7 @@ export async function GET(req) {
               </div>
             </div>
 
-            {/* Branding */}
+            {/* Branding - unchanged */}
             <div
               style={{
                 position: "absolute",

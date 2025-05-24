@@ -1,3 +1,6 @@
+/*
+
+
 import { NextResponse } from "next/server";
 import { updatePayoutRecipient } from "@zoralabs/coins-sdk";
 import { createWalletClient, createPublicClient, http } from "viem";
@@ -122,3 +125,5 @@ export async function POST(req) {
 export async function OPTIONS(req) {
   return NextResponse.json({}, { status: 200 });
 }
+
+*/ // Export the POST method for handling requests

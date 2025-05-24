@@ -7,6 +7,7 @@ export async function updateZoraCoin({
   title,
   imageUrl,
   description,
+  wait = false, // Optional parameter to wait for transaction confirmation
 }) {
   try {
     // Enhanced validation
@@ -121,10 +122,12 @@ export async function updateZoraCoin({
       newURI: metadataUrl,
     };
 
-    // Execute the update
+    // Execute the update - try multiple methods with proper error handling
     console.log("Sending update with params:", updateParams);
 
+    // APPROACH 1: Use the SDK (most reliable method)
     try {
+      console.log("Attempting update with Zora SDK...");
       const result = await updateCoinURI(
         updateParams,
         walletClient,
@@ -135,6 +138,15 @@ export async function updateZoraCoin({
       );
 
       console.log("Update transaction sent! Hash:", result.hash);
+
+      if (wait) {
+        console.log("Waiting for transaction confirmation...");
+        await publicClient.waitForTransactionReceipt({
+          hash: result.hash,
+        });
+        console.log("Transaction confirmed!");
+      }
+
       return {
         success: true,
         txHash: result.hash,
@@ -146,11 +158,9 @@ export async function updateZoraCoin({
         sdkError
       );
 
-      // Fallback to direct contract call if SDK method fails
+      // APPROACH 2: Try direct call with setURI
       try {
-        console.log("Attempting direct contract call...");
-
-        // This is a direct contract call that bypasses the SDK
+        console.log("Attempting direct contract call with setURI...");
         const txHash = await walletClient.writeContract({
           address: coinAddress,
           abi: [
@@ -158,7 +168,7 @@ export async function updateZoraCoin({
               inputs: [
                 { internalType: "string", name: "_uri", type: "string" },
               ],
-              name: "setURI", // Try different function name than previously attempted
+              name: "setURI",
               outputs: [],
               stateMutability: "nonpayable",
               type: "function",
@@ -169,16 +179,25 @@ export async function updateZoraCoin({
         });
 
         console.log("Direct contract call succeeded:", txHash);
+
+        if (wait) {
+          console.log("Waiting for transaction confirmation...");
+          await publicClient.waitForTransactionReceipt({
+            hash: txHash,
+          });
+          console.log("Transaction confirmed!");
+        }
+
         return {
           success: true,
           txHash: txHash,
           explorerUrl: `https://basescan.org/tx/${txHash}`,
         };
       } catch (directError) {
-        // If direct call with setURI fails, try with updateContractURI
+        // APPROACH 3: Try with setContractURI (this is the standard function name)
         try {
           console.log(
-            "First direct call failed, trying alternate function name:",
+            "First direct call failed, trying with setContractURI:",
             directError.message
           );
 
@@ -187,27 +206,88 @@ export async function updateZoraCoin({
             abi: [
               {
                 inputs: [
-                  { internalType: "string", name: "_uri", type: "string" },
+                  { internalType: "string", name: "newURI", type: "string" },
                 ],
-                name: "updateContractURI", // Alternative function name
+                name: "setContractURI", // This is typically the correct function name
                 outputs: [],
                 stateMutability: "nonpayable",
                 type: "function",
               },
             ],
-            functionName: "updateContractURI",
+            functionName: "setContractURI",
             args: [metadataUrl],
           });
 
-          console.log("Alternative direct call succeeded:", txHash);
+          console.log("setContractURI call succeeded:", txHash);
+
+          if (wait) {
+            console.log("Waiting for transaction confirmation...");
+            await publicClient.waitForTransactionReceipt({
+              hash: txHash,
+            });
+            console.log("Transaction confirmed!");
+          }
+
           return {
             success: true,
             txHash: txHash,
             explorerUrl: `https://basescan.org/tx/${txHash}`,
           };
-        } catch (finalError) {
-          console.error("All update attempts failed:", finalError);
-          throw finalError; // Re-throw to be caught by outer catch block
+        } catch (contractURIError) {
+          // APPROACH 4: Last attempt with updateContractURI
+          try {
+            console.log(
+              "setContractURI failed, trying updateContractURI as last resort:",
+              contractURIError.message
+            );
+
+            const txHash = await walletClient.writeContract({
+              address: coinAddress,
+              abi: [
+                {
+                  inputs: [
+                    { internalType: "string", name: "_uri", type: "string" },
+                  ],
+                  name: "updateContractURI", // Alternative function name
+                  outputs: [],
+                  stateMutability: "nonpayable",
+                  type: "function",
+                },
+              ],
+              functionName: "updateContractURI",
+              args: [metadataUrl],
+            });
+
+            console.log("Alternative direct call succeeded:", txHash);
+
+            if (wait) {
+              console.log("Waiting for transaction confirmation...");
+              await publicClient.waitForTransactionReceipt({
+                hash: txHash,
+              });
+              console.log("Transaction confirmed!");
+            }
+
+            return {
+              success: true,
+              txHash: txHash,
+              explorerUrl: `https://basescan.org/tx/${txHash}`,
+            };
+          } catch (finalError) {
+            console.error("All update attempts failed!", finalError);
+
+            // Analyze the error for specific messages
+            const errorString = finalError.toString();
+            if (errorString.includes("OnlyOwner")) {
+              throw new Error(
+                "Only the token owner can update metadata. Please connect with the wallet that created this token."
+              );
+            } else if (errorString.includes("user rejected")) {
+              throw new Error("Transaction was rejected in your wallet.");
+            } else {
+              throw new Error(`Update failed: ${finalError.message}`);
+            }
+          }
         }
       }
     }
@@ -223,17 +303,26 @@ export async function updateZoraCoin({
       errorMessage.includes("Permission denied")
     ) {
       return {
+        success: false,
         error: "Only the token owner can update the metadata.",
         details: errorMessage,
       };
     } else if (errorMessage.includes("user rejected")) {
       return {
+        success: false,
         error: "Transaction rejected in your wallet.",
+        details: errorMessage,
+      };
+    } else if (errorMessage.includes("insufficient funds")) {
+      return {
+        success: false,
+        error: "Insufficient funds to complete this transaction.",
         details: errorMessage,
       };
     }
 
     return {
+      success: false,
       error: errorMessage,
       details: error.toString(),
     };
