@@ -5,7 +5,7 @@ import WagmiProviderWrapper from "../components/WagmiProviderWrapper";
 import { NeynarContextProvider, Theme } from "@neynar/react";
 import "@neynar/react/dist/style.css";
 import { AuthKitProvider } from "@farcaster/auth-kit";
-
+import WalletDebugger from "../components/WalletDebugger";
 // Add to your main layout or _app.js file
 
 export default function RootLayout({ children }) {
@@ -34,6 +34,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
+        {process.env.NODE_ENV !== "production" && <WalletDebugger />}
         <WagmiProviderWrapper>
           <FarcasterFrameProvider>
             <NeynarContextProvider
