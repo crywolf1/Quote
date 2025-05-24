@@ -4,6 +4,7 @@ import { createConfig } from "wagmi";
 import { base } from "wagmi/chains";
 import { http } from "wagmi";
 import { farcasterFrame } from "@farcaster/frame-wagmi-connector";
+import { injected } from "wagmi/connectors";
 
 // Configure chains list
 const chains = [base];
@@ -11,32 +12,30 @@ const chains = [base];
 // Get the correct app URL for WalletConnect metadata
 const getAppUrl = () => {
   if (typeof window !== "undefined") {
-    // Remove trailing slash to prevent URL mismatch errors
-    return window.location.origin.replace(/\/$/, "");
+    // Use consistent URL format
+    return window.location.origin;
   }
-  // Fallback URL without trailing slash for server-side rendering
+  // Fallback URL for server-side rendering
   return "https://quote-dusky.vercel.app";
 };
 
-// Enhanced Farcaster environment detection
+// Enhanced Farcaster environment detection with better reliability
 const isFarcasterEnvironment = () => {
   if (typeof window === "undefined") return false;
 
   try {
-    // Check user agent (safe method)
-    if (navigator.userAgent.includes("Warpcast")) {
-      return true;
-    }
-
-    // Check referrer (safe method)
-    if (document.referrer && document.referrer.includes("warpcast.com")) {
-      return true;
-    }
-
-    // Frame context detection
+    // Multiple detection methods for increased reliability
     if (
-      window.__FARCASTER_FRAME_CONTEXT__ ||
-      window.parent?.__FARCASTER_FRAME_CONTEXT__
+      // Direct provider check
+      !!window.farcaster?.ethereum ||
+      // User agent check
+      navigator.userAgent.includes("Warpcast") ||
+      // Referrer check
+      (document.referrer && document.referrer.includes("warpcast.com")) ||
+      // Frame context check
+      !!window.__FARCASTER_FRAME_CONTEXT__ ||
+      // Parent window check
+      (window.parent && window.parent !== window)
     ) {
       return true;
     }
@@ -47,18 +46,18 @@ const isFarcasterEnvironment = () => {
       return true;
     }
   } catch (e) {
-    console.debug("Frame detection error (safe to ignore):", e.message);
+    console.debug("Farcaster detection error:", e.message);
   }
 
   return false;
 };
 
-// Custom logger to filter noise
+// Custom logger to filter out noise
 const customLogger = {
   debug: () => {},
   info: () => {},
   warn: (message) => {
-    // Filter out known warning messages
+    // Filter out common warning messages
     if (
       String(message).includes("WalletConnect Core is already initialized") ||
       String(message).includes("metadata.url")
@@ -88,43 +87,14 @@ const customLogger = {
   },
 };
 
-// Only initialize wallets/connections once with a flag
-let walletInitialized = false;
+// Set up default connectors with additional options for better error handling
+const { connectors: defaultConnectors } = getDefaultWallets({
+  appName: "Quoted App",
+  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+  chains,
+});
 
-// Set up wallet connectors
-const setupWallets = () => {
-  if (walletInitialized) {
-    return { connectors: defaultConnectors };
-  }
-
-  walletInitialized = true;
-
-  // Get app metadata URL without trailing slash
-  const appUrl = getAppUrl();
-
-  const { connectors: defaultConnectors } = getDefaultWallets({
-    appName: "Quoted App",
-    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-    chains,
-    walletConnectOptions: {
-      projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-      showQrModal: true,
-      metadata: {
-        name: "Quoted App",
-        description: "Share your thoughts as quotes",
-        url: appUrl,
-        icons: [`${appUrl}/QuoteIcon.png`],
-      },
-    },
-  });
-
-  return { connectors: defaultConnectors };
-};
-
-// Get default connectors with initialization protection
-const { connectors: defaultConnectors } = setupWallets();
-
-// Safely create Farcaster connector
+// Create an enhanced Farcaster connector with improved compatibility
 const createFarcasterConnector = () => {
   return farcasterFrame({
     chains,
@@ -132,41 +102,38 @@ const createFarcasterConnector = () => {
       projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
       shimDisconnect: true,
       name: "Quoted App",
-      // Use a factory function to avoid immediate execution and property conflicts
-      getProvider: async () => {
-        if (typeof window === "undefined") return null;
+    },
+  });
+};
 
-        try {
-          // Wait a moment to ensure the page is fully loaded
-          if (window.farcaster?.ethereum) {
-            return window.farcaster.ethereum;
-          } else if (window.ethereum) {
-            // If farcaster ethereum doesn't exist but window.ethereum does,
-            // and we're in a Farcaster environment, use window.ethereum
-            if (isFarcasterEnvironment()) {
-              return window.ethereum;
-            }
-          }
-        } catch (e) {
-          console.debug("Farcaster provider access error:", e.message);
-        }
-
-        return null;
+// Create a manual injected connector with looser constraints
+const createCustomInjectedConnector = () => {
+  return injected({
+    chains,
+    options: {
+      shimDisconnect: true,
+      name: "Browser Wallet",
+      getProvider: () => {
+        // Try to get any available Ethereum provider
+        return window.ethereum || window.farcaster?.ethereum || undefined;
       },
     },
   });
 };
 
-// Conditionally add the Farcaster connector based on environment
-const farcasterConnector = createFarcasterConnector();
-const connectors = isFarcasterEnvironment()
-  ? [farcasterConnector, ...defaultConnectors]
-  : [...defaultConnectors, farcasterConnector];
+// Include all connector types to maximize compatibility
+const frameConnector = createFarcasterConnector();
+const customInjected = createCustomInjectedConnector();
 
-// Create wagmi config
+// Place Farcaster connector first in Farcaster environments
+const allConnectors = isFarcasterEnvironment()
+  ? [frameConnector, customInjected, ...defaultConnectors]
+  : [...defaultConnectors, customInjected, frameConnector];
+
+// Create wagmi config with enhanced options
 export const wagmiConfig = createConfig({
   chains,
-  connectors,
+  connectors: allConnectors,
   transports: {
     [base.id]: http(),
   },

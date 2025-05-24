@@ -9,7 +9,7 @@ import {
 } from "react";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { injected, farcasterFrame } from "@farcaster/frame-wagmi-connector";
-
+import { connectToWallet } from "@/lib/connectToWallet";
 const FarcasterContext = createContext();
 
 export function FarcasterFrameProvider({ children }) {
@@ -28,6 +28,22 @@ export function FarcasterFrameProvider({ children }) {
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
 
+  useEffect(() => {
+    if (sdk && isInitialized && !isConnected) {
+      // Add a small delay to ensure SDK is fully ready
+      const timer = setTimeout(() => {
+        connectToWallet().then((success) => {
+          console.log("Manual wallet connection attempt result:", success);
+          if (success) {
+            // Try to get user data after connection
+            tryGetUserData();
+          }
+        });
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [sdk, isInitialized, isConnected]);
   // Enhanced SDK loading with improved error handling
   useEffect(() => {
     let isMounted = true;

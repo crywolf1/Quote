@@ -514,10 +514,10 @@
     eventemitter3 "^5.0.1"
     ox "^0.4.4"
 
-"@farcaster/frame-wagmi-connector@^0.0.22":
-  version "0.0.22"
-  resolved "https://registry.npmjs.org/@farcaster/frame-wagmi-connector/-/frame-wagmi-connector-0.0.22.tgz"
-  integrity sha512-CVWvezX/K3MoXrG3nJI1ifC3FYlNaoDVKstFLQ7KtF2nOaZ7bW7yXkI4lsFRHBVekdtN3X7dIFrbC6n6EmKYqw==
+"@farcaster/frame-wagmi-connector@^0.0.40":
+  version "0.0.40"
+  resolved "https://registry.npmjs.org/@farcaster/frame-wagmi-connector/-/frame-wagmi-connector-0.0.40.tgz"
+  integrity sha512-/yt35NZwQF4SeNNA9lcJhtFT0kgFz5Yc4Oz4UMxQhHVJYuExb/WF17TW5l1y3uLvpc2Fp7OGURcql9l8eo984Q==
 
 "@farcaster/quick-auth@^0.0.5":
   version "0.0.5"
