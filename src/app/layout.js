@@ -1,9 +1,11 @@
 "use client";
+
 import { FarcasterFrameProvider } from "../components/FarcasterFrameProvider";
 import WagmiProviderWrapper from "../components/WagmiProviderWrapper";
 import { NeynarContextProvider, Theme } from "@neynar/react";
 import "@neynar/react/dist/style.css";
 import { AuthKitProvider } from "@farcaster/auth-kit";
+
 // Add to your main layout or _app.js file
 
 export default function RootLayout({ children }) {
