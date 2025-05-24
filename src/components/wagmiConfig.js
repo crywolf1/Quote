@@ -18,6 +18,47 @@ const getAppUrl = () => {
   return "https://quote-dusky.vercel.app";
 };
 
+// Enhanced Farcaster environment detection with frame context support
+const isFarcasterEnvironment = () => {
+  if (typeof window !== "undefined") {
+    // Check user agent (safe method)
+    if (navigator.userAgent.includes("Warpcast")) {
+      return true;
+    }
+
+    // Check referrer (safe method)
+    if (document.referrer && document.referrer.includes("warpcast.com")) {
+      return true;
+    }
+
+    // Frame context detection - more reliable approach
+    try {
+      // Check for Farcaster SDK frame context indicator
+      if (
+        window.__FARCASTER_FRAME_CONTEXT__ ||
+        window.parent?.__FARCASTER_FRAME_CONTEXT__
+      ) {
+        return true;
+      }
+
+      // Additional check for frame SDK if available
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has("fc-frame") || urlParams.has("farcaster")) {
+        return true;
+      }
+
+      // Check for Farcaster message channel
+      if (window.parent && window.parent !== window) {
+        return true; // Likely in an iframe which could be a Farcaster frame
+      }
+    } catch (e) {
+      // Silently ignore cross-origin errors
+      console.debug("Frame detection error (safe to ignore):", e.message);
+    }
+  }
+  return false;
+};
+
 // Set up default connectors with additional options for better error handling
 const { connectors: defaultConnectors } = getDefaultWallets({
   appName: "Quoted App",
@@ -36,62 +77,28 @@ const { connectors: defaultConnectors } = getDefaultWallets({
   },
 });
 
-// Check if we're in a Warpcast environment
-const isWarpcastEnvironment = () => {
-  if (typeof window !== "undefined") {
-    // Check user agent (safe method)
-    if (navigator.userAgent.includes("Warpcast")) {
-      return true;
-    }
-
-    // Check referrer (safe method)
-    if (document.referrer && document.referrer.includes("warpcast.com")) {
-      return true;
-    }
-
-    // Safely try to check parent frame without causing errors
-    try {
-      if (window.parent && window.parent.farcaster) {
-        return true;
+// Configure Farcaster connector with improved options
+const farcasterConnector = farcasterFrame({
+  chains,
+  options: {
+    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+    // These additional options help with browser compatibility
+    shimDisconnect: true,
+    name: "Quoted App",
+    getProvider: () => {
+      // Handle both direct SDK access and fallback
+      if (window?.farcaster?.ethereum) {
+        return window.farcaster.ethereum;
       }
-    } catch (e) {
-      // Silently ignore cross-origin errors
-    }
-  }
-  return false;
-};
-
-// Only add the Farcaster connector when in Warpcast environment
-const connectors = isWarpcastEnvironment()
-  ? [
-      farcasterFrame({
-        chains,
-        options: {
-          projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-        },
-      }),
-      ...defaultConnectors,
-    ]
-  : defaultConnectors;
-
-// Custom logger to filter out specific extension errors
-const customLogger = {
-  warn: (message) => {
-    // Filter out common warnings and runtime.sendMessage errors
-    if (
-      typeof message === "string" &&
-      !message.includes("runtime.sendMessage") &&
-      !message.includes("Extension ID") &&
-      !message.includes("WalletConnect Core is already initialized") &&
-      !message.includes("differs from the actual page url")
-    ) {
-      console.warn(message);
-    }
+      return null;
+    },
   },
-  error: console.error,
-  info: console.info,
-  debug: console.debug,
-};
+});
+
+// Always include the Farcaster connector, but conditionally set its priority
+const connectors = isFarcasterEnvironment()
+  ? [farcasterConnector, ...defaultConnectors]
+  : [...defaultConnectors, farcasterConnector]; // Add as fallback
 
 // Create config with http transport - Wagmi v2 syntax
 export const wagmiConfig = createConfig({
@@ -108,8 +115,8 @@ export const wagmiConfig = createConfig({
   },
   // Reduce extension communication errors with better timeouts
   pollingInterval: 4000,
-  // Add auto-reconnection behavior configuration
-  autoConnect: false, // Set this to false to prevent automatic reconnection
+  // Auto-connect can help ensure wallet state persists, but configurable
+  autoConnect: true,
 });
 
 export { chains };

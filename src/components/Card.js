@@ -339,7 +339,7 @@ export default function Card() {
       const zoraUrl = `https://zora.co/coin/base:${quote.zoraTokenAddress}`;
 
       // Create suggested text for the cast
-      const castText = `Check out my $${
+      const castText = `$${
         quote.title?.toUpperCase() || "TOKEN"
       }!\n\n"${quote.text}"`;
 

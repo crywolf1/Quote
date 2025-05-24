@@ -4,7 +4,8 @@ import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
-import { wagmiConfig, chains } from "./wagmiConfig"; // Import chains from your config
+import { wagmiConfig, chains } from "./wagmiConfig";
+import { farcasterFrame } from "@farcaster/frame-wagmi-connector";
 
 export default function WagmiProviderWrapper({ children }) {
   // Create a single QueryClient instance that persists across renders
@@ -43,7 +44,20 @@ export default function WagmiProviderWrapper({ children }) {
       try {
         // Use dynamic import to prevent SSR issues
         const { sdk } = await import("@farcaster/frame-sdk");
-        setIsFarcasterFrameContext(sdk?.isFrameContext || false);
+        const isFrameContext = sdk?.isFrameContext || false;
+        setIsFarcasterFrameContext(isFrameContext);
+
+        // If in Farcaster frame context, ensure we add the connector
+        if (isFrameContext && wagmiConfig) {
+          // Add Farcaster frame connector if it's not already added
+          const hasFrameConnector = wagmiConfig.connectors.some(
+            (connector) => connector.id === "farcasterFrame"
+          );
+
+          if (!hasFrameConnector) {
+            wagmiConfig.connectors.push(farcasterFrame());
+          }
+        }
       } catch (e) {
         // SDK not available or not in frame context
         setIsFarcasterFrameContext(false);
@@ -75,8 +89,8 @@ export default function WagmiProviderWrapper({ children }) {
             overlayBlur: "small",
           })}
           modalSize="compact"
-          avatarSize={32} // Use numeric values instead of strings for dimensions
-          iconSize={24} // Use numeric values instead of strings for dimensions
+          avatarSize={32}
+          iconSize={24}
           onError={(error) => {
             // Only log non-extension related errors
             const errorStr = String(error.message || "");
