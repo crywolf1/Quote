@@ -11,28 +11,6 @@ export default function WagmiProviderWrapper({ children }) {
   const queryClient = useMemo(() => new QueryClient(), []);
   const [isFarcasterFrameContext, setIsFarcasterFrameContext] = useState(false);
 
-  // Detect Farcaster frame context on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isFarcasterEnv =
-        window.__FARCASTER_FRAME_CONTEXT__ ||
-        navigator.userAgent.includes("Warpcast") ||
-        document.referrer.includes("warpcast.com") ||
-        (window.parent && window.parent !== window);
-
-      setIsFarcasterFrameContext(isFarcasterEnv);
-
-      // If in Farcaster environment, ensure the provider is set
-      if (isFarcasterEnv && window.farcaster?.ethereum) {
-        console.log(
-          "Setting Farcaster ethereum provider in WagmiProviderWrapper"
-        );
-        window._originalEthereum = window._originalEthereum || window.ethereum;
-        window.ethereum = window.farcaster.ethereum;
-      }
-    }
-  }, []);
-
   // Suppress common errors - combined into a single useEffect
   useEffect(() => {
     const originalError = console.error;
@@ -55,40 +33,35 @@ export default function WagmiProviderWrapper({ children }) {
     };
 
     return () => {
-      console.error = originalError; // Restore original function on unmount
+      console.error = originalError; // Restore on unmount
     };
   }, []);
 
-  // Additional effect to monitor visibility changes and provider availability
+  // Safely check if we're in a Farcaster frame context
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const checkFarcasterProvider = () => {
-      // If we're in a Farcaster environment and the provider becomes available
-      if (isFarcasterFrameContext && window.farcaster?.ethereum) {
-        // Ensure Farcaster's provider is used
-        if (window.ethereum !== window.farcaster.ethereum) {
-          window._originalEthereum =
-            window._originalEthereum || window.ethereum;
-          window.ethereum = window.farcaster.ethereum;
-          console.log("Visibility change: Using Farcaster ethereum provider");
-        }
+    const checkFarcasterContext = async () => {
+      try {
+        // Use dynamic import to prevent SSR issues
+        const { sdk } = await import("@farcaster/frame-sdk");
+        setIsFarcasterFrameContext(sdk?.isFrameContext || false);
+      } catch (e) {
+        // SDK not available or not in frame context
+        setIsFarcasterFrameContext(false);
       }
     };
 
-    // Check when visibility changes (app comes to foreground)
-    document.addEventListener("visibilitychange", checkFarcasterProvider);
+    checkFarcasterContext();
+  }, []);
 
-    // Also check periodically (providers can load asynchronously)
-    const interval = setInterval(checkFarcasterProvider, 3000);
+  // Get projectId for wallet connections
+  const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 
-    return () => {
-      document.removeEventListener("visibilitychange", checkFarcasterProvider);
-      clearInterval(interval);
-    };
-  }, [isFarcasterFrameContext]);
+  if (!projectId) {
+    console.error(
+      "WalletConnect projectId is missing. Please check your environment variables."
+    );
+  }
 
-  // WagmiProvider with suppressed error output
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
@@ -102,8 +75,8 @@ export default function WagmiProviderWrapper({ children }) {
             overlayBlur: "small",
           })}
           modalSize="compact"
-          avatarSize={32}
-          iconSize={24}
+          avatarSize={32} // Use numeric values instead of strings for dimensions
+          iconSize={24} // Use numeric values instead of strings for dimensions
           onError={(error) => {
             // Only log non-extension related errors
             const errorStr = String(error.message || "");
