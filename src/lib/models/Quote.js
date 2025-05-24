@@ -26,7 +26,7 @@ const quoteSchema = new mongoose.Schema(
     image: String, // Store the image data URL
     style: {
       type: String,
-      enum: ["dark", "pink", "green", "white"],
+      enum: ["dark", "purple", "harvey", "blue"],
       default: "dark",
     }, // Add this line
 

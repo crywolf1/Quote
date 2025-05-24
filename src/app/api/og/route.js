@@ -40,40 +40,67 @@ export async function GET(req) {
     const patternDensity = 5 + (patternSeed % 4); // Fewer elements
 
     // Style-specific configurations
-    let background = "linear-gradient(to right, #141414, #222222)";
-    let contentBg = "rgba(30, 30, 30, 0.8)";
-    let contentBorder = "rgba(50, 50, 50, 0.8)";
-    let accentGlow = "rgba(90,90,255,0.08)";
+    let background = "linear-gradient(to right, #485563, #29323c)"; // Updated dark gradient
+    let contentBg = "rgba(41, 50, 60, 0.85)"; // Slightly adjusted to match new colors
+    let contentBorder = "rgba(60, 70, 80, 0.8)";
+    let accentGlow = "rgba(90, 90, 255, 0.08)";
     let patternChar = "Z";
     let textColor = "#fff";
-    let userInfoBg = "rgba(20,20,20,0.7)";
-    let brandingBg = "rgba(20,20,20,0.7)";
-    let pfpBorder = "rgba(255,255,255,0.5)";
+    let userInfoBg = "rgba(35, 45, 55, 0.7)"; // Darker, matching the new gradient
+    let brandingBg = "rgba(35, 45, 55, 0.7)";
+    let pfpBorder = "rgba(255, 255, 255, 0.5)";
 
     // Apply style variations
-    if (style === "pink") {
-      background = "linear-gradient(to right, #ff80bf, #ff1a8c)";
-      contentBg = "rgba(50, 20, 40, 0.85)";
-      contentBorder = "rgba(255, 153, 204, 0.4)";
-      accentGlow = "rgba(255, 102, 178, 0.2)";
-      patternChar = "♥";
-    } else if (style === "green") {
-      background = "linear-gradient(to right, #145a32, #196f3d)";
-      contentBg = "rgba(20, 50, 30, 0.85)";
-      contentBorder = "rgba(46, 139, 87, 0.4)";
-      accentGlow = "rgba(88, 214, 141, 0.15)";
-      patternChar = "☘";
-    }
-    if (style === "white") {
-      background = "linear-gradient(to right, #f0f4ff, #ffffff)"; // Subtle blue tint to white
-      contentBg = "rgba(255, 255, 255, 0.95)";
-      contentBorder = "rgba(0, 82, 255, 0.2)"; // Light blue border
-      accentGlow = "rgba(0, 82, 255, 0.12)"; // Brighter blue glow
-      patternChar = "◇";
-      textColor = "#0052FF"; // Keep the blue text
-      userInfoBg = "rgba(240, 246, 255, 0.95)"; // Very light blue background
-      brandingBg = "rgba(0, 82, 255, 0.08)"; // Light blue background for branding
-      pfpBorder = "rgb(0, 82, 255)"; // Keep the blue profile pic border
+    if (style === "purple") {
+      // Using the new purple gradient as requested
+      const primaryPurple = "#6a3093"; // Starting color - deep purple
+      const brightPurple = "#a044ff"; // Ending color - bright violet
+
+      // Derive additional colors for UI elements
+      const darkPurple = "#5a2883"; // Darker shade for content
+      const lightPurple = "#b366ff"; // Lighter shade for accents
+
+      background = `linear-gradient(to right, ${primaryPurple}, ${brightPurple})`;
+      contentBg = "rgba(106, 48, 147, 0.85)"; // Using primary purple with transparency
+      contentBorder = "rgba(176, 102, 255, 0.4)"; // Light purple border
+      accentGlow = "rgba(160, 68, 255, 0.2)"; // Purple glow
+      patternChar = "✦"; // Star-like character
+      textColor = "#f8f7ff"; // Very light purple/white for text
+      userInfoBg = "rgba(90, 40, 131, 0.75)"; // Deeper purple for user section
+      brandingBg = "rgba(90, 40, 131, 0.75)";
+      pfpBorder = lightPurple; // Light purple for profile border
+    } else if (style === "harvey") {
+      const primaryGreen = "rgb(31, 64, 55)"; // #1f4037 - dark forest green
+      const lightGreen = "rgb(153, 242, 200)"; // #99f2c8 - mint green
+      const midGreen = "rgb(92, 153, 128)"; // A middle tone for accents
+
+      background = `linear-gradient(to right, ${primaryGreen}, ${lightGreen})`;
+      contentBg = "rgba(31, 64, 55, 0.85)";
+      contentBorder = "rgba(153, 242, 200, 0.4)";
+      accentGlow = "rgba(153, 242, 200, 0.2)";
+      patternChar = "❃"; // Flower-like character for nature theme
+      textColor = "#ffffff"; // White for readability
+      userInfoBg = "rgba(31, 64, 55, 0.8)"; // Dark green for user section
+      brandingBg = "rgba(31, 64, 55, 0.8)";
+      pfpBorder = lightGreen; // Light green for profile border
+    } else if (style === "blue") {
+      // Using a slightly darker blue gradient as requested
+      const lightBlue = "#0072ff"; // Darkened fromrgb(0, 132, 255)
+      const darkBlue = "#0068e8"; // Darkened from #0072ff
+
+      // Derive additional colors for UI elements
+      const midBlue = "#008ce6"; // Darkened middle tone
+      const accentBlue = "#5cc6f5"; // Slightly darker accent
+
+      background = `linear-gradient(to right, ${lightBlue}, ${darkBlue})`;
+      contentBg = "rgba(0, 140, 230, 0.85)"; // Using darkened mid blue
+      contentBorder = "rgba(92, 198, 245, 0.4)"; // Slightly darker border
+      accentGlow = "rgba(92, 198, 245, 0.25)"; // Darkened glow
+      patternChar = "◇"; // Diamond character
+      textColor = "#ffffff"; // White text for readability
+      userInfoBg = "rgba(0, 104, 232, 0.75)"; // Darker blue for user section
+      brandingBg = "rgba(0, 104, 232, 0.75)";
+      pfpBorder = accentBlue; // Light blue for profile border
     }
 
     return new ImageResponse(

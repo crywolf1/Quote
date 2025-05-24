@@ -1539,32 +1539,32 @@ export default function Card() {
                             </div>
                             <div
                               className={`style-btn ${
-                                selectedStyle === "white" ? "selected" : ""
+                                selectedStyle === "blue" ? "selected" : ""
                               }`}
-                              onClick={() => setSelectedStyle("white")}
-                              title="White Style"
+                              onClick={() => setSelectedStyle("blue")}
+                              title="blue Style"
                             >
-                              <div className="white-style"></div>
+                              <div className="blue-style"></div>
                             </div>
                           </div>
                           <div className="style-selector-row">
                             <div
                               className={`style-btn ${
-                                selectedStyle === "pink" ? "selected" : ""
+                                selectedStyle === "purple" ? "selected" : ""
                               }`}
-                              onClick={() => setSelectedStyle("pink")}
-                              title="Pink Style"
+                              onClick={() => setSelectedStyle("purple")}
+                              title="purple Style"
                             >
-                              <div className="pink-style"></div>
+                              <div className="purple-style"></div>
                             </div>
                             <div
                               className={`style-btn ${
-                                selectedStyle === "green" ? "selected" : ""
+                                selectedStyle === "harvey" ? "selected" : ""
                               }`}
-                              onClick={() => setSelectedStyle("green")}
+                              onClick={() => setSelectedStyle("harvey")}
                               title="Nature Style"
                             >
-                              <div className="green-style"></div>
+                              <div className="harvey-style"></div>
                             </div>
                           </div>
                         </div>
