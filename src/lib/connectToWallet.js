@@ -20,15 +20,7 @@ export async function connectToWallet() {
             "✅ Successfully connected to Farcaster wallet:",
             accounts[0]
           );
-          return true;
-        }
-        if (accounts && accounts.length > 0) {
-          console.log(
-            "✅ Successfully connected to Farcaster wallet:",
-            accounts[0]
-          );
 
-          // ADD THIS CODE HERE - LOCATION #1
           // Ensure the Farcaster provider is used for all transactions
           if (window.ethereum !== window.farcaster.ethereum) {
             window._originalEthereum =
@@ -52,11 +44,17 @@ export async function connectToWallet() {
             "✅ Connected to Farcaster wallet after request:",
             requestedAccounts[0]
           );
-          
 
-        
+          // Ensure the Farcaster provider is used for all transactions
+          if (window.ethereum !== window.farcaster.ethereum) {
+            window._originalEthereum =
+              window._originalEthereum || window.ethereum;
+            window.ethereum = window.farcaster.ethereum;
+            console.log("Set Farcaster ethereum as the primary provider");
+          }
 
-
+          return true;
+        }
       } catch (err) {
         console.warn("Farcaster ethereum request failed:", err.message);
       }
