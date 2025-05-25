@@ -2,148 +2,115 @@
 
 import { useState, useEffect } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { useAccount } from "wagmi";
-import "../styles/CustomConnectButton.css";
+import { useAccount, useConnect } from "wagmi";
+import { FaSpinner } from "react-icons/fa";
 
 export default function CustomConnectButton() {
   const { openConnectModal } = useConnectModal();
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
+  const { connect, connectors } = useConnect();
+
   const [isMobileDevice, setIsMobileDevice] = useState(false);
-  const [isWarpcast, setIsWarpcast] = useState(false);
-  const [farcasterSDK, setFarcasterSDK] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [connectionAttempted, setConnectionAttempted] = useState(false);
 
-  // Enhanced Farcaster environment detection
-  const detectFarcasterEnvironment = () => {
-    if (typeof window === "undefined") return false;
-    
-    // Method 1: Check for Farcaster SDK isFrameContext
-    if (farcasterSDK?.isFrameContext) return true;
-    
-    // Method 2: Check for Farcaster object in window
-    if (window.farcaster) return true;
-    
-    // Method 3: Check for Farcaster context in window
-    if (window.__FARCASTER_FRAME_CONTEXT__) return true;
-    
-    // Method 4: Check user agent for Warpcast
-    if (navigator.userAgent.includes("Warpcast")) return true;
-    
-    // Method 5: Check referrer
-    if (document.referrer && document.referrer.includes("warpcast.com")) return true;
-    
-    // Method 6: Check if in iframe (common for Frames)
-    try {
-      if (window.parent && window.parent !== window) return true;
-    } catch (e) {
-      // Ignore cross-origin errors
-    }
-    
-    return false;
-  };
-
-  // Safely load Farcaster SDK and detect environment
+  // Add this effect to detect Farcaster environment and auto-connect
   useEffect(() => {
-    const loadSDK = async () => {
-      try {
-        console.log("Loading Farcaster SDK...");
-        const { sdk } = await import("@farcaster/frame-sdk");
-        setFarcasterSDK(sdk);
-        
-        const isInFarcaster = detectFarcasterEnvironment();
-        console.log("Is in Farcaster environment:", isInFarcaster);
-        setIsWarpcast(isInFarcaster);
-        
-        // Auto-connect if in Farcaster
-        if (isInFarcaster && !connectionAttempted && !isConnected) {
-          console.log("Auto-connecting in Farcaster environment...");
-          attemptFarcasterConnection(sdk);
-        }
-      } catch (e) {
-        console.log("Farcaster SDK loading error:", e);
-      }
+    const detectFarcasterEnvironment = () => {
+      if (typeof window === "undefined") return false;
+
+      return !!(
+        window.farcaster ||
+        window.__FARCASTER_FRAME_CONTEXT__ ||
+        navigator.userAgent.includes("Warpcast") ||
+        document.referrer.includes("warpcast.com")
+      );
     };
 
-    if (typeof window !== "undefined") {
-      // Check if mobile
-      const checkMobile = () => {
-        return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-          navigator.userAgent
-        );
-      };
+    const isFarcasterEnv = detectFarcasterEnvironment();
 
-      setIsMobileDevice(checkMobile());
-      loadSDK();
+    if (isFarcasterEnv && !connectionAttempted && !isConnected) {
+      handleConnect();
+    }
+
+    if (typeof window !== "undefined") {
+      setIsMobileDevice(
+        /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        )
+      );
     }
   }, [isConnected, connectionAttempted]);
 
-  // Function to attempt connection with retries
-  const attemptFarcasterConnection = async (sdk) => {
+  // Function to handle connection with proper state updates
+  const handleConnect = async () => {
+    setIsLoading(true);
     setConnectionAttempted(true);
-    
-    // Try up to 3 times with increasing delays
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        console.log(`Connection attempt ${attempt + 1}...`);
-        
-        // Check for Farcaster wallet provider
-        if (sdk?.wallet?.ethProvider) {
-          console.log("Found Farcaster wallet provider, connecting...");
-          await sdk.wallet.ethProvider.request({
-            method: "eth_requestAccounts",
-          });
-          console.log("Successfully connected to Farcaster wallet!");
-          return true;
-        } else if (window.farcaster?.ethereum) {
-          console.log("Found window.farcaster.ethereum, connecting...");
+
+    try {
+      // First try Farcaster connection
+      if (window.farcaster?.ethereum) {
+        console.log("Found Farcaster wallet provider, connecting...");
+
+        try {
           await window.farcaster.ethereum.request({
             method: "eth_requestAccounts",
           });
-          console.log("Successfully connected using window.farcaster.ethereum!");
-          return true;
-        } else {
-          console.log("No Farcaster wallet provider available in this attempt");
+          console.log("Successfully connected to Farcaster wallet!");
+
+          // Force update wagmi state for React rendering
+          const farcasterConnector = connectors.find(
+            (c) =>
+              c.id === "farcasterFrame" ||
+              c.name?.toLowerCase().includes("farcaster")
+          );
+
+          if (farcasterConnector) {
+            await connect({ connector: farcasterConnector });
+          }
+
+          // Wait for next tick to allow state to update
+          setTimeout(() => {
+            window.location.reload(); // Force refresh as last resort
+          }, 1000);
+
+          return;
+        } catch (err) {
+          console.error("Farcaster connection error:", err);
         }
-      } catch (error) {
-        console.error(`Connection attempt ${attempt + 1} failed:`, error);
       }
-      
-      // Wait before next attempt (increasing delay)
-      if (attempt < 2) {
-        await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
-      }
-    }
-    
-    console.log("All auto-connection attempts failed");
-    return false;
-  };
 
-  // Manual connection handler for button click
-  const handleConnect = async () => {
-    // If in Warpcast with SDK available, use Farcaster's wallet
-    if (isWarpcast) {
-      const connected = await attemptFarcasterConnection(farcasterSDK);
-      if (connected) return;
-    }
-
-    // For mobile, try direct deep linking first
-    if (isMobileDevice) {
-      // Try opening Rainbow directly
-      window.location.href = "https://rnbwapp.com/";
-
-      // After a short delay, open the modal as fallback
-      setTimeout(() => {
+      // Fallback to modal for non-Farcaster environments
+      if (isMobileDevice) {
+        window.location.href = "https://rnbwapp.com/";
+        setTimeout(() => {
+          openConnectModal?.();
+        }, 1500);
+      } else {
         openConnectModal?.();
-      }, 1500);
-    } else {
-      // On desktop, use normal modal
-      openConnectModal?.();
+      }
+    } catch (error) {
+      console.error("Connection error:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <button onClick={handleConnect} className="connect-button">
-      Sign in
+    <button
+      onClick={handleConnect}
+      disabled={isLoading}
+      className="connect-button"
+    >
+      {isLoading ? (
+        <span className="loading-state">
+          <FaSpinner className="spin" /> Connecting...
+        </span>
+      ) : isConnected ? (
+        <span className="connected-state">Connected</span>
+      ) : (
+        <span className="connect-state">Sign in</span>
+      )}
     </button>
   );
 }
