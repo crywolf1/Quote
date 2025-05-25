@@ -43,7 +43,18 @@ export default function WagmiProviderWrapper({ children }) {
       try {
         // Use dynamic import to prevent SSR issues
         const { sdk } = await import("@farcaster/frame-sdk");
-        setIsFarcasterFrameContext(sdk?.isFrameContext || false);
+        const isFrameContext = sdk?.isFrameContext || false;
+
+        // Additional checks for more reliable detection (from our wagmiConfig.js)
+        const isInFarcaster =
+          isFrameContext ||
+          (typeof window !== "undefined" &&
+            (window.farcaster != null ||
+              window.__FARCASTER_FRAME_CONTEXT__ != null ||
+              navigator.userAgent.includes("Warpcast") ||
+              document.referrer.includes("warpcast.com")));
+
+        setIsFarcasterFrameContext(isInFarcaster);
       } catch (e) {
         // SDK not available or not in frame context
         setIsFarcasterFrameContext(false);
