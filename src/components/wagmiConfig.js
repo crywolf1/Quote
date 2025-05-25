@@ -27,6 +27,7 @@ const getMetadataUrl = () => {
     return base;
   }
 };
+
 // Better Farcaster environment detection that works on both client and server
 const detectFarcasterEnv = () => {
   // For server-side rendering, default to false
@@ -48,10 +49,18 @@ const detectFarcasterEnv = () => {
   }
 };
 
+// Detect if device is mobile for better transaction handling
+const isMobileDevice =
+  typeof navigator !== "undefined" &&
+  /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+
 // Evaluate once during initialization
 const isFarcasterEnv =
   typeof window !== "undefined" ? detectFarcasterEnv() : false;
 console.log("Farcaster environment detected:", isFarcasterEnv);
+console.log("Mobile device detected:", isMobileDevice);
 
 let walletConnectInitialized = false;
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
@@ -69,12 +78,23 @@ const { connectors: defaultConnectors } = getDefaultWallets({
       url: getMetadataUrl(),
       icons: ["https://quote-dusky.vercel.app/QuoteIcon.png"],
     },
-    // Add this option to explicitly prevent reinit
     qrModalOptions: {
-      // This prevents multiple initializations
+      // FIXED: Improved mobile wallet handling
       reInitOnNetworkChange: false,
-      // Don't reopen modal after connection
       explorerRecommendedWalletIds: [],
+      // Added specific mobile options
+      mobileLinks: [
+        "rainbow",
+        "metamask",
+        "trust",
+        "argent",
+        "zerion",
+        "imtoken",
+      ],
+      // Add desktop links for completeness
+      desktopLinks: ["rainbow", "metamask", "coinbase", "zerion"],
+      // Give wallet more time to respond on mobile
+      connectTimeout: isMobileDevice ? 15000 : 10000,
     },
   },
 });
@@ -100,6 +120,36 @@ export const wagmiConfig = createConfig({
   autoConnect: true,
 });
 
+// NEW: Export helper functions for transaction management
+export const prepareWalletForTransaction = async (walletClient) => {
+  if (!walletClient) return false;
+
+  try {
+    if (isMobileDevice) {
+      console.log("Preparing mobile wallet for transaction");
+
+      // Ensure wallet is ready (doesn't throw on mobile)
+      try {
+        await walletClient.getAddresses();
+      } catch (err) {
+        console.error("Mobile wallet not ready:", err);
+        return false;
+      }
+
+      // On mobile, some wallets need a small delay before transactions
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      return true;
+    }
+
+    // For desktop, just verify wallet is available
+    return typeof walletClient.getAddresses === "function";
+  } catch (err) {
+    console.error("Error preparing wallet for transaction:", err);
+    return false;
+  }
+};
+
 // Export helper function and chains
 export const detectFarcasterEnvironment = detectFarcasterEnv;
-export { chains };
+export { chains, isMobileDevice };

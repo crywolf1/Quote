@@ -4,7 +4,10 @@ import {
   updatePayoutRecipient,
 } from "@zoralabs/coins-sdk";
 import { createSplitContract } from "./createSplitContract";
-
+import {
+  isMobileDevice,
+  prepareWalletForTransaction,
+} from "../components/wagmiConfig";
 export async function createZoraCoin({
   walletClient,
   publicClient,
@@ -18,6 +21,23 @@ export async function createZoraCoin({
     // Basic validation
     if (!walletClient || !walletClient.account?.address) {
       throw new Error("Wallet client not properly initialized");
+    }
+    if (isMobileDevice) {
+      console.log(
+        "Mobile device detected, preparing wallet for transaction..."
+      );
+      const isWalletReady = await prepareWalletForTransaction(walletClient);
+      if (!isWalletReady) {
+        console.error("Mobile wallet not ready for transaction");
+        return {
+          status: "error",
+          error: "Mobile wallet not ready for transaction. Please reconnect.",
+        };
+      }
+      console.log("Mobile wallet prepared for transaction");
+
+      // Small delay for mobile wallet preparation
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
 
     if (!creatorAddress) throw new Error("Creator address required");
