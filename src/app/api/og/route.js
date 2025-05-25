@@ -23,17 +23,18 @@ export async function GET(req) {
 
     // Calculate font size based on quote length
     const quoteFontSize =
-      safeQuote.length > 180
-        ? 26
-        : safeQuote.length > 120
-        ? 30
-        : safeQuote.length > 60
-        ? 35
-        : 40;
-
-    // Dimensions for OG image
-    const width = 800;
-    const height = 420;
+      safeQuote.length < 50
+        ? 80 // Very short quotes get extremely large text
+        : safeQuote.length < 100
+        ? 66 // Short quotes get very large text
+        : safeQuote.length < 150
+        ? 56 // Medium quotes get large text
+        : safeQuote.length < 200
+        ? 48 // Longer quotes get medium-large text
+        : 40; // Longest quotes (200-240 chars) still get readable text
+    // UPDATED: Dimensions for OG image with 3:2 aspect ratio
+    const width = 1200;
+    const height = 800; // 1200 ÷ 1.5 = 800 (3:2 ratio)
 
     // Generate a unique pattern for each quote using username as seed
     const patternSeed = username?.length || 5;
@@ -50,57 +51,54 @@ export async function GET(req) {
     let brandingBg = "rgba(35, 45, 55, 0.7)";
     let pfpBorder = "rgba(255, 255, 255, 0.5)";
 
-    // Apply style variations
+    // Apply style variations - no changes needed
     if (style === "purple") {
-      // Using the new purple gradient as requested
-      const primaryPurple = "#6a3093"; // Starting color - deep purple
-      const brightPurple = "#a044ff"; // Ending color - bright violet
-
-      // Derive additional colors for UI elements
-      const darkPurple = "#5a2883"; // Darker shade for content
-      const lightPurple = "#b366ff"; // Lighter shade for accents
+      // Your existing purple style
+      const primaryPurple = "#6a3093";
+      const brightPurple = "#a044ff";
+      const darkPurple = "#5a2883";
+      const lightPurple = "#b366ff";
 
       background = `linear-gradient(to right, ${primaryPurple}, ${brightPurple})`;
-      contentBg = "rgba(106, 48, 147, 0.85)"; // Using primary purple with transparency
-      contentBorder = "rgba(176, 102, 255, 0.4)"; // Light purple border
-      accentGlow = "rgba(160, 68, 255, 0.2)"; // Purple glow
-      patternChar = "✦"; // Star-like character
-      textColor = "#f8f7ff"; // Very light purple/white for text
-      userInfoBg = "rgba(90, 40, 131, 0.75)"; // Deeper purple for user section
+      contentBg = "rgba(106, 48, 147, 0.85)";
+      contentBorder = "rgba(176, 102, 255, 0.4)";
+      accentGlow = "rgba(160, 68, 255, 0.2)";
+      patternChar = "✦";
+      textColor = "#f8f7ff";
+      userInfoBg = "rgba(90, 40, 131, 0.75)";
       brandingBg = "rgba(90, 40, 131, 0.75)";
-      pfpBorder = lightPurple; // Light purple for profile border
+      pfpBorder = lightPurple;
     } else if (style === "harvey") {
-      const primaryGreen = "rgb(31, 64, 55)"; // #1f4037 - dark forest green
-      const lightGreen = "rgb(153, 242, 200)"; // #99f2c8 - mint green
-      const midGreen = "rgb(92, 153, 128)"; // A middle tone for accents
+      // Your existing harvey style
+      const primaryGreen = "rgb(31, 64, 55)";
+      const lightGreen = "rgb(153, 242, 200)";
+      const midGreen = "rgb(92, 153, 128)";
 
       background = `linear-gradient(to right, ${primaryGreen}, ${lightGreen})`;
       contentBg = "rgba(31, 64, 55, 0.85)";
       contentBorder = "rgba(153, 242, 200, 0.4)";
       accentGlow = "rgba(153, 242, 200, 0.2)";
-      patternChar = "❃"; // Flower-like character for nature theme
-      textColor = "#ffffff"; // White for readability
-      userInfoBg = "rgba(31, 64, 55, 0.8)"; // Dark green for user section
+      patternChar = "❃";
+      textColor = "#ffffff";
+      userInfoBg = "rgba(31, 64, 55, 0.8)";
       brandingBg = "rgba(31, 64, 55, 0.8)";
-      pfpBorder = lightGreen; // Light green for profile border
+      pfpBorder = lightGreen;
     } else if (style === "blue") {
-      // Using a slightly darker blue gradient as requested
-      const lightBlue = "#0072ff"; // Darkened fromrgb(0, 132, 255)
-      const darkBlue = "#0068e8"; // Darkened from #0072ff
-
-      // Derive additional colors for UI elements
-      const midBlue = "#008ce6"; // Darkened middle tone
-      const accentBlue = "#5cc6f5"; // Slightly darker accent
+      // Your existing blue style
+      const lightBlue = "#0072ff";
+      const darkBlue = "#0068e8";
+      const midBlue = "#008ce6";
+      const accentBlue = "#5cc6f5";
 
       background = `linear-gradient(to right, ${lightBlue}, ${darkBlue})`;
-      contentBg = "rgba(0, 140, 230, 0.85)"; // Using darkened mid blue
-      contentBorder = "rgba(92, 198, 245, 0.4)"; // Slightly darker border
-      accentGlow = "rgba(92, 198, 245, 0.25)"; // Darkened glow
-      patternChar = "◇"; // Diamond character
-      textColor = "#ffffff"; // White text for readability
-      userInfoBg = "rgba(0, 104, 232, 0.75)"; // Darker blue for user section
+      contentBg = "rgba(0, 140, 230, 0.85)";
+      contentBorder = "rgba(92, 198, 245, 0.4)";
+      accentGlow = "rgba(92, 198, 245, 0.25)";
+      patternChar = "◇";
+      textColor = "#ffffff";
+      userInfoBg = "rgba(0, 104, 232, 0.75)";
       brandingBg = "rgba(0, 104, 232, 0.75)";
-      pfpBorder = accentBlue; // Light blue for profile border
+      pfpBorder = accentBlue;
     }
 
     return new ImageResponse(
@@ -124,15 +122,15 @@ export async function GET(req) {
               key={i}
               style={{
                 position: "absolute",
-                width: 30 + (i % 20),
-                height: 30 + (i % 20),
+                width: 40 + (i % 20),
+                height: 40 + (i % 20),
                 color: "rgba(0, 0, 0, 0.1)",
                 top: `${(i * 37 + patternSeed * 11) % 100}%`,
                 left: `${(i * 23 + patternSeed * 7) % 100}%`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 24 + (i % 16),
+                fontSize: 32 + (i % 16),
                 opacity: 0.1 + (i % 10) / 30,
               }}
             >
@@ -149,7 +147,7 @@ export async function GET(req) {
               background: `radial-gradient(circle, ${accentGlow} 0%, transparent 70%)`,
               top: "30%",
               left: "30%",
-              filter: "blur(60px)",
+              filter: "blur(80px)",
               display: "flex",
             }}
           />
@@ -163,8 +161,8 @@ export async function GET(req) {
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              borderRadius: 24,
-              padding: "36px 40px 44px 40px",
+              borderRadius: 32,
+              padding: "40px 50px 50px 50px",
               boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
               background: contentBg,
               backdropFilter: "blur(5px)",
@@ -173,13 +171,13 @@ export async function GET(req) {
               zIndex: 10,
             }}
           >
-            {/* Elegant quote marks - unchanged */}
+            {/* Elegant quote marks */}
             <div
               style={{
                 position: "absolute",
-                top: 20,
-                left: 30,
-                fontSize: 120,
+                top: 30,
+                left: 40,
+                fontSize: 200,
                 opacity: 0.15,
                 fontFamily: "Georgia, serif",
                 display: "flex",
@@ -189,15 +187,17 @@ export async function GET(req) {
               "
             </div>
 
-            {/* Quote text - unchanged */}
+            {/* Quote text - larger content area for 3:2 aspect ratio */}
             <div
               style={{
                 fontSize: quoteFontSize,
                 fontWeight: 700,
                 textAlign: "center",
-                lineHeight: 1.4,
-                maxWidth: "90%",
-                marginBottom: 20,
+                lineHeight: 1.4, // Slightly tighter line height for larger text
+                maxWidth: "92%", // Slightly wider to accommodate larger text
+                marginBottom: 60, // More bottom margin for balance
+                marginTop: 30, // More top margin for balance
+                padding: "0 20px",
                 display: "flex",
                 flexDirection: "column",
                 textShadow:
@@ -211,7 +211,7 @@ export async function GET(req) {
               <span style={{ display: "block" }}>{safeQuote}</span>
             </div>
 
-            {/* User info section - MODIFIED: Positioned at bottom-left */}
+            {/* User info section - Positioned at bottom-left */}
             <div
               style={{
                 display: "flex",
@@ -222,14 +222,14 @@ export async function GET(req) {
                 boxShadow:
                   style === "white" ? "0 2px 8px rgba(0,0,0,0.05)" : "none",
                 position: "absolute",
-                bottom: 20,
-                left: 30,
+                bottom: 30,
+                left: 40,
               }}
             >
               <img
                 src={actualPfpUrl}
-                width="56"
-                height="56"
+                width="64"
+                height="64"
                 style={{
                   borderRadius: "50%",
                   objectFit: "cover",
@@ -246,7 +246,7 @@ export async function GET(req) {
               >
                 <span
                   style={{
-                    fontSize: 24,
+                    fontSize: 26,
                     fontWeight: 700,
                     display: "block",
                   }}
@@ -255,7 +255,7 @@ export async function GET(req) {
                 </span>
                 <span
                   style={{
-                    fontSize: 18,
+                    fontSize: 20,
                     opacity: 0.9,
                     display: "block",
                   }}
@@ -265,13 +265,13 @@ export async function GET(req) {
               </div>
             </div>
 
-            {/* Branding - unchanged */}
+            {/* Branding */}
             <div
               style={{
                 position: "absolute",
-                bottom: 20,
-                right: 30,
-                fontSize: 18,
+                bottom: 30,
+                right: 40,
+                fontSize: 20,
                 fontWeight: 700,
                 opacity: 0.6,
                 display: "flex",
@@ -281,8 +281,8 @@ export async function GET(req) {
               <span
                 style={{
                   background: brandingBg,
-                  padding: "4px 12px",
-                  borderRadius: 12,
+                  padding: "6px 16px",
+                  borderRadius: 16,
                   display: "flex",
                 }}
               >
@@ -306,37 +306,37 @@ export async function GET(req) {
   } catch (error) {
     console.error("OG Image error:", error);
 
-    // Keep the fallback as is - no changes needed
+    // Update fallback image to match 3:2 ratio as well
     return new ImageResponse(
       (
         <div
           style={{
-            width: 800,
-            height: 420,
+            width: 1200,
+            height: 800,
             background: "#141414",
             color: "#fff",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            borderRadius: 24,
+            borderRadius: 32,
           }}
         >
           <div
             style={{
-              fontSize: 48,
+              fontSize: 64,
               fontWeight: 700,
               textAlign: "center",
               display: "flex",
               justifyContent: "center",
-              marginBottom: 20,
+              marginBottom: 30,
             }}
           >
             quoted
           </div>
           <div
             style={{
-              fontSize: 24,
+              fontSize: 32,
               opacity: 0.8,
               display: "flex",
             }}
@@ -346,8 +346,8 @@ export async function GET(req) {
         </div>
       ),
       {
-        width: 800,
-        height: 420,
+        width: 1200,
+        height: 800,
         quality: 80,
         headers: {
           "Cache-Control": "public, max-age=86400",
