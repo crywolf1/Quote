@@ -185,7 +185,7 @@ export function FarcasterFrameProvider({ children }) {
         isConnected,
         setNeynarAuthData,
         neynarAuthData,
-        sdk
+        sdk,
       }}
     >
       {children}
