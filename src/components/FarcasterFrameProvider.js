@@ -25,8 +25,7 @@ export function FarcasterFrameProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [neynarAuthData, setNeynarAuthData] = useState(null);
-  const [walletDetectionAttempted, setWalletDetectionAttempted] =
-    useState(false);
+  const [walletDetectionAttempted, setWalletDetectionAttempted] = useState(false);
 
   const { address, isConnected } = useAccount();
   const { connect } = useConnect({
@@ -39,7 +38,7 @@ export function FarcasterFrameProvider({ children }) {
     async function loadSdk() {
       if (typeof window !== "undefined") {
         try {
-          console.log("Initializing Farcaster SDK immediately...");
+          console.log("Initializing Farcaster SDK...");
           const module = await import("@farcaster/frame-sdk");
           setSdk(module.sdk);
           await module.sdk.actions.ready({ disableNativeGestures: true });
@@ -91,12 +90,9 @@ export function FarcasterFrameProvider({ children }) {
       if (window.farcaster?.ethereum) {
         // If we have a Farcaster provider but it's not the main provider
         if (window.ethereum !== window.farcaster.ethereum) {
-          console.log(
-            "Setting Farcaster provider as primary ethereum provider"
-          );
+          console.log("Setting Farcaster provider as primary ethereum provider");
           // Keep reference to original provider
-          window._originalEthereum =
-            window._originalEthereum || window.ethereum;
+          window._originalEthereum = window._originalEthereum || window.ethereum;
           // Make Farcaster provider the main one
           window.ethereum = window.farcaster.ethereum;
         }
@@ -282,7 +278,7 @@ export function FarcasterFrameProvider({ children }) {
         loading,
         error,
         connectWallet,
-        connect,
+        connect, // Include regular connect for Rainbow Button
         disconnect,
         tryGetUserData,
         isConnected,
@@ -299,7 +295,7 @@ export function FarcasterFrameProvider({ children }) {
 // Export the CustomConnectButton component as default
 export default function CustomConnectButton({ className, ...props }) {
   const farcaster = useContext(FarcasterContext);
-
+  
   // Safely access context properties with fallbacks
   const loading = farcaster?.loading || false;
   const connectWallet =
