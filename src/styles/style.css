@@ -617,50 +617,47 @@
 }
 
 /* Improved disconnect/sign out button */
+/* Improved disconnect button - smaller and more elegant */
 .disconnect-btn {
-  background: linear-gradient(
-    135deg,
-    #4608f0,
-    #6c0dc5
-  ); /* New colors in the purple-pink family */
+  background: linear-gradient(135deg, #7b3fe4, #6c31e9);
   color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 5px 8px;
+  border-radius: 12px;
   border: none;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(192, 58, 123, 0.25); /* Updated shadow color to match button */
+  transition: all 0.25s ease;
+  box-shadow: 0 1px 3px rgba(123, 63, 228, 0.25);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  min-height: 26px;
+  min-width: unset;
+  width: auto;
 }
 
 .disconnect-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(192, 58, 123, 0.35); /* Updated shadow color */
-  background: linear-gradient(
-    135deg,
-    #9403e9,
-    #7604d3
-  ); /* Slightly brighter on hover */
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(123, 63, 228, 0.3);
+  background: linear-gradient(135deg, #8956e9, #7842f5);
 }
 
 .disconnect-btn:active {
-  transform: translateY(1px);
-  box-shadow: 0 2px 5px rgba(192, 58, 123, 0.3);
+  transform: translateY(0px);
+  box-shadow: 0 1px 2px rgba(123, 63, 228, 0.2);
 }
 
-/* Optional: Add an icon to the button */
+/* Simplified icon using a smaller version */
 .disconnect-btn::before {
   content: "";
   display: inline-block;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'%3E%3C/path%3E%3Cpolyline points='16 17 21 12 16 7'%3E%3C/polyline%3E%3Cline x1='21' y1='12' x2='9' y2='12'%3E%3C/line%3E%3C/svg%3E");
   background-size: contain;
   background-repeat: no-repeat;
+  opacity: 0.9;
 }
 
 .profile-wrapper-logout {
@@ -1414,7 +1411,7 @@
   display: flex;
   flex-direction: column;
   gap: 11px;
-  max-height: 430px;
+  max-height: 460px;
   overflow-y: auto;
   padding: 10px 8px 10px 10px; /* Added padding all around */
   scrollbar-width: thin;
@@ -1886,45 +1883,52 @@
   background: linear-gradient(to right, #0052ff, #5285f5);
 }
 
-.style-btn.selected .blue-style {
-  border: 1px solid rgba(0, 0, 0, 0.5); /* Even darker border when selected */
-}
-
+/* Clean up the base style button to prepare for proper border */
 .style-btn {
-  width: 23px; /* Increased from 20px */
-  height: 23px; /* Increased from 20px */
+  width: 22px;
+  height: 22px;
   background: transparent;
-  border: none;
-  padding: 0;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.15); /* Default subtle border */
+  padding: 2px;
   cursor: pointer;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  margin: 0;
 }
 
-.style-btn.selected {
-  position: relative;
+/* Hover state - slightly darker border */
+.style-btn:hover:not(.selected) {
+  border-color: rgba(0, 0, 0, 0.3);
 }
 
+/* Remove the competing ::after pseudo-element completely */
 .style-btn.selected::after {
-  content: "";
-  position: absolute;
-  top: -2.7px;
-  left: -2.7px;
-  right: -2.7px;
-  bottom: -2.7px;
-  border: 2.7px solid rgb(0, 0, 0); /* Even thicker border */
-  border-radius: 5px;
-  box-shadow: 0 0 3px 1px rgba(0, 0, 0, 0.5); /* More pronounced shadow */
+  display: none;
 }
-.dark-style,
-.purple-style,
-.harvey-style {
+
+/* Cleaner selected state with colored border */
+.style-btn.selected {
+  transform: none;
+  z-index: 1;
+  border: 2px solid #7b3fe4; /* Purple border matching your theme */
+  padding: 1px; /* Reduce padding to maintain overall size */
+  box-shadow: 0 0 6px rgba(123, 63, 228, 0.4); /* Subtle glow effect */
+}
+
+/* Make inner color elements perfectly fit their container */
+.style-btn .dark-style,
+.style-btn .blue-style,
+.style-btn .purple-style,
+.style-btn .harvey-style {
   width: 100%;
   height: 100%;
-  border-radius: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  box-sizing: border-box;
 }
 
 .dark-style {
@@ -2258,53 +2262,6 @@
 
 .add-to-warpcast-btn:active {
   transform: translateY(0);
-}
-
-@media screen and (min-height: 667px) {
-  /* Increase card size to use more available space */
-  .card {
-    max-height: 620px;
-    min-height: 580px;
-  }
-  .style-selector-row {
-    gap: 6px;
-  }
-
-  /* Make the drop-quote-container bigger */
-  .drop-quote-container {
-    transform: scale(1.05);
-    margin-top: 35px;
-    padding: 0 10px;
-  }
-
-  .style-btn {
-    width: 18px; /* Increased from 20px */
-    height: 18px; /* Increased from 20px */
-    background: transparent;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .style-btn.selected {
-    position: relative;
-  }
-
-  .style-btn.selected::after {
-    content: "";
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    border: 2px solid rgb(0, 0, 0); /* Even thicker border */
-    border-radius: 5px;
-    box-shadow: 0 0 3px 1px rgba(0, 0, 0, 0.5); /* More pronounced shadow */
-  }
 }
 
 .edit-style-selector {
@@ -2672,4 +2629,41 @@
   transform: scale(2);
   transition: 0s;
 }
+@media screen and (min-height: 667px) {
+  /* Increase card size to use more available space */
+  .card {
+    max-height: 620px;
+    min-height: 580px;
+  }
+  .style-selector-row {
+    gap: 6px;
+  }
 
+  /* Make the drop-quote-container bigger */
+  .drop-quote-container {
+    transform: scale(1.05);
+    margin-top: 35px;
+    padding: 0 10px;
+  }
+
+  .style-btn {
+    /* Keep the sizes consistent to avoid alignment issues */
+    width: 22px;
+    height: 22px;
+  }
+}
+
+.qod-action-btn.swap-btn {
+  background: linear-gradient(135deg, #3b82f6, #1e40af);
+  transition: all 0.2s ease;
+  margin-left: 23px;
+}
+
+.qod-action-btn.swap-btn:hover {
+  background: linear-gradient(135deg, #4f94ff, #2748be);
+  transform: translateY(-2px);
+}
+
+.qod-action-btn.swap-btn:active {
+  transform: translateY(0px);
+}

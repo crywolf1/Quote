@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useAccount, useConnect } from "wagmi";
 import { FaSpinner } from "react-icons/fa";
-
+import '../styles/CustomConnectButton.css';// Import your custom styles
 export default function CustomConnectButton() {
   const { openConnectModal } = useConnectModal();
   const { isConnected, address } = useAccount();

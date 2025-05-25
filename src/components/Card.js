@@ -357,6 +357,50 @@ export default function Card() {
     }
   };
 
+  // Add this function with your other handler functions in Card.js
+
+  // Handler function for token swap
+  const handleSwapToken = async () => {
+    if (!quoteOfTheDay?.zoraTokenAddress) {
+      showNotification("No token available to swap", "error");
+      return;
+    }
+
+    try {
+      // Show notification
+      showNotification("Opening token swap...", "info");
+
+      // Format token identifiers in CAIP-19 format
+      const sellToken = "eip155:8453/native"; // Base ETH
+      const buyToken = `eip155:8453/erc20:${quoteOfTheDay.zoraTokenAddress}`; // Quote token on Base
+
+      // Call the swap action (with 0 as requested, though usually you'd use a real amount)
+      const result = await sdk.actions.swapToken({
+        sellToken,
+        buyToken,
+        sellAmount: "0", // Starting with 0 as requested, user will adjust in the UI
+      });
+
+      // Handle the result
+      if (result.success) {
+        showNotification("Swap initiated successfully!", "success");
+        console.log("Swap transactions:", result.swap.transactions);
+      } else {
+        if (result.reason === "rejected_by_user") {
+          showNotification("Swap canceled by user", "info");
+        } else {
+          showNotification(
+            `Swap failed: ${result.error?.message || "Unknown error"}`,
+            "error"
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error initiating swap:", error);
+      showNotification("Failed to open swap interface", "error");
+    }
+  };
+
   // Modified sendQuote function to add debugging and fix wallet client issues
   // Function to check token status and handle cancellations
   const checkTokenStatus = async (quoteId, txHash) => {
@@ -1924,6 +1968,51 @@ export default function Card() {
                           className="qod-btn-icon"
                         />
                       </a>
+
+                      <button
+                        className="qod-action-btn swap-btn"
+                        onClick={handleSwapToken}
+                        title="Swap ETH for this token"
+                        aria-label="Swap tokens"
+                      >
+                        <svg
+                          className="qod-btn-icon"
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M7 10L3 14L7 18"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M21 4L17 8L13 4"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M3 14H17"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M17 8H13"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
 
                       {/* Spacer div to push the new icons to the right */}
                       <div className="action-spacer"></div>
