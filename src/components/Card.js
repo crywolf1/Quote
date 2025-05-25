@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Notification from "./Notification";
 import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaSpinner } from "react-icons/fa";
+import CustomConnectButton from "./CustomConnectButton";
 export default function Card() {
   const { userData, loading, error, connectWallet } = useFarcaster();
   const { isConnected, isDisconnected, status, address } = useAccount();
@@ -2052,7 +2053,7 @@ export default function Card() {
         isDisconnected && (
           <div className="connection-error">
             <p>Sign in with your wallet to continue</p>
-            <ConnectButton />
+            <CustomConnectButton />
             {/* Add mobile help text */}
             {typeof window !== "undefined" &&
               /Android|iPhone/i.test(navigator.userAgent) && (
