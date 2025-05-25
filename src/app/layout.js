@@ -26,7 +26,7 @@ export default function RootLayout({ children }) {
                 "name": "Quote",
                 "url": "https://quote-dusky.vercel.app/",
                 "splashImageUrl": "https://quote-dusky.vercel.app/QuoteIcon.png",
-                "splashBackgroundColor": "#b366ff"
+                "splashBackgroundColor": "#7350b6"
               }
             }
           }'

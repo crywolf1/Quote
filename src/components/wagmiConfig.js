@@ -15,11 +15,18 @@ const getMetadataUrl = () => {
     return "https://quote-dusky.vercel.app";
   }
 
-  // Get URL without trailing slash
-  const url = window.location.origin;
-  return url.endsWith("/") ? url.slice(0, -1) : url;
-};
+  // Normalize the URL by removing trailing slashes
+  const url = window.location.href.split("?")[0].split("#")[0];
+  const base = url.endsWith("/") ? url.slice(0, -1) : url;
 
+  // Return only the origin part to match WalletConnect expectations
+  try {
+    const urlObj = new URL(base);
+    return urlObj.origin;
+  } catch (e) {
+    return base;
+  }
+};
 // Better Farcaster environment detection that works on both client and server
 const detectFarcasterEnv = () => {
   // For server-side rendering, default to false
@@ -46,18 +53,28 @@ const isFarcasterEnv =
   typeof window !== "undefined" ? detectFarcasterEnv() : false;
 console.log("Farcaster environment detected:", isFarcasterEnv);
 
+let walletConnectInitialized = false;
+const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+
 // Create wallets with proper metadata URL
 const { connectors: defaultConnectors } = getDefaultWallets({
   appName: "Quoted App",
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+  projectId: walletConnectProjectId,
   chains,
   walletConnectOptions: {
-    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+    projectId: walletConnectProjectId,
     metadata: {
       name: "Quoted App",
       description: "Share your thoughts as quotes",
       url: getMetadataUrl(),
       icons: ["https://quote-dusky.vercel.app/QuoteIcon.png"],
+    },
+    // Add this option to explicitly prevent reinit
+    qrModalOptions: {
+      // This prevents multiple initializations
+      reInitOnNetworkChange: false,
+      // Don't reopen modal after connection
+      explorerRecommendedWalletIds: [],
     },
   },
 });
