@@ -109,7 +109,7 @@ export const wagmiConfig = createConfig({
   // Reduce extension communication errors with better timeouts
   pollingInterval: 4000,
   // Add auto-reconnection behavior configuration
-  autoConnect: false, // Set this to false to prevent automatic reconnection
+  autoConnect: true, // Set this to false to prevent automatic reconnection
 });
 
 export { chains };
