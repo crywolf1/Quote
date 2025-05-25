@@ -13,6 +13,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import Notification from "./Notification";
 import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaSpinner } from "react-icons/fa";
+import {
+  prepareWalletForTransaction,
+  sendMobileTransaction,
+} from "./wagmiConfig";
 
 export default function Card() {
   const { userData, loading, error, connectWallet } = useFarcaster();
@@ -797,6 +801,31 @@ export default function Card() {
               .catch((err) => console.error("Cleanup error:", err));
           }, 30000); // 30 second timeout for mobile wallets
         }
+
+        const walletReady = await prepareWalletForTransaction(walletClient);
+        if (!walletReady) {
+          console.log("Wallet not prepared properly for transaction");
+          showNotification("Wallet connection not ready. Please try again.");
+
+          // Clean up the draft since we can't proceed
+          await fetch(`/api/quote/${saved.quote._id}`, {
+            method: "DELETE",
+          });
+
+          // Remove from UI and reset states
+          setQuotes((prevQuotes) =>
+            prevQuotes.filter((q) => q._id !== saved.quote._id)
+          );
+          setCreatingTokens((prev) =>
+            prev.filter((id) => id !== saved.quote._id)
+          );
+          setIsSaving(false);
+          return;
+        }
+
+        console.log(
+          "Wallet prepared successfully, proceeding with transaction"
+        );
 
         // Call the createZoraCoin function with necessary parameters
         const result = await createZoraCoin({

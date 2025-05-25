@@ -27,6 +27,51 @@ const getMetadataUrl = () => {
     return base;
   }
 };
+// Add this new function below your existing code
+
+export const sendMobileTransaction = async (walletClient, tx) => {
+  if (!walletClient) throw new Error("No wallet client available");
+
+  console.log("Sending mobile transaction:", tx);
+  await prepareWalletForTransaction(walletClient);
+
+  // For WalletConnect (most mobile wallets), we need to give it more time
+  // and handle the connection state more carefully
+  const usingWalletConnect =
+    !window.ethereum?.isMetaMask && !window.ethereum?.isCoinbaseWallet;
+
+  if (isMobileDevice && usingWalletConnect) {
+    console.log("Using mobile WalletConnect - special handling");
+
+    try {
+      // Extra time for wallet to be ready
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Send transaction - the key part is to let it throw errors up
+      return await walletClient.sendTransaction(tx);
+    } catch (err) {
+      // Carefully examine the error
+      const errorMessage = err.message || String(err);
+
+      // If it's a rejection, pass that up
+      if (
+        errorMessage.includes("reject") ||
+        errorMessage.includes("cancel") ||
+        errorMessage.includes("denied")
+      ) {
+        console.log("Transaction rejected by user");
+        throw err;
+      }
+
+      // If it's a different error, likely connection related
+      console.error("Mobile transaction error:", err);
+      throw new Error(`Mobile wallet connection issue: ${errorMessage}`);
+    }
+  }
+
+  // For regular transactions
+  return walletClient.sendTransaction(tx);
+};
 
 // Better Farcaster environment detection that works on both client and server
 const detectFarcasterEnv = () => {
@@ -133,60 +178,57 @@ export const prepareWalletForTransaction = async (walletClient) => {
         const addresses = await walletClient.getAddresses();
         console.log("Mobile wallet addresses detected:", addresses);
 
-        // Check if we have addresses but no active provider - indicates we need to redirect
-        if (
-          addresses?.length &&
-          typeof window !== "undefined" &&
-          (!window.ethereum?.isConnected || !window.ethereum?.selectedAddress)
-        ) {
-          console.log("Mobile wallet needs activation/redirection");
+        // Check if using WalletConnect (not window.ethereum)
+        const usingWalletConnect =
+          !window.ethereum?.isMetaMask && !window.ethereum?.isCoinbaseWallet;
 
-          // Attempt to wake up the wallet app
+        if (usingWalletConnect) {
+          console.log("Using WalletConnect - ensuring session is active");
+          // WalletConnect might need a moment to establish connection
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          return true;
+        }
+
+        // For injected wallets like MetaMask
+        if (window.ethereum) {
+          console.log("Using injected wallet - ensuring connection");
+
+          // Force connection to ensure wallet is active
+          await window.ethereum.request({ method: "eth_requestAccounts" });
+
+          // Additional chainId check to wake up wallet
           try {
-            // This will force the wallet to prompt for connection if needed
-            await walletClient.switchChain({ id: base.id });
+            await window.ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: "0x2105" }], // Base chainId
+            });
           } catch (switchErr) {
-            console.log(
-              "Chain switch failed, but may have activated wallet app:",
-              switchErr
-            );
-            // This error is expected in some cases and actually helps wake up the wallet
+            console.log("Chain switch request sent:", switchErr);
+            // Error is expected sometimes, the important part is triggering the wallet
           }
 
-          // Give mobile wallet time to initialize its connection
           await new Promise((resolve) => setTimeout(resolve, 1500));
+          return true;
         }
+
+        return addresses?.length > 0;
       } catch (err) {
         console.error("Mobile wallet not ready:", err);
 
-        // If we're in a situation where the wallet provider exists but isn't connected
-        if (typeof window !== "undefined" && window.ethereum) {
+        // Last resort - try direct ethereum request
+        if (window.ethereum) {
           try {
-            console.log(
-              "Attempting to explicitly connect mobile wallet provider..."
-            );
-            // This direct request can trigger the wallet app to open
+            console.log("Final attempt to wake up wallet...");
             await window.ethereum.request({ method: "eth_requestAccounts" });
-
-            // Better chance of wallet being ready after this call
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 1500));
             return true;
           } catch (connErr) {
-            console.error("Failed to explicitly connect wallet:", connErr);
+            console.error("Failed to activate wallet:", connErr);
             return false;
           }
         }
-
         return false;
       }
-
-      // This longer delay gives mobile wallets more time to prepare
-      console.log(
-        "Mobile wallet check complete, allowing more time for mobile connection..."
-      );
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      return true;
     }
 
     // For desktop, verify wallet is available
