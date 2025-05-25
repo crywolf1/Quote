@@ -29,16 +29,51 @@ const getMetadataUrl = () => {
 };
 // Add this new function below your existing code
 
+// Modify your sendMobileTransaction function:
+
 export const sendMobileTransaction = async (walletClient, tx) => {
   if (!walletClient) throw new Error("No wallet client available");
 
   console.log("Sending mobile transaction:", tx);
   await prepareWalletForTransaction(walletClient);
 
-  // For WalletConnect (most mobile wallets), we need to give it more time
-  // and handle the connection state more carefully
+  // NEW: Special check for Farcaster external wallet case
+  const isFarcasterWithExternalWallet =
+    typeof window !== "undefined" &&
+    (window.farcaster || window.__FARCASTER_FRAME_CONTEXT__) &&
+    (window._farcasterUsingExternalWallet || !window.farcaster?.isNativeWallet);
+
+  if (isFarcasterWithExternalWallet) {
+    console.log(
+      "Detected Farcaster with external wallet - using direct ethereum provider"
+    );
+
+    // If we have a direct provider from window.ethereum, use it
+    if (window.ethereum) {
+      try {
+        console.log("Sending transaction via window.ethereum provider");
+        // Force account request to wake up wallet
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        // Send the transaction
+        return await window.ethereum.request({
+          method: "eth_sendTransaction",
+          params: [tx],
+        });
+      } catch (err) {
+        console.error("Direct ethereum provider failed:", err);
+        throw err;
+      }
+    }
+  }
+
+  // For WalletConnect on mobile
   const usingWalletConnect =
     !window.ethereum?.isMetaMask && !window.ethereum?.isCoinbaseWallet;
+  const isMobileDevice =
+    typeof window !== "undefined" &&
+    /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
 
   if (isMobileDevice && usingWalletConnect) {
     console.log("Using mobile WalletConnect - special handling");

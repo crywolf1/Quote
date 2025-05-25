@@ -19,6 +19,55 @@ export function useFarcaster() {
   return useContext(FarcasterContext);
 }
 
+// Helper function to detect if we're using an external wallet in Farcaster
+export const detectFarcasterExternalWallet = async () => {
+  if (typeof window === "undefined") return false;
+
+  // Check for explicit frame context first
+  if (window.farcaster) {
+    // If the app explicitly tells us we're using an external wallet
+    const isExplicitExternal =
+      window.farcaster.isExternalWallet === true ||
+      window._farcasterUsingExternalWallet === true;
+
+    if (isExplicitExternal) return true;
+
+    // If the app explicitly tells us we're using the native wallet
+    if (window.farcaster.isNativeWallet === true) return false;
+  }
+
+  // Check for frame context
+  try {
+    // Try to import the SDK dynamically
+    const { sdk } = await import("@farcaster/frame-sdk");
+    const context = await sdk?.actions?.getContext?.();
+
+    // If we have explicit confirmation
+    if (context?.isExternalWallet === true) return true;
+
+    // If we're on mainnet but not using native wallet, it's likely external
+    if (
+      context?.network?.includes("mainnet") &&
+      !window.farcaster?.isNativeWallet
+    ) {
+      return true;
+    }
+  } catch (e) {
+    console.log("Error detecting Farcaster wallet type:", e);
+  }
+
+  // Default for frame: assume it might be external
+  if (
+    window.__FARCASTER_FRAME_CONTEXT__ ||
+    window.farcaster ||
+    navigator.userAgent.includes("Warpcast")
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
 export function FarcasterFrameProvider({ children }) {
   const [userData, setUserData] = useState(null);
   const [sdk, setSdk] = useState(null);
@@ -36,29 +85,54 @@ export function FarcasterFrameProvider({ children }) {
   const { disconnect } = useDisconnect();
 
   // Detect if we're in a Farcaster environment on mount
-
   const detectFarcasterEnvironment = () => {
-  if (typeof window === "undefined") return false;
+    if (typeof window === "undefined") return false;
 
-  return !!(
-    window.farcaster ||
-    window.__FARCASTER_FRAME_CONTEXT__ ||
-    navigator.userAgent.includes("Warpcast") ||
-    document.referrer.includes("warpcast.com")
-  );
-};
+    return !!(
+      window.farcaster ||
+      window.__FARCASTER_FRAME_CONTEXT__ ||
+      navigator.userAgent.includes("Warpcast") ||
+      document.referrer.includes("warpcast.com")
+    );
+  };
 
-// Add this to your useEffect
-useEffect(() => {
-  const isFarcasterEnv = detectFarcasterEnvironment();
-  if (isFarcasterEnv) {
-    console.log("Detected Farcaster environment, setting up special handling");
-    // Your existing Farcaster provider setup
-  }
-}, []);
-
+  // Initialize external wallet detection
   useEffect(() => {
-    // Log detailed device and environment info
+    // Check if we're using an external wallet
+    detectFarcasterExternalWallet().then((isExternal) => {
+      console.log("Using external wallet in Farcaster:", isExternal);
+      window._farcasterUsingExternalWallet = isExternal;
+    });
+  }, []);
+
+  // Set up special handling for Farcaster environment
+  useEffect(() => {
+    const isFarcasterEnv = detectFarcasterEnvironment();
+    if (isFarcasterEnv) {
+      console.log(
+        "Detected Farcaster environment, setting up special handling"
+      );
+
+      // Special Rainbow wallet handling
+      if (typeof window !== "undefined") {
+        const isRainbowWallet =
+          window.ethereum?.isRainbow ||
+          localStorage
+            .getItem("WALLETCONNECT_DEEPLINK_CHOICE")
+            ?.includes("rainbow");
+
+        if (isRainbowWallet) {
+          console.log(
+            "🌈 Rainbow wallet detected in Farcaster - applying specific fixes"
+          );
+          window._rainbowWalletDetected = true;
+        }
+      }
+    }
+  }, []);
+
+  // Log detailed device and environment info
+  useEffect(() => {
     if (typeof window !== "undefined") {
       console.log("📱 DEVICE DETAILS:", {
         userAgent: navigator.userAgent,
@@ -73,6 +147,7 @@ useEffect(() => {
     }
   }, []);
 
+  // Update Farcaster environment state
   useEffect(() => {
     if (typeof window !== "undefined") {
       const isInFarcaster = detectFarcasterEnvironment();
@@ -172,6 +247,7 @@ useEffect(() => {
       return () => clearTimeout(timer);
     }
   }, [isConnected, connect, connectors, walletDetectionAttempted]);
+
   // Enhanced wallet connection function that prioritizes Farcaster connector
   const connectWallet = useCallback(async () => {
     try {
@@ -210,7 +286,6 @@ useEffect(() => {
     if (typeof window === "undefined") return;
 
     // Function to ensure Farcaster provider takes precedence
-    // Replace the ensureFarcasterProvider function with this enhanced version:
     const ensureFarcasterProvider = () => {
       if (window.farcaster?.ethereum) {
         // Already using Farcaster provider
@@ -230,7 +305,7 @@ useEffect(() => {
           request: async (args) => {
             console.log("📝 Intercepted provider request:", args.method);
 
-            // ADD THIS: Early mobile check before any requests
+            // Early mobile check before any requests
             const isMobileDevice = /Android|iPhone/i.test(navigator.userAgent);
             const isTransaction = args.method === "eth_sendTransaction";
 
@@ -266,6 +341,19 @@ useEffect(() => {
               return await window._originalEthereum.request(args);
             }
           },
+
+          // Enhanced method to handle connection status checks
+          isConnected: () => {
+            return (
+              window.farcaster.ethereum.isConnected?.() ||
+              window._originalEthereum?.isConnected?.() ||
+              false
+            );
+          },
+
+          // Special handling for Rainbow wallet
+          _metamask:
+            window._originalEthereum?._metamask || window.ethereum?._metamask,
         };
 
         // Install the proxy provider
@@ -276,6 +364,7 @@ useEffect(() => {
         window.ethereum = window._originalEthereum;
       }
     };
+
     // Check immediately
     ensureFarcasterProvider();
 
@@ -283,6 +372,43 @@ useEffect(() => {
     const interval = setInterval(ensureFarcasterProvider, 3000);
 
     return () => clearInterval(interval);
+  }, []);
+
+  // Enhanced function to wake up wallet for transactions
+  const wakeUpWallet = useCallback(async () => {
+    if (typeof window === "undefined") return false;
+
+    try {
+      // First try direct Farcaster path
+      if (window.farcaster?.ethereum) {
+        try {
+          await window.farcaster.ethereum.request({
+            method: "eth_requestAccounts",
+          });
+          console.log("Wallet activated via Farcaster provider");
+          return true;
+        } catch (err) {
+          console.log("Failed to activate via Farcaster provider:", err);
+        }
+      }
+
+      // Next try original provider
+      if (window._originalEthereum || window.ethereum) {
+        const provider = window._originalEthereum || window.ethereum;
+        try {
+          await provider.request({ method: "eth_requestAccounts" });
+          console.log("Wallet activated via original provider");
+          return true;
+        } catch (err) {
+          console.log("Failed to activate via original provider:", err);
+        }
+      }
+
+      return false;
+    } catch (err) {
+      console.error("Error waking up wallet:", err);
+      return false;
+    }
   }, []);
 
   // Function to fetch user data from Farcaster
@@ -424,6 +550,48 @@ useEffect(() => {
     }
   }, [address, isConnected, sdk, tryGetUserData]);
 
+  // Special handler for mobile wallet transactions
+  const sendTransactionWithExternalWallet = useCallback(
+    async (tx) => {
+      if (typeof window === "undefined") return null;
+
+      console.log("Attempting to send transaction with external wallet");
+
+      // First wake up the wallet
+      await wakeUpWallet();
+
+      // Determine which provider to use
+      let provider = null;
+
+      if (window._farcasterUsingExternalWallet && window._originalEthereum) {
+        provider = window._originalEthereum;
+      } else if (window.ethereum) {
+        provider = window.ethereum;
+      } else {
+        throw new Error("No Ethereum provider available");
+      }
+
+      try {
+        // Make sure we're connected
+        await provider.request({ method: "eth_requestAccounts" });
+
+        // Send transaction
+        console.log("Sending transaction via external wallet", tx);
+        const txHash = await provider.request({
+          method: "eth_sendTransaction",
+          params: [tx],
+        });
+
+        console.log("Transaction sent successfully:", txHash);
+        return txHash;
+      } catch (err) {
+        console.error("External wallet transaction failed:", err);
+        throw err;
+      }
+    },
+    [wakeUpWallet]
+  );
+
   // Log connection state changes for debugging
   useEffect(() => {
     console.log("Connection state:", {
@@ -458,6 +626,8 @@ useEffect(() => {
         neynarAuthData,
         sdk,
         isFarcasterEnvironment,
+        wakeUpWallet,
+        sendTransactionWithExternalWallet,
       }}
     >
       {children}
