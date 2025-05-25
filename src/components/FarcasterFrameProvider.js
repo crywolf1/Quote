@@ -37,6 +37,26 @@ export function FarcasterFrameProvider({ children }) {
 
   // Detect if we're in a Farcaster environment on mount
 
+  const detectFarcasterEnvironment = () => {
+  if (typeof window === "undefined") return false;
+
+  return !!(
+    window.farcaster ||
+    window.__FARCASTER_FRAME_CONTEXT__ ||
+    navigator.userAgent.includes("Warpcast") ||
+    document.referrer.includes("warpcast.com")
+  );
+};
+
+// Add this to your useEffect
+useEffect(() => {
+  const isFarcasterEnv = detectFarcasterEnvironment();
+  if (isFarcasterEnv) {
+    console.log("Detected Farcaster environment, setting up special handling");
+    // Your existing Farcaster provider setup
+  }
+}, []);
+
   useEffect(() => {
     // Log detailed device and environment info
     if (typeof window !== "undefined") {

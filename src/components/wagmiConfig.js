@@ -128,28 +128,75 @@ export const prepareWalletForTransaction = async (walletClient) => {
     if (isMobileDevice) {
       console.log("Preparing mobile wallet for transaction");
 
-      // Ensure wallet is ready (doesn't throw on mobile)
+      // Force wallet availability check first
       try {
-        await walletClient.getAddresses();
+        const addresses = await walletClient.getAddresses();
+        console.log("Mobile wallet addresses detected:", addresses);
+
+        // Check if we have addresses but no active provider - indicates we need to redirect
+        if (
+          addresses?.length &&
+          typeof window !== "undefined" &&
+          (!window.ethereum?.isConnected || !window.ethereum?.selectedAddress)
+        ) {
+          console.log("Mobile wallet needs activation/redirection");
+
+          // Attempt to wake up the wallet app
+          try {
+            // This will force the wallet to prompt for connection if needed
+            await walletClient.switchChain({ id: base.id });
+          } catch (switchErr) {
+            console.log(
+              "Chain switch failed, but may have activated wallet app:",
+              switchErr
+            );
+            // This error is expected in some cases and actually helps wake up the wallet
+          }
+
+          // Give mobile wallet time to initialize its connection
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
       } catch (err) {
         console.error("Mobile wallet not ready:", err);
+
+        // If we're in a situation where the wallet provider exists but isn't connected
+        if (typeof window !== "undefined" && window.ethereum) {
+          try {
+            console.log(
+              "Attempting to explicitly connect mobile wallet provider..."
+            );
+            // This direct request can trigger the wallet app to open
+            await window.ethereum.request({ method: "eth_requestAccounts" });
+
+            // Better chance of wallet being ready after this call
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            return true;
+          } catch (connErr) {
+            console.error("Failed to explicitly connect wallet:", connErr);
+            return false;
+          }
+        }
+
         return false;
       }
 
-      // On mobile, some wallets need a small delay before transactions
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // This longer delay gives mobile wallets more time to prepare
+      console.log(
+        "Mobile wallet check complete, allowing more time for mobile connection..."
+      );
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
       return true;
     }
 
-    // For desktop, just verify wallet is available
-    return typeof walletClient.getAddresses === "function";
+    // For desktop, verify wallet is available
+    const addresses = await walletClient.getAddresses();
+    return addresses && addresses.length > 0;
   } catch (err) {
     console.error("Error preparing wallet for transaction:", err);
     return false;
   }
 };
-
 // Export helper function and chains
 export const detectFarcasterEnvironment = detectFarcasterEnv;
 export { chains, isMobileDevice };
