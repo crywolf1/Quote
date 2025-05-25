@@ -13,7 +13,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import Notification from "./Notification";
 import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaSpinner } from "react-icons/fa";
-import CustomConnectButton from "./FarcasterFrameProvider";
 export default function Card() {
   const { userData, loading, error, connectWallet } = useFarcaster();
   const { isConnected, isDisconnected, status, address } = useAccount();
