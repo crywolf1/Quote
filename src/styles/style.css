@@ -2642,7 +2642,7 @@
   /* Make the drop-quote-container bigger */
   .drop-quote-container {
     transform: scale(1.05);
-    margin-top: 35px;
+    margin-top: 25px;
     padding: 0 10px;
   }
 
@@ -2654,13 +2654,15 @@
 }
 
 .qod-action-btn.swap-btn {
-  background: linear-gradient(135deg, #3b82f6, #1e40af);
+  cursor: pointer;
+  background: linear-gradient(135deg, #7a40a3, #672aeb);
   transition: all 0.2s ease;
   margin-left: 23px;
 }
 
 .qod-action-btn.swap-btn:hover {
-  background: linear-gradient(135deg, #4f94ff, #2748be);
+  background: linear-gradient(135deg, #7a40a3, #672aeb);
+  box-shadow: 0 4px 8px rgba(106, 48, 147, 0.5);
   transform: translateY(-2px);
 }
 
