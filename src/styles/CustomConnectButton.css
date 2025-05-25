@@ -1,17 +1,65 @@
 .connect-button {
-    background-color: #6a34c7;
-    color: white;
-    font-weight: 500;
-    padding: 8px 16px;
-    border-radius: 9999px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-    border: none;
-    cursor: pointer;
+  background-color: #7b3fe4;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 140px;
+}
+
+.connect-button:hover {
+  background-color: #6933c8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.connect-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.connect-button:disabled {
+  background-color: #9b83c9;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spin {
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
   }
-  
-  .connect-button:hover {
-    background-color: #5d00ff;
+  100% {
+    transform: rotate(360deg);
   }
+}
+
+.connected-state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.connect-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

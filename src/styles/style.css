@@ -126,6 +126,7 @@
   margin-right: 15px;
 }
 .card-content {
+  padding: 7px;
   width: 300px;
   height: 100%;
 }
