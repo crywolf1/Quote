@@ -8,13 +8,12 @@ import { sdk } from "@farcaster/frame-sdk";
 import { createZoraCoin } from "@/lib/createZoraCoin";
 import { useAccount, useWalletClient, useDisconnect } from "wagmi";
 import { publicClient, isWalletReady, getWalletClient } from "@/lib/viemConfig";
-import CustomConnectButton from "./CustomConnectButton";
 import { updateZoraCoin } from "@/lib/updateZoraCoin";
 import { motion, AnimatePresence } from "framer-motion";
 import Notification from "./Notification";
 import "../styles/style.css";
 import { FaEdit, FaTrashAlt, FaSpinner } from "react-icons/fa";
-
+import CustomConnectButton from "./FarcasterFrameProvider";
 export default function Card() {
   const { userData, loading, error, connectWallet } = useFarcaster();
   const { isConnected, isDisconnected, status, address } = useAccount();
@@ -339,9 +338,9 @@ export default function Card() {
       const zoraUrl = `https://zora.co/coin/base:${quote.zoraTokenAddress}`;
 
       // Create suggested text for the cast
-      const castText = `$${
-        quote.title?.toUpperCase() || "TOKEN"
-      }!\n\n"${quote.text}"`;
+      const castText = `$${quote.title?.toUpperCase() || "TOKEN"}!\n\n"${
+        quote.text
+      }"`;
 
       // Call the composeCast SDK action
       const result = await sdk.actions.composeCast({
@@ -1282,37 +1281,51 @@ export default function Card() {
     setActiveSection(section);
   };
 
-  const QuotedLoader = ({ message = "Loading..." }) => (
-    <div className="quoted-loader-container">
-      <div className="bokeh-background">
-        {/* Generate bokeh circles dynamically */}
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="bokeh-circle"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              width: `${30 + Math.random() * 70}px`,
-              height: `${30 + Math.random() * 70}px`,
-              opacity: 0.1 + Math.random() * 0.5,
-            }}
-          />
-        ))}
-      </div>
-      <div className="quoted-loader">
-        <div className="quote-mark-loader opening">"</div>
-        <div className="loading-animation">
-          <div className="dot"></div>
-          <div className="dot"></div>
-          <div className="dot"></div>
+  const QuotedLoader = ({ message = "Loading..." }) => {
+    const [circles, setCircles] = useState([]);
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+      // Only run on client-side
+      setIsClient(true);
+
+      // Generate circles once on the client
+      const newCircles = Array(20)
+        .fill(0)
+        .map(() => ({
+          left: `${Math.random() * 100}%`,
+          top: `${Math.random() * 100}%`,
+          animationDelay: `${Math.random() * 5}s`,
+          width: `${30 + Math.random() * 70}px`,
+          height: `${30 + Math.random() * 70}px`,
+          opacity: 0.1 + Math.random() * 0.5,
+        }));
+
+      setCircles(newCircles);
+    }, []);
+
+    return (
+      <div className="quoted-loader-container">
+        <div className="bokeh-background">
+          {/* Only render circles on client-side */}
+          {isClient &&
+            circles.map((circle, i) => (
+              <div key={i} className="bokeh-circle" style={circle} />
+            ))}
         </div>
-        <div className="quote-mark-loader closing">"</div>
+        <div className="quoted-loader">
+          <div className="quote-mark-loader opening">"</div>
+          <div className="loading-animation">
+            <div className="dot"></div>
+            <div className="dot"></div>
+            <div className="dot"></div>
+          </div>
+          <div className="quote-mark-loader closing">"</div>
+        </div>
+        <p className="loader-message">{message}</p>
       </div>
-      <p className="loader-message">{message}</p>
-    </div>
-  );
+    );
+  };
   // Then use it in your component:
   if (loading) return <QuotedLoader message="Loading user app..." />;
   if (!ready || status === "loading") {
@@ -2040,8 +2053,7 @@ export default function Card() {
         isDisconnected && (
           <div className="connection-error">
             <p>Sign in with your wallet to continue</p>
-            <CustomConnectButton />
-
+            <ConnectButton />
             {/* Add mobile help text */}
             {typeof window !== "undefined" &&
               /Android|iPhone/i.test(navigator.userAgent) && (

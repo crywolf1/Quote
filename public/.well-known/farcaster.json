@@ -12,7 +12,7 @@
     "imageUrl": "https://quote-dusky.vercel.app/image-ui.png",
     "buttonTitle": "Quote",
     "splashImageUrl": "https://quote-dusky.vercel.app/QuoteIcon.png",
-    "splashBackgroundColor": "#7652b6",
+    "splashBackgroundColor": "#7C65C1",
     "webhookUrl": "https://api.neynar.com/f/app/fa10e403-b269-4fdb-981a-0f39b8eed945/event"
   }
 }
