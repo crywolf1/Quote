@@ -357,6 +357,33 @@ export default function Card() {
     }
   };
 
+  // Add this function to your Card component
+  const handleSignOut = () => {
+    // Standard wagmi disconnect
+    disconnect();
+
+    // Clear all wallet connection data from localStorage
+    if (typeof window !== "undefined") {
+      // Clear WalletConnect data
+      localStorage.removeItem("wagmi.connected");
+      localStorage.removeItem("wagmi.connectors");
+      localStorage.removeItem("wagmi.wallet");
+      localStorage.removeItem("walletconnect");
+      localStorage.removeItem("wc_session");
+
+      // Clear Farcaster specific flags
+      localStorage.removeItem("farcaster.connected");
+      localStorage.removeItem("farcaster.wasConnected");
+
+      console.log("Sign out: cleared all connection data");
+    }
+
+    // Redirect to refresh the page (optional but thorough approach)
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
+  };
+
   // Add this function with your other handler functions in Card.js
 
   // Handler function for token swap
@@ -1848,10 +1875,7 @@ export default function Card() {
                         {240 - quote.length} characters remaining
                       </p>
                     </div>
-                    <button
-                      onClick={() => disconnect()}
-                      className="disconnect-btn"
-                    >
+                    <button onClick={handleSignOut} className="disconnect-btn">
                       Sign Out
                     </button>
                   </div>
