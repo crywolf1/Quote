@@ -1328,7 +1328,7 @@
 
 .vibes-spinner {
   animation: spin 1.5s linear infinite;
-  color: white; /* Make it white to show well on the purple button */
+  color: rgb(111, 0, 255); /* Make it white to show well on the purple button */
   font-size: 14px;
 }
 

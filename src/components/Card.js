@@ -574,6 +574,30 @@ export default function Card() {
     }
   };
 
+  const verifyWalletCanSign = async () => {
+    if (!walletClient || !address) {
+      console.error("Wallet client or address missing");
+      return false;
+    }
+
+    try {
+      // Basic check to see if wallet client is properly initialized
+      if (typeof walletClient.getAddresses !== "function") {
+        console.error("Wallet client missing required methods");
+        return false;
+      }
+
+      // Make sure the connected address matches an address in the wallet
+      const accounts = await walletClient.getAddresses();
+      return accounts.some(
+        (acc) => acc.toLowerCase() === address.toLowerCase()
+      );
+    } catch (err) {
+      console.error("Wallet verification failed:", err);
+      return false;
+    }
+  };
+
   // Add this useEffect to automatically check for transaction status periodically
   useEffect(() => {
     if (!autoRefreshEnabled || creatingTokens.length === 0) return;
@@ -612,14 +636,70 @@ export default function Card() {
     }
   };
 
+  const verifyMobileWalletCanSign = async () => {
+    try {
+      // Special check for mobile devices
+      const isMobile = /Android|iPhone/i.test(navigator.userAgent);
+
+      if (!isMobile) return true; // Skip for desktop
+
+      console.log("Mobile wallet verification starting...");
+
+      // Check for wallet client
+      if (!walletClient) {
+        console.error("No wallet client available on mobile");
+        return false;
+      }
+
+      // For Rainbow and other mobile wallets, we need to ensure
+      // the wallet is properly connected and ready
+      if (typeof walletClient.getAddresses !== "function") {
+        console.error("Mobile wallet client missing getAddresses method");
+        return false;
+      }
+
+      // Force wallet to be ready before proceeding
+      try {
+        const accounts = await walletClient.getAddresses();
+        const hasMatchingAccount = accounts.some(
+          (acc) => acc.toLowerCase() === address.toLowerCase()
+        );
+
+        console.log("Mobile wallet verification:", {
+          hasAccounts: accounts.length > 0,
+          hasMatchingAccount,
+          account: address?.toLowerCase(),
+        });
+
+        return hasMatchingAccount;
+      } catch (err) {
+        console.error("Mobile wallet verification failed:", err);
+        return false;
+      }
+    } catch (err) {
+      console.error("Mobile wallet check error:", err);
+      return false;
+    }
+  };
+
   const sendQuote = async () => {
     if (isSaving) return; // Prevent multiple simultaneous submissions
     setIsSaving(true);
 
     // Log wallet client status for debugging
+    const connectionTimeout = setTimeout(() => {
+      if (isWalletLoading) {
+        showNotification(
+          "Wallet connection is taking longer than expected. You may want to try again.",
+          "warning"
+        );
+      }
+    }, 30000); // 30 seconds
+
     if (isWalletLoading) {
       showNotification("Please wait while connecting to wallet...");
       setIsSaving(false);
+      clearTimeout(connectionTimeout); // Clear timeout when returning early
       return;
     }
 
@@ -629,8 +709,12 @@ export default function Card() {
       );
       console.error("Wallet client error:", isWalletError);
       setIsSaving(false);
+      clearTimeout(connectionTimeout); // Clear timeout on error
       return;
     }
+
+    // Clear timeout when we successfully proceed past wallet checks
+    clearTimeout(connectionTimeout);
 
     // Validate basic inputs before proceeding
     if (!isConnected || !address) {
@@ -767,6 +851,45 @@ export default function Card() {
         // Add this quote ID to the creating tokens state
         setCreatingTokens((prev) => [...prev, saved.quote._id]);
 
+        const canSign = await verifyWalletCanSign();
+        if (!canSign) {
+          showNotification(
+            "Your wallet can't sign transactions. Please reconnect.",
+            "error"
+          );
+          setIsSaving(false);
+          return;
+        }
+        if (/Android|iPhone/i.test(navigator.userAgent)) {
+          console.log(
+            "Mobile wallet detected, running additional mobile verification..."
+          );
+
+          // Call your mobile-specific verification
+          const mobileCanSign = await verifyMobileWalletCanSign();
+          if (!mobileCanSign) {
+            showNotification(
+              "Mobile wallet verification failed. Please reconnect.",
+              "error"
+            );
+            setIsSaving(false);
+            return;
+          }
+
+          // Give mobile wallets a moment to fully initialize their providers
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
+          // Force chain selection on mobile if available
+          if (walletClient.switchChain) {
+            try {
+              await walletClient.switchChain(8453); // Base chain ID
+            } catch (err) {
+              // Continue anyway - some mobile wallets handle this differently
+              console.log("Chain switch attempt:", err);
+            }
+          }
+        }
+
         // Call the createZoraCoin function with necessary parameters
         const result = await createZoraCoin({
           walletClient: walletClient,
@@ -833,7 +956,7 @@ export default function Card() {
 
           // Set up a timer to periodically check for token address updates
           let checkCount = 0;
-          const maxChecks = 5;
+          const maxChecks = 3;
 
           const checkForTokenUpdates = async () => {
             if (checkCount >= maxChecks) {
