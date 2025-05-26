@@ -20,10 +20,10 @@ export default function RootLayout({ children }) {
             "version": "next",
             "imageUrl": "https://quote-dusky.vercel.app/image-ui.png",
             "button": {
-              "title": "Quote",
+              "title": "Quoted",
               "action": {
                 "type": "launch_frame",
-                "name": "Quote",
+                "name": "Quoted",
                 "url": "https://quote-dusky.vercel.app/",
                 "splashImageUrl": "https://quote-dusky.vercel.app/QuoteIcon.png",
                 "splashBackgroundColor": "#7350b6"

@@ -1633,7 +1633,7 @@ export default function Card() {
             >
               <div className="card-content">
                 <div className="card-subtitle" style={{ marginBottom: "15px" }}>
-                  All Quotes
+                  My Drops
                 </div>
 
                 <div className="vibes-quotes-container">
@@ -1720,7 +1720,7 @@ export default function Card() {
                                   className="vibes-save-btn"
                                 >
                                   {isUpdating ? (
-                                    <FaSpinner className="vibes-spinner" />
+                                    <FaSpinner className="spin" />
                                   ) : (
                                     "Save"
                                   )}

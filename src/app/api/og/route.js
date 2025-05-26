@@ -84,21 +84,21 @@ export async function GET(req) {
       brandingBg = "rgba(31, 64, 55, 0.8)";
       pfpBorder = lightGreen;
     } else if (style === "blue") {
-      // Your existing blue style
-      const lightBlue = "#0072ff";
-      const darkBlue = "#0068e8";
-      const midBlue = "#008ce6";
-      const accentBlue = "#5cc6f5";
+      // Updated blue style with new gradient
+      const brightBlue = "#2e2eff"; // rgba(46, 46, 255, 1)
+      const darkBlue = "#002ccc"; // rgba(0, 44, 204, 1)
+      const accentBlue = "#0052ff"; // rgba(0, 82, 255, 1)
+      const lightBlue = "#5c8eff"; // Lighter complement for accents
 
-      background = `linear-gradient(to right, ${lightBlue}, ${darkBlue})`;
-      contentBg = "rgba(0, 140, 230, 0.85)";
-      contentBorder = "rgba(92, 198, 245, 0.4)";
-      accentGlow = "rgba(92, 198, 245, 0.25)";
+      background = `linear-gradient(110deg, ${brightBlue} 0%, ${darkBlue} 53%, ${accentBlue} 100%)`;
+      contentBg = "rgba(0, 44, 204, 0.85)";
+      contentBorder = "rgba(46, 46, 255, 0.4)";
+      accentGlow = "rgba(0, 82, 255, 0.25)";
       patternChar = "◇";
       textColor = "#ffffff";
-      userInfoBg = "rgba(0, 104, 232, 0.75)";
-      brandingBg = "rgba(0, 104, 232, 0.75)";
-      pfpBorder = accentBlue;
+      userInfoBg = "rgba(0, 44, 204, 0.75)";
+      brandingBg = "rgba(0, 44, 204, 0.75)";
+      pfpBorder = lightBlue;
     }
 
     return new ImageResponse(
