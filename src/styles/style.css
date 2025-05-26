@@ -126,7 +126,7 @@
   margin-right: 15px;
 }
 .card-content {
-  padding: 7px;
+  padding: 5px;
   width: 300px;
   height: 100%;
 }
@@ -166,6 +166,8 @@
 }
 
 .card-buttons {
+  z-index: 5;
+  position: relative;
   display: flex;
   background-color: #fff;
   margin-top: auto;
@@ -271,12 +273,13 @@
   flex-direction: column;
   padding: 0 5px;
   position: relative;
-  z-index: 10;
+  z-index: 20;
 }
 
 .card-contact-wrapper {
   display: flex;
   flex-direction: column;
+  z-index: 20;
 }
 .card-contact {
   margin-bottom: 10px;
@@ -2643,6 +2646,7 @@
   .drop-quote-container {
     transform: scale(1.05);
     margin-top: 25px;
+    z-index: auto;
     padding: 0 10px;
   }
 
