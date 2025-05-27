@@ -2061,157 +2061,74 @@ export default function Card() {
             <div className="card-container2">
               {activeSection === "#about" && (
                 <div className="card-buttons1">
-                  {quoteOfTheDay?.zoraTokenAddress && (
-                    <div className="token-actions">
-                      <a
-                        href={`https://zora.co/coin/base:${quoteOfTheDay.zoraTokenAddress}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="qod-action-btn zora-btn"
-                        title="Trade on Zora"
-                      >
-                        <img
-                          src="/Zorb.png"
-                          alt="Zora"
-                          className="qod-btn-icon"
-                        />
-                      </a>
-                      <a
-                        href={`https://dexscreener.com/base/${quoteOfTheDay.zoraTokenAddress}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="qod-action-btn dex-btn"
-                        title="View Chart"
-                      >
-                        <img
-                          src="/dex.jpeg"
-                          alt="DEXScreener"
-                          className="qod-btn-icon"
-                        />
-                      </a>
-
-                      <button
-                        className="qod-action-btn swap-btn"
-                        onClick={handleSwapToken}
-                        title="Swap ETH for this token"
-                        aria-label="Swap tokens"
-                      >
-                        <svg
-                          className="qod-btn-icon"
-                          width="20"
-                          height="20"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
+                  <div className="token-actions">
+                    {/* Token-specific buttons that require zoraTokenAddress */}
+                    {quoteOfTheDay?.zoraTokenAddress && (
+                      <>
+                        <a
+                          href={`https://zora.co/coin/base:${quoteOfTheDay.zoraTokenAddress}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="qod-action-btn zora-btn"
+                          title="Trade on Zora"
                         >
-                          <path
-                            d="M7 10L3 14L7 18"
-                            stroke="white"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                          <img
+                            src="/Zorb.png"
+                            alt="Zora"
+                            className="qod-btn-icon"
                           />
-                          <path
-                            d="M21 4L17 8L13 4"
-                            stroke="white"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M3 14H17"
-                            stroke="white"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M17 8H13"
-                            stroke="white"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-
-                      {/* Spacer div to push the new icons to the right */}
-                      <div className="action-spacer"></div>
-
-                      {/* Refresh button */}
-                      {/* Refresh button that spins while loading */}
-                      <button
-                        className={`qod-action-btn refresh-btn ${
-                          isLoading ? "spinning-button" : ""
-                        }`}
-                        onClick={fetchNewQuote}
-                        disabled={isLoading}
-                        title="Fetch new quote"
-                        aria-label="Refresh quote"
-                      >
-                        <svg
-                          className="qod-btn-icon"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
+                        </a>
+                        <a
+                          href={`https://dexscreener.com/base/${quoteOfTheDay.zoraTokenAddress}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="qod-action-btn dex-btn"
+                          title="View Chart"
                         >
-                          <path
-                            d="M4 4V9H9"
-                            stroke="white"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                          <img
+                            src="/dex.jpeg"
+                            alt="DEXScreener"
+                            className="qod-btn-icon"
                           />
-                          <path
-                            d="M20 20V15H15"
-                            stroke="white"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M16.5 7.5C15.7492 6.75 14.8408 6.1672 13.8346 5.79447C12.8283 5.42175 11.7535 5.26664 10.6834 5.34091C9.61329 5.41519 8.57741 5.71695 7.64922 6.22512C6.72104 6.7333 5.92208 7.43382 5.3 8.275"
-                            stroke="white"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M7.5 16.5C8.25076 17.25 9.15925 17.8328 10.1654 18.2055C11.1717 18.5783 12.2465 18.7334 13.3166 18.6591C14.3867 18.5848 15.4226 18.283 16.3508 17.7749C17.279 17.2667 18.0779 16.5662 18.7 15.725"
-                            stroke="white"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
+                        </a>
 
-                      {/* Like button */}
-                      <div className="qod-action-btn-container">
                         <button
-                          className={`qod-action-btn like-btn ${
-                            quoteOfTheDay?.isLiked ? "liked" : ""
-                          }`}
-                          onClick={() => likeQuote(quoteOfTheDay?._id)}
-                          title={
-                            quoteOfTheDay?.isLiked
-                              ? "Unlike quote"
-                              : "Like quote"
-                          }
-                          aria-label={
-                            quoteOfTheDay?.isLiked
-                              ? "Unlike quote"
-                              : "Like quote"
-                          }
+                          className="qod-action-btn swap-btn"
+                          onClick={handleSwapToken}
+                          title="Swap ETH for this token"
+                          aria-label="Swap tokens"
                         >
                           <svg
                             className="qod-btn-icon"
+                            width="20"
+                            height="20"
                             viewBox="0 0 24 24"
-                            fill={quoteOfTheDay?.isLiked ? "white" : "none"}
+                            fill="none"
                             xmlns="http://www.w3.org/2000/svg"
                           >
                             <path
-                              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                              d="M7 10L3 14L7 18"
+                              stroke="white"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M21 4L17 8L13 4"
+                              stroke="white"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M3 14H17"
+                              stroke="white"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M17 8H13"
                               stroke="white"
                               strokeWidth="2"
                               strokeLinecap="round"
@@ -2219,12 +2136,97 @@ export default function Card() {
                             />
                           </svg>
                         </button>
-                        <span className="like-count">
-                          {quoteOfTheDay?.likeCount || 0}
-                        </span>
-                      </div>
+                      </>
+                    )}
+
+                    {/* Always visible spacer (whether token exists or not) */}
+                    <div className="action-spacer"></div>
+
+                    {/* Always visible refresh button */}
+                    <button
+                      className={`qod-action-btn refresh-btn ${
+                        isLoading ? "spinning-button" : ""
+                      }`}
+                      onClick={fetchNewQuote}
+                      disabled={isLoading}
+                      title="Fetch new quote"
+                      aria-label="Refresh quote"
+                    >
+                      <svg
+                        className="qod-btn-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M4 4V9H9"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M20 20V15H15"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M16.5 7.5C15.7492 6.75 14.8408 6.1672 13.8346 5.79447C12.8283 5.42175 11.7535 5.26664 10.6834 5.34091C9.61329 5.41519 8.57741 5.71695 7.64922 6.22512C6.72104 6.7333 5.92208 7.43382 5.3 8.275"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M7.5 16.5C8.25076 17.25 9.15925 17.8328 10.1654 18.2055C11.1717 18.5783 12.2465 18.7334 13.3166 18.6591C14.3867 18.5848 15.4226 18.283 16.3508 17.7749C17.279 17.2667 18.0779 16.5662 18.7 15.725"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+
+                    {/* Always visible like button */}
+                    <div className="qod-action-btn-container">
+                      <button
+                        className={`qod-action-btn like-btn ${
+                          quoteOfTheDay?.isLiked ? "liked" : ""
+                        }`}
+                        onClick={() =>
+                          quoteOfTheDay && likeQuote(quoteOfTheDay._id)
+                        }
+                        title={
+                          quoteOfTheDay?.isLiked ? "Unlike quote" : "Like quote"
+                        }
+                        aria-label={
+                          quoteOfTheDay?.isLiked ? "Unlike quote" : "Like quote"
+                        }
+                        disabled={!quoteOfTheDay}
+                      >
+                        <svg
+                          className="qod-btn-icon"
+                          viewBox="0 0 24 24"
+                          fill={quoteOfTheDay?.isLiked ? "white" : "none"}
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                      <span className="like-count">
+                        {quoteOfTheDay?.likeCount || 0}
+                      </span>
                     </div>
-                  )}
+                  </div>
+
                   <div className="profile-info">
                     <button
                       className="cast-btn custom-btn"

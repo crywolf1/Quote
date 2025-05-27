@@ -15,8 +15,8 @@ export async function GET() {
     const notificationPayload = {
       targetFids: [], // Empty to target all users
       notification: {
-        title: "Test from Quoted App",
-        body: "This is a test notification from your Quoted app",
+        title: "A WARNING",
+        body: "Power speaks softly today. Will you hear it?",
         target_url:
           process.env.NEXT_PUBLIC_BASE_URL || "https://quote-dusky.vercel.app",
         uuid: randomUUID(),
