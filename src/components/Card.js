@@ -2092,7 +2092,7 @@ export default function Card() {
                           />
                         </a>
 
-                        <button
+                        {/* <button
                           className="qod-action-btn swap-btn"
                           onClick={handleSwapToken}
                           title="Swap ETH for this token"
@@ -2135,7 +2135,7 @@ export default function Card() {
                               strokeLinejoin="round"
                             />
                           </svg>
-                        </button>
+                        </button> */}
                       </>
                     )}
 
