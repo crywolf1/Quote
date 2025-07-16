@@ -12,6 +12,11 @@ export async function GET(request) {
   // Handle FID-based lookup using Farcaster Hub API
   if (fid) {
     try {
+      console.log(`🔍 Attempting to fetch data for FID: ${fid}`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const res = await fetch(
         `https://hub.farcaster.xyz/v1/userDataByFid?fid=${fid}`,
         {
@@ -19,53 +24,110 @@ export async function GET(request) {
           headers: {
             Accept: "application/json",
           },
+          signal: controller.signal,
         }
       );
 
+      clearTimeout(timeoutId);
+
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(`Farcaster Hub API error for FID ${fid}:`, errorText);
-        return NextResponse.json(
-          {
-            error: "API request failed",
-            status: res.status,
-            details: errorText,
-          },
-          { status: res.status }
-        );
+        console.error(`❌ Farcaster Hub API error for FID ${fid}:`, errorText);
+
+        // Return a fallback profile instead of error
+        return NextResponse.json({
+          users: [
+            {
+              fid: parseInt(fid),
+              username: `user${fid}`,
+              display_name: `User ${fid}`,
+              pfp_url: "https://warpcast.com/avatar.png",
+              profile: {
+                bio: {
+                  text: "Farcaster user",
+                },
+              },
+              follower_count: 0,
+              following_count: 0,
+              verified_addresses: {
+                eth_addresses: [],
+              },
+              custody_address: null,
+            },
+          ],
+        });
       }
 
       const data = await res.json();
-      console.log("Farcaster Hub API response for FID:", data);
+      console.log("✅ Farcaster Hub API response for FID:", data);
 
       if (!data.messages || !data.messages.length) {
-        console.warn("User not found for fid:", fid);
-        return NextResponse.json(
-          { error: "User not found", raw: data },
-          { status: 404 }
-        );
+        console.warn("⚠️ User not found for fid:", fid);
+
+        // Return a basic profile instead of 404
+        return NextResponse.json({
+          users: [
+            {
+              fid: parseInt(fid),
+              username: `user${fid}`,
+              display_name: `User ${fid}`,
+              pfp_url: "https://warpcast.com/avatar.png",
+              profile: {
+                bio: {
+                  text: "Farcaster user",
+                },
+              },
+              follower_count: 0,
+              following_count: 0,
+              verified_addresses: {
+                eth_addresses: [],
+              },
+              custody_address: null,
+            },
+          ],
+        });
       }
 
       // Transform Farcaster Hub data to match Neynar format
       const userData = transformFarcasterData(data.messages, fid);
+      console.log("✅ Transformed user data:", userData);
 
       // Return in exact same format as Neynar
       return NextResponse.json({ users: [userData] });
     } catch (error) {
-      console.error("Error fetching user by FID:", error);
-      return NextResponse.json(
-        { error: "Failed to fetch user data", details: error.message },
-        { status: 500 }
-      );
+      console.error("💥 Error fetching user by FID:", error);
+
+      // Return fallback instead of error
+      return NextResponse.json({
+        users: [
+          {
+            fid: parseInt(fid),
+            username: `user${fid}`,
+            display_name: `User ${fid}`,
+            pfp_url: "https://warpcast.com/avatar.png",
+            profile: {
+              bio: {
+                text: "Farcaster user",
+              },
+            },
+            follower_count: 0,
+            following_count: 0,
+            verified_addresses: {
+              eth_addresses: [],
+            },
+            custody_address: null,
+          },
+        ],
+      });
     }
   }
 
   // For address-based requests in a mini app context,
   // we should not rely on external lookups
   if (address) {
-    console.log("Address-based lookup requested for:", address);
+    console.log("📍 Address-based lookup requested for:", address);
     console.log(
-      "Note: In Farcaster mini apps, use Frame SDK to get FID directly"
+      "💡 Note: In Farcaster mini apps, use Frame SDK to get FID directly"
     );
 
     // Return a fallback response that won't break the frontend

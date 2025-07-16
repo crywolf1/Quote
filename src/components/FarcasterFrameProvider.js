@@ -412,6 +412,8 @@ export function FarcasterFrameProvider({ children }) {
   }, []);
 
   // Function to fetch user data from Farcaster
+  // Just replace the tryGetUserData function, keep everything else the same:
+
   const tryGetUserData = useCallback(async () => {
     if (!sdk) return false;
 
@@ -421,34 +423,49 @@ export function FarcasterFrameProvider({ children }) {
     try {
       let fid = null;
 
-      // Try to get user context from Frame
+      // Enhanced Frame SDK detection - this is the key fix
       try {
-        const context = await sdk.actions.getContext?.();
-        console.log("Frame context:", context);
-
-        // Check if using external wallet via Warpcast
-        const usingExternalWallet =
-          context?.isExternalWallet ||
-          (context?.network?.includes("mainnet") &&
-            !window.farcaster?.isNativeWallet);
-
-        console.log("Using external wallet:", usingExternalWallet);
+        console.log("🔍 Getting frame context...");
+        const context = await sdk.context; // Use sdk.context instead of sdk.actions.getContext()
+        console.log("📋 Frame context:", context);
 
         if (context) {
-          fid = context.fid;
+          console.log("👤 Context user:", context.user);
+
+          // Try different ways to get the FID
+          if (context.user && context.user.fid) {
+            fid = context.user.fid;
+            console.log("✅ Found FID from context.user.fid:", fid);
+          } else if (context.fid) {
+            fid = context.fid;
+            console.log("✅ Found FID from context.fid:", fid);
+          } else {
+            console.log("❌ No FID found in context");
+          }
+
+          // Check if using external wallet via Warpcast
+          const usingExternalWallet =
+            context?.isExternalWallet ||
+            (context?.network?.includes("mainnet") &&
+              !window.farcaster?.isNativeWallet);
+
+          console.log("Using external wallet:", usingExternalWallet);
 
           // Store this for transaction logic
           window._farcasterUsingExternalWallet = usingExternalWallet;
+        } else {
+          console.log("❌ No frame context available");
         }
       } catch (contextError) {
-        console.warn("Error getting frame context:", contextError);
+        console.warn("❌ Error getting frame context:", contextError);
       }
 
       // If we have an FID from Frame, fetch user data
       if (fid) {
-        console.log("Fetching user data by FID:", fid);
+        console.log("📡 Fetching user data by FID:", fid);
         const fidRes = await fetch(`/api/neynar?fid=${fid}`);
         const fidData = await fidRes.json();
+        console.log("📊 FID API response:", fidData);
 
         if (fidRes.ok && fidData.users?.length) {
           const user = fidData.users[0];
@@ -463,13 +480,15 @@ export function FarcasterFrameProvider({ children }) {
           });
           setLoading(false);
           return true;
+        } else {
+          console.log("❌ FID API failed or no users found");
         }
       }
 
-      // If we have a wallet address, try to find Farcaster user by address
+      // Rest of your existing code for address lookup...
       if (address) {
         const userAddress = address.toLowerCase();
-        console.log("Fetching user data by wallet:", userAddress);
+        console.log("🔄 Fetching user data by wallet:", userAddress);
         const addrRes = await fetch(`/api/neynar?address=${userAddress}`);
         const addrData = await addrRes.json();
 
@@ -489,7 +508,7 @@ export function FarcasterFrameProvider({ children }) {
         }
 
         // No Farcaster account found, but we have a wallet - create wallet-only user
-        console.log("No Farcaster account found, using wallet-only mode");
+        console.log("🔄 No Farcaster account found, using wallet-only mode");
         setUserData({
           username: `${address.slice(0, 6)}...${address.slice(-4)}`,
           displayName: `${address.slice(0, 6)}...${address.slice(-4)}`,
@@ -504,15 +523,15 @@ export function FarcasterFrameProvider({ children }) {
         return true;
       } else {
         // No wallet connected
-        console.log("No wallet connected, waiting for connection");
+        console.log("❌ No wallet connected, waiting for connection");
         setUserData(null);
         setLoading(false);
         return false;
       }
     } catch (error) {
-      console.error("Error fetching user data:", error);
+      console.error("💥 Error fetching user data:", error);
 
-      // If we at least have a wallet, create a wallet-only profile
+      // Your existing error handling...
       if (address) {
         setUserData({
           username: `${address.slice(0, 6)}...${address.slice(-4)}`,
@@ -524,15 +543,14 @@ export function FarcasterFrameProvider({ children }) {
           verifiedAddresses: [address],
           isWalletOnly: true,
         });
-        setError(""); // Clear error since wallet-only is valid
+        setError("");
       } else {
-        // Don't set userData to a guest - set to null to trigger connect UI
         setUserData(null);
-        setError("Connect your wallet to continue"); // This is a guide, not an error
+        setError("Connect your wallet to continue");
       }
 
       setLoading(false);
-      return !!address; // Return true if at least wallet is connected
+      return !!address;
     }
   }, [sdk, address]);
 
